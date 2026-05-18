@@ -1,0 +1,841 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NHC Cash Offer Engine</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --red: #8B1A1A;
+    --gold: #C8972A;
+    --blue: #1B4F8A;
+    --green: #2D6A3F;
+    --orange: #C4611A;
+    --dark: #f4f5f7;
+    --mid: #ffffff;
+    --card: #ffffff;
+    --border: #e0e3e8;
+    --text: #1a1e2e;
+    --muted: #6b7280;
+    --input-bg: #f9fafb;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--dark);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    min-height: 100vh;
+  }
+
+  /* ── HEADER ── */
+  .header-stripe {
+    height: 6px;
+    background: linear-gradient(90deg, var(--blue) 0%, var(--blue) 25%, var(--green) 25%, var(--green) 50%, var(--gold) 50%, var(--gold) 75%, var(--orange) 75%, var(--orange) 87%, var(--red) 87%);
+  }
+  .header {
+    background: var(--mid);
+    border-bottom: 2px solid #e0e3e8;
+    padding: 18px 32px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+  .logo-ring {
+    width: 44px; height: 44px;
+    border: 3px solid var(--gold);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .logo-ring span { font-size: 18px; }
+  .header-text h1 {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 22px;
+    letter-spacing: 2px;
+    color: #1a1e2e;
+    line-height: 1;
+  }
+  .header-text p {
+    font-size: 11px;
+    color: #6b7280;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-top: 3px;
+  }
+
+  /* ── LAYOUT ── */
+  .app { display: flex; gap: 0; min-height: calc(100vh - 70px); }
+
+  .sidebar {
+    width: 380px;
+    flex-shrink: 0;
+    background: var(--mid);
+    border-right: 1px solid #e0e3e8;
+    padding: 28px 24px;
+    overflow-y: auto;
+  }
+
+  .main {
+    flex: 1;
+    padding: 28px 32px;
+    overflow-y: auto;
+  }
+
+  /* ── SECTION LABELS ── */
+  .section-label {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 13px;
+    letter-spacing: 3px;
+    color: var(--gold);
+    text-transform: uppercase;
+    margin-bottom: 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .section-label::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: #e0e3e8;
+  }
+
+  /* ── INPUTS ── */
+  .field { margin-bottom: 14px; }
+  .field label {
+    display: block;
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    margin-bottom: 5px;
+  }
+  .field input {
+    width: 100%;
+    background: var(--input-bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 9px 12px;
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    font-size: 14px;
+    transition: border-color 0.15s;
+    outline: none;
+  }
+  .field input:focus { border-color: var(--gold); }
+  .field input.yellow { border-left: 3px solid var(--gold); }
+  .field input.blue-input { border-left: 3px solid var(--blue); }
+
+  .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+  /* ── REPAIR TABLE ── */
+  .repair-table { width: 100%; border-collapse: collapse; margin-bottom: 12px; }
+  .repair-table th {
+    font-size: 10px;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+    color: var(--muted);
+    font-weight: 500;
+    padding: 6px 8px;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+  }
+  .repair-table td { padding: 4px 4px; vertical-align: middle; }
+  .repair-table td input {
+    width: 100%;
+    background: var(--input-bg);
+    border: 1px solid transparent;
+    border-radius: 4px;
+    padding: 6px 8px;
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    font-size: 13px;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  .repair-table td input:focus { border-color: var(--gold); }
+  .repair-table td.del-cell { width: 28px; text-align: center; }
+  .del-btn {
+    background: none;
+    border: none;
+    color: #aab0bb;
+    cursor: pointer;
+    font-size: 16px;
+    line-height: 1;
+    padding: 4px;
+    transition: color 0.15s;
+  }
+  .del-btn:hover { color: var(--red); }
+  .repair-total-row td {
+    font-family: 'DM Mono', monospace;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--blue);
+    padding: 8px 8px;
+    border-top: 1px solid var(--border);
+  }
+
+  .add-item-btn {
+    width: 100%;
+    background: transparent;
+    border: 1px dashed var(--border);
+    border-radius: 6px;
+    padding: 8px;
+    color: var(--muted);
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.15s;
+    font-family: 'DM Sans', sans-serif;
+    margin-bottom: 16px;
+  }
+  .add-item-btn:hover { border-color: var(--gold); color: var(--gold); }
+
+  /* ── LIVE NUMBERS PANEL ── */
+  .options-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+  .option-card {
+    background: var(--card);
+    border-radius: 10px;
+    padding: 20px;
+    border: 1px solid var(--border);
+    position: relative;
+    overflow: hidden;
+  }
+  .option-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 4px;
+  }
+  .option-card.green::before { background: #4ade80; }
+  .option-card.blue-v::before { background: #60a5fa; }
+  .option-card.orange-v::before { background: #fb923c; }
+
+  .option-num {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 11px;
+    letter-spacing: 2px;
+    color: var(--muted);
+    margin-bottom: 4px;
+  }
+  .option-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 18px;
+    letter-spacing: 1px;
+    margin-bottom: 16px;
+  }
+  .option-card.green .option-title { color: #1a7a3c; }
+  .option-card.blue-v .option-title { color: #1B4F8A; }
+  .option-card.orange-v .option-title { color: #b34d0e; }
+
+  .option-line {
+    display: flex;
+    justify-content: space-between;
+    font-size: 12px;
+    padding: 4px 0;
+    border-bottom: 1px solid #f0f0f0;
+  }
+  .option-line .k { color: var(--muted); }
+  .option-line .v { font-family: 'DM Mono', monospace; }
+  .option-net {
+    margin-top: 12px;
+    padding-top: 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+  }
+  .option-net .k { font-size: 11px; text-transform: uppercase; letter-spacing: 0.8px; color: var(--muted); }
+  .option-net .v {
+    font-family: 'DM Mono', monospace;
+    font-size: 22px;
+    font-weight: 600;
+  }
+  .option-card.green .option-net .v { color: #1a7a3c; }
+  .option-card.blue-v .option-net .v { color: #1B4F8A; }
+  .option-card.orange-v .option-net .v { color: #b34d0e; }
+
+  /* ── FINALIZE BUTTON ── */
+  .finalize-btn {
+    width: 100%;
+    background: var(--gold);
+    border: none;
+    border-radius: 8px;
+    padding: 16px;
+    color: #111;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 20px;
+    letter-spacing: 3px;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-top: 8px;
+  }
+  .finalize-btn:hover {
+    background: #e0a82e;
+    transform: translateY(-1px);
+    box-shadow: 0 6px 24px rgba(200,151,42,0.3);
+  }
+  .finalize-btn:active { transform: translateY(0); }
+
+  /* ── PROPOSAL PREVIEW ── */
+  #proposal-section { display: none; }
+  #proposal-section.visible { display: block; }
+
+  .proposal-wrapper {
+    background: #fff;
+    border-radius: 12px;
+    overflow: hidden;
+    color: #111;
+    max-width: 820px;
+    margin: 0 auto;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.10);
+  }
+
+  .prop-header {
+    background: #fff;
+    padding: 28px 36px 20px;
+    border-bottom: 1px solid #e5e5e5;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+  }
+  .prop-logo-area h2 {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 20px;
+    letter-spacing: 2px;
+    color: var(--blue);
+  }
+  .prop-logo-area p { font-size: 11px; color: #888; margin-top: 2px; }
+  .prop-stripe {
+    height: 8px;
+    background: linear-gradient(90deg, var(--blue) 0%, var(--blue) 25%, var(--green) 25%, var(--green) 50%, var(--gold) 50%, var(--gold) 75%, var(--orange) 75%, var(--orange) 87%, var(--red) 87%);
+  }
+
+  .prop-title-block {
+    text-align: center;
+    padding: 28px 36px 16px;
+  }
+  .prop-title-block h1 {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 38px;
+    letter-spacing: 4px;
+    color: var(--blue);
+    margin-bottom: 6px;
+  }
+  .prop-title-block .address { font-size: 18px; font-weight: 600; color: #222; margin-bottom: 4px; }
+  .prop-title-block .sub { font-size: 13px; color: #666; }
+
+  .prop-body { padding: 8px 36px 32px; }
+
+  .prop-section-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 16px;
+    letter-spacing: 2px;
+    color: var(--blue);
+    margin: 20px 0 10px;
+    padding-bottom: 6px;
+    border-bottom: 2px solid #e5e5e5;
+  }
+
+  .prop-valuation {
+    display: flex;
+    gap: 0;
+    border: 1px solid #e5e5e5;
+    border-radius: 8px;
+    overflow: hidden;
+    margin-bottom: 6px;
+  }
+  .prop-val-cell { flex: 1; padding: 16px 20px; border-right: 1px solid #e5e5e5; }
+  .prop-val-cell:last-child { border-right: none; }
+  .prop-val-cell .val-label { font-size: 11px; color: #888; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 4px; }
+  .prop-val-cell .val-num { font-family: 'DM Mono', monospace; font-size: 26px; font-weight: 600; color: var(--blue); }
+
+  .prop-repair-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .prop-repair-table th { background: #1B4F8A; color: #fff; padding: 9px 12px; text-align: left; font-weight: 500; font-size: 12px; letter-spacing: 0.5px; }
+  .prop-repair-table th:last-child { text-align: right; }
+  .prop-repair-table td { padding: 7px 12px; border-bottom: 1px solid #f0f0f0; }
+  .prop-repair-table td:last-child { text-align: right; font-family: 'DM Mono', monospace; }
+  .prop-repair-table tr:nth-child(even) td { background: #f9f9f9; }
+  .prop-repair-table .total-row td { background: #1B4F8A; color: #fff; font-weight: 600; padding: 10px 12px; border-bottom: none; font-family: 'DM Mono', monospace; }
+  .prop-repair-table .total-row td:first-child { font-family: 'DM Sans', sans-serif; }
+
+  .prop-options { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 8px; }
+  .prop-opt { border-radius: 8px; overflow: hidden; border: 1px solid #e5e5e5; }
+  .prop-opt-header { padding: 12px 14px; color: #fff; font-weight: 600; }
+  .prop-opt.g .prop-opt-header { background: var(--green); }
+  .prop-opt.b .prop-opt-header { background: var(--blue); }
+  .prop-opt.o .prop-opt-header { background: var(--orange); }
+  .prop-opt-header .opt-num { font-size: 10px; letter-spacing: 1px; opacity: 0.8; margin-bottom: 2px; }
+  .prop-opt-header .opt-name { font-size: 14px; font-weight: 600; }
+  .prop-opt-body { padding: 12px 14px; background: #fff; }
+  .prop-opt-line { display: flex; justify-content: space-between; font-size: 12px; padding: 3px 0; color: #aab0bb; }
+  .prop-opt-line .v { font-family: 'DM Mono', monospace; color: #222; }
+  .prop-opt-net { margin-top: 10px; padding-top: 8px; border-top: 1px solid #e5e5e5; display: flex; justify-content: space-between; align-items: baseline; }
+  .prop-opt-net .k { font-size: 11px; text-transform: uppercase; font-weight: 600; color: #444; }
+  .prop-opt-net .v { font-family: 'DM Mono', monospace; font-size: 20px; font-weight: 700; }
+  .prop-opt.g .prop-opt-net .v { color: var(--green); }
+  .prop-opt.b .prop-opt-net .v { color: var(--blue); }
+  .prop-opt.o .prop-opt-net .v { color: var(--orange); }
+
+  .prop-comparison { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 8px; }
+  .prop-comparison th { background: #1B4F8A; color: #fff; padding: 10px 14px; text-align: left; font-weight: 500; letter-spacing: 0.5px; }
+  .prop-comparison td { padding: 10px 14px; border-bottom: 1px solid #f0f0f0; }
+  .prop-comparison td:not(:first-child) { font-family: 'DM Mono', monospace; }
+  .prop-comparison tr:nth-child(even) td { background: #f9f9f9; }
+
+  .prop-footer {
+    background: #1B4F8A;
+    color: #fff;
+    padding: 16px 36px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .prop-footer h3 { font-family: 'Bebas Neue', sans-serif; font-size: 18px; letter-spacing: 2px; }
+  .prop-footer p { font-size: 12px; opacity: 0.75; margin-top: 2px; }
+
+  .print-btn {
+    background: var(--blue);
+    border: none;
+    border-radius: 8px;
+    padding: 13px 28px;
+    color: #fff;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 16px;
+    letter-spacing: 2px;
+    cursor: pointer;
+    transition: background 0.15s;
+    display: block;
+    margin: 16px auto 0;
+  }
+  .print-btn:hover { background: #1e5fa8; }
+
+  .divider { height: 1px; background: var(--border); margin: 20px 0; }
+
+  .assumptions-toggle {
+    width: 100%;
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 10px 14px;
+    color: var(--muted);
+    font-size: 12px;
+    cursor: pointer;
+    text-align: left;
+    font-family: 'DM Sans', sans-serif;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: all 0.15s;
+  }
+  .assumptions-toggle:hover { border-color: var(--gold); color: var(--text); }
+  .assumptions-body { overflow: hidden; max-height: 0; transition: max-height 0.3s ease; }
+  .assumptions-body.open { max-height: 500px; }
+  .assumptions-inner { padding: 14px 0 4px; }
+
+  @media print {
+    body { background: #fff; }
+    .header-stripe, .header, .sidebar, #live-section { display: none !important; }
+    .main { padding: 0; }
+    #proposal-section { display: block !important; }
+    .print-btn { display: none; }
+    .proposal-wrapper { box-shadow: none; border-radius: 0; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header-stripe"></div>
+<div class="header">
+  <div class="logo-ring"><span>🏠</span></div>
+  <div class="header-text">
+    <h1>NHC Cash Offer Engine</h1>
+    <p>BE Property Ventures &bull; Powered by BRRRD Man</p>
+  </div>
+</div>
+
+<div class="app">
+
+  <!-- ══ SIDEBAR ══ -->
+  <div class="sidebar">
+
+    <div class="section-label">Property Info</div>
+    <div class="field">
+      <label>Property Address</label>
+      <input type="text" id="address" class="yellow" placeholder="123 Main St, Lexington, KY 40502" oninput="recalc()">
+    </div>
+    <div class="field-row">
+      <div class="field"><label>Beds / Baths</label><input type="text" id="beds_baths" class="yellow" placeholder="3/2" oninput="recalc()"></div>
+      <div class="field"><label>Sq Ft</label><input type="text" id="sqft" class="yellow" placeholder="1,850" oninput="recalc()"></div>
+    </div>
+
+    <div class="divider"></div>
+    <div class="section-label">Valuation</div>
+    <div class="field">
+      <label>ARV — After Repair Value ($)</label>
+      <input type="number" id="arv" class="yellow" placeholder="385000" oninput="recalc()">
+    </div>
+    <div class="field-row">
+      <div class="field"><label>As-Is % of ARV</label><input type="number" id="asis_pct" class="yellow" value="85" step="0.5" oninput="recalc()"></div>
+      <div class="field"><label>As-Is Value ($)</label><input type="number" id="asis_override" class="yellow" placeholder="Auto" oninput="recalc()"></div>
+    </div>
+    <p style="font-size:11px;color:var(--muted);margin-top:-8px;margin-bottom:12px;">Enter a manual As-Is value to override the % calculation.</p>
+
+    <div class="divider"></div>
+    <button class="assumptions-toggle" onclick="toggleAssumptions()">
+      <span>⚙️ &nbsp; Program Assumptions (defaults)</span>
+      <span id="toggle-arrow">▼</span>
+    </button>
+    <div class="assumptions-body" id="assumptions-body">
+      <div class="assumptions-inner">
+        <div class="field-row">
+          <div class="field"><label>Commission %</label><input type="number" id="commission_pct" class="blue-input" value="6" step="0.5" oninput="recalc()"></div>
+          <div class="field"><label>Profit Margin % of ARV</label><input type="number" id="profit_margin" class="blue-input" value="15" step="0.5" oninput="recalc()"></div>
+        </div>
+        <div class="field-row">
+          <div class="field"><label>Holding % — Cash (hard money)</label><input type="number" id="holding_cash" class="blue-input" value="0.75" step="0.05" oninput="recalc()"></div>
+          <div class="field"><label>Monthly Holding % (2&3)</label><input type="number" id="holding_monthly" class="blue-input" value="0.5" step="0.05" oninput="recalc()"></div>
+        </div>
+        <p style="font-size:11px;color:var(--muted);">Opt 2 uses 3 months &bull; Opt 3 uses 6 months. Change only when program changes.</p>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+    <div class="section-label">Repair Breakdown</div>
+    <table class="repair-table" id="repair-table">
+      <thead>
+        <tr>
+          <th>Item</th>
+          <th style="text-align:right;width:110px;">Cost ($)</th>
+          <th style="width:28px;"></th>
+        </tr>
+      </thead>
+      <tbody id="repair-tbody"></tbody>
+      <tfoot>
+        <tr class="repair-total-row">
+          <td>TOTAL ESTIMATED REPAIRS</td>
+          <td style="text-align:right;" id="repair-total-display">$0</td>
+          <td></td>
+        </tr>
+      </tfoot>
+    </table>
+    <button class="add-item-btn" onclick="addRepairRow()">+ Add Line Item</button>
+    <button class="finalize-btn" onclick="generateProposal()">&#11015; FINALIZE OFFER</button>
+
+  </div>
+
+  <!-- ══ MAIN ══ -->
+  <div class="main">
+
+    <div id="live-section">
+      <div class="section-label" style="margin-bottom:20px;">Live Offer Preview</div>
+      <div class="options-grid" id="options-grid"></div>
+
+      <div class="section-label" style="margin-top:8px;">Seller Comparison</div>
+      <div style="background:#ffffff;border:1px solid #e0e3e8;border-radius:10px;overflow:hidden;">
+        <table style="width:100%;border-collapse:collapse;font-size:13px;">
+          <thead>
+            <tr style="background:#f8f9fb;">
+              <th style="padding:11px 16px;text-align:left;font-size:11px;letter-spacing:1px;color:#6b7280;font-weight:500;border-bottom:1px solid #e0e3e8;">Option</th>
+              <th style="padding:11px 16px;text-align:right;font-size:11px;letter-spacing:1px;color:#6b7280;font-weight:500;border-bottom:1px solid #e0e3e8;">Net to Seller</th>
+              <th style="padding:11px 16px;text-align:center;font-size:11px;letter-spacing:1px;color:#6b7280;font-weight:500;border-bottom:1px solid #e0e3e8;">Timeline</th>
+              <th style="padding:11px 16px;text-align:center;font-size:11px;letter-spacing:1px;color:#6b7280;font-weight:500;border-bottom:1px solid #e0e3e8;">Effort</th>
+            </tr>
+          </thead>
+          <tbody id="comparison-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div id="proposal-section">
+      <div class="section-label" style="margin-bottom:20px;">Generated Proposal</div>
+      <div class="proposal-wrapper" id="proposal-output"></div>
+      <button class="print-btn" onclick="window.print()">&#128424; PRINT / SAVE AS PDF</button>
+    </div>
+
+  </div>
+</div>
+
+<script>
+const defaultItems = [
+  { name: 'Flooring', cost: 0 },
+  { name: 'Painting', cost: 0 },
+  { name: 'Demo / Cleanup', cost: 0 },
+  { name: 'Drywall Work', cost: 0 },
+  { name: 'Misc Fixtures', cost: 0 },
+  { name: 'Appliances', cost: 0 },
+  { name: 'Plumbing', cost: 0 },
+  { name: 'Electrical', cost: 0 },
+  { name: 'Landscaping', cost: 0 },
+];
+
+function initRepairs() {
+  defaultItems.forEach(i => addRepairRow(i.name, i.cost));
+}
+
+function addRepairRow(name='', cost='') {
+  const tbody = document.getElementById('repair-tbody');
+  const tr = document.createElement('tr');
+  tr.innerHTML = `
+    <td><input type="text" placeholder="Item description" value="${name}" oninput="recalc()"></td>
+    <td><input type="number" placeholder="0" value="${cost || ''}" oninput="recalc()" style="text-align:right;"></td>
+    <td class="del-cell"><button class="del-btn" onclick="this.closest('tr').remove();recalc()">&times;</button></td>
+  `;
+  tbody.appendChild(tr);
+  recalc();
+}
+
+function getRepairTotal() {
+  let total = 0;
+  document.querySelectorAll('#repair-tbody tr').forEach(tr => {
+    const v = parseFloat(tr.querySelectorAll('input')[1].value) || 0;
+    total += v;
+  });
+  return total;
+}
+
+function getRepairItems() {
+  const items = [];
+  document.querySelectorAll('#repair-tbody tr').forEach(tr => {
+    const name = tr.querySelectorAll('input')[0].value.trim();
+    const cost = parseFloat(tr.querySelectorAll('input')[1].value) || 0;
+    if (name || cost) items.push({ name: name || 'Item', cost });
+  });
+  return items;
+}
+
+function fmt(n) {
+  if (isNaN(n)) return '$\u2014';
+  const abs = Math.abs(n);
+  const str = '$' + abs.toLocaleString('en-US', { maximumFractionDigits: 0 });
+  return n < 0 ? '(' + str + ')' : str;
+}
+
+function calc() {
+  const arv = parseFloat(document.getElementById('arv').value) || 0;
+  const asisOverride = parseFloat(document.getElementById('asis_override').value);
+  const asisPct = parseFloat(document.getElementById('asis_pct').value) / 100 || 0.85;
+  const asisValue = (!isNaN(asisOverride) && asisOverride > 0) ? asisOverride : arv * asisPct;
+  const commPct = parseFloat(document.getElementById('commission_pct').value) / 100 || 0.06;
+  const profitPct = parseFloat(document.getElementById('profit_margin').value) / 100 || 0.15;
+  const profit = arv * profitPct;
+  const holdingCashPct = parseFloat(document.getElementById('holding_cash').value) / 100 || 0.0075;
+  const holdingMonthly = parseFloat(document.getElementById('holding_monthly').value) / 100 || 0.005;
+  const reno = getRepairTotal();
+  const cashHolding = holdingCashPct * arv;
+  const cashOffer = arv - reno - (commPct * arv) - cashHolding - profit;
+  const opt2Comm = commPct * asisValue;
+  const opt2Holding = holdingMonthly * 3 * arv;
+  const opt2Net = asisValue - opt2Comm - opt2Holding;
+  const opt3Comm = commPct * arv;
+  const opt3Holding = holdingMonthly * 6 * arv;
+  const opt3Net = arv - reno - opt3Comm - opt3Holding;
+  return {
+    arv, asisValue, asisPct, reno, commPct, profit, profitPct,
+    holdingCashPct, holdingMonthly, cashOffer, cashHolding,
+    opt2Comm, opt2Holding, opt2Net, opt3Comm, opt3Holding, opt3Net,
+    asisOverride: (!isNaN(asisOverride) && asisOverride > 0)
+  };
+}
+
+function recalc() {
+  const d = calc();
+  document.getElementById('repair-total-display').textContent = fmt(d.reno);
+
+  document.getElementById('options-grid').innerHTML = `
+    <div class="option-card green">
+      <div class="option-num">OPTION 1</div>
+      <div class="option-title">Cash Offer</div>
+      <div class="option-line"><span class="k">ARV</span><span class="v">${fmt(d.arv)}</span></div>
+      <div class="option-line"><span class="k">Less: Renovation</span><span class="v">(${fmt(d.reno)})</span></div>
+      <div class="option-line"><span class="k">Less: Commission</span><span class="v">(${fmt(d.commPct * d.arv)})</span></div>
+      <div class="option-line"><span class="k">Less: Holding (hard money)</span><span class="v">(${fmt(d.cashHolding)})</span></div>
+      <div class="option-line"><span class="k">Less: Profit Margin (${Math.round(d.profitPct*100)}% ARV)</span><span class="v">(${fmt(d.profit)})</span></div>
+      <div class="option-net"><span class="k">Cash Offer</span><span class="v">${fmt(d.cashOffer)}</span></div>
+    </div>
+    <div class="option-card blue-v">
+      <div class="option-num">OPTION 2</div>
+      <div class="option-title">As-Is Listing</div>
+      <div class="option-line"><span class="k">As-Is List Price ${d.asisOverride ? '(manual)' : '(' + Math.round(d.asisPct*100) + '% ARV)'}</span><span class="v">${fmt(d.asisValue)}</span></div>
+      <div class="option-line"><span class="k">Less: Commission (6%)</span><span class="v">(${fmt(d.opt2Comm)})</span></div>
+      <div class="option-line"><span class="k">Less: Holding (3 mo)</span><span class="v">(${fmt(d.opt2Holding)})</span></div>
+      <div class="option-net"><span class="k">Net to Seller</span><span class="v">${fmt(d.opt2Net)}</span></div>
+    </div>
+    <div class="option-card orange-v">
+      <div class="option-num">OPTION 3</div>
+      <div class="option-title">Full Retail</div>
+      <div class="option-line"><span class="k">ARV (after renovation)</span><span class="v">${fmt(d.arv)}</span></div>
+      <div class="option-line"><span class="k">Less: Renovation</span><span class="v">(${fmt(d.reno)})</span></div>
+      <div class="option-line"><span class="k">Less: Commission (6%)</span><span class="v">(${fmt(d.opt3Comm)})</span></div>
+      <div class="option-line"><span class="k">Less: Holding (6 mo)</span><span class="v">(${fmt(d.opt3Holding)})</span></div>
+      <div class="option-net"><span class="k">Net to Seller</span><span class="v">${fmt(d.opt3Net)}</span></div>
+    </div>
+  `;
+
+  const rows = [
+    { label: 'Cash Offer (Option 1)', net: d.cashOffer, timeline: '2&ndash;3 weeks', effort: 'Very Low', color: '#4ade80' },
+    { label: 'As-Is Listing (Option 2)', net: d.opt2Net, timeline: '2&ndash;3 months', effort: 'Low', color: '#60a5fa' },
+    { label: 'Full Retail (Option 3)', net: d.opt3Net, timeline: '4&ndash;6 months', effort: 'High', color: '#fb923c' },
+  ];
+  document.getElementById('comparison-tbody').innerHTML = rows.map(r => `
+    <tr>
+      <td style="padding:11px 16px;border-bottom:1px solid var(--border);color:${r.color};font-weight:500;">${r.label}</td>
+      <td style="padding:11px 16px;text-align:right;border-bottom:1px solid var(--border);font-family:'DM Mono',monospace;font-weight:600;color:${r.color};">${fmt(r.net)}</td>
+      <td style="padding:11px 16px;text-align:center;border-bottom:1px solid #e0e3e8;color:#6b7280;">${r.timeline}</td>
+      <td style="padding:11px 16px;text-align:center;border-bottom:1px solid #e0e3e8;color:#6b7280;">${r.effort}</td>
+    </tr>
+  `).join('');
+}
+
+function generateProposal() {
+  const d = calc();
+  const address = document.getElementById('address').value || '&mdash; Address Not Entered &mdash;';
+  const bedsBaths = document.getElementById('beds_baths').value || '&mdash;';
+  const sqft = document.getElementById('sqft').value || '&mdash;';
+  const repairItems = getRepairItems();
+  const repairRows = repairItems.map(i => `<tr><td>${i.name}</td><td>${fmt(i.cost)}</td></tr>`).join('');
+
+  document.getElementById('proposal-output').innerHTML = `
+    <div class="prop-stripe"></div>
+    <div class="prop-header">
+      <div class="prop-logo-area">
+        <h2>NEW HOME COLLECTIVE</h2>
+        <p>Real Estate Solutions &bull; Fast, Fair, Honest</p>
+      </div>
+      <div style="text-align:right;font-size:12px;color:#888;">
+        <div>BE Property Ventures</div>
+        <div>nhcnow.com</div>
+        <div>${new Date().toLocaleDateString('en-US', {month:'long', day:'numeric', year:'numeric'})}</div>
+      </div>
+    </div>
+
+    <div class="prop-title-block">
+      <h1>CASH OFFER PROPOSAL</h1>
+      <div class="address">${address}</div>
+      <div class="sub">${bedsBaths} Bed/Bath &bull; ${sqft} sq ft</div>
+    </div>
+
+    <div class="prop-body">
+      <div class="prop-section-title">Property Valuation</div>
+      <div class="prop-valuation">
+        <div class="prop-val-cell">
+          <div class="val-label">ARV (Retail Value)</div>
+          <div class="val-num">${fmt(d.arv)}</div>
+        </div>
+        <div class="prop-val-cell">
+          <div class="val-label">As-Is Market Value ${d.asisOverride ? '(manual)' : '(' + Math.round(d.asisPct*100) + '% of ARV)'}</div>
+          <div class="val-num">${fmt(d.asisValue)}</div>
+        </div>
+        <div class="prop-val-cell">
+          <div class="val-label">Total Estimated Repairs</div>
+          <div class="val-num" style="color:#c0392b;">${fmt(d.reno)}</div>
+        </div>
+      </div>
+
+      <div class="prop-section-title">Renovation Breakdown</div>
+      <table class="prop-repair-table">
+        <thead><tr><th>Item</th><th>Cost</th></tr></thead>
+        <tbody>${repairRows}</tbody>
+        <tfoot><tr class="total-row"><td>TOTAL ESTIMATED REPAIRS</td><td>${fmt(d.reno)}</td></tr></tfoot>
+      </table>
+
+      <div class="prop-section-title">Three-Option Offer</div>
+      <div class="prop-options">
+        <div class="prop-opt g">
+          <div class="prop-opt-header">
+            <div class="opt-num">OPTION 1 &mdash; CASH OFFER</div>
+            <div class="opt-name">Fast. As-Is. No Hassle.</div>
+          </div>
+          <div class="prop-opt-body">
+            <div class="prop-opt-line"><span>ARV</span><span class="v">${fmt(d.arv)}</span></div>
+            <div class="prop-opt-line"><span>Less: Renovation</span><span class="v">(${fmt(d.reno)})</span></div>
+            <div class="prop-opt-line"><span>Less: Commission</span><span class="v">(${fmt(d.commPct*d.arv)})</span></div>
+            <div class="prop-opt-line"><span>Less: Financing / Holding</span><span class="v">(${fmt(d.cashHolding)})</span></div>
+            <div class="prop-opt-line"><span>Less: Profit Margin (${Math.round(d.profitPct*100)}% ARV)</span><span class="v">(${fmt(d.profit)})</span></div>
+            <div class="prop-opt-net"><span class="k">&#9733; Cash Offer</span><span class="v">${fmt(d.cashOffer)}</span></div>
+            <div style="font-size:11px;color:#777;margin-top:8px;">Close in 2&ndash;3 weeks &bull; No repairs &bull; No commissions</div>
+          </div>
+        </div>
+        <div class="prop-opt b">
+          <div class="prop-opt-header">
+            <div class="opt-num">OPTION 2 &mdash; AS-IS LISTING</div>
+            <div class="opt-name">Sell on the Open Market</div>
+          </div>
+          <div class="prop-opt-body">
+            <div class="prop-opt-line"><span>As-Is List Price</span><span class="v">${fmt(d.asisValue)}</span></div>
+            <div class="prop-opt-line"><span>Less: Commission (6%)</span><span class="v">(${fmt(d.opt2Comm)})</span></div>
+            <div class="prop-opt-line"><span>Less: Holding (3 mo)</span><span class="v">(${fmt(d.opt2Holding)})</span></div>
+            <div class="prop-opt-net"><span class="k">&#9733; Net to Seller</span><span class="v">~${fmt(d.opt2Net)}</span></div>
+            <div style="font-size:11px;color:#777;margin-top:8px;">2&ndash;3 month timeline &bull; Showings &bull; Negotiation possible</div>
+          </div>
+        </div>
+        <div class="prop-opt o">
+          <div class="prop-opt-header">
+            <div class="opt-num">OPTION 3 &mdash; FULL RETAIL</div>
+            <div class="opt-name">Renovate First, Then List</div>
+          </div>
+          <div class="prop-opt-body">
+            <div class="prop-opt-line"><span>Projected Sale Price</span><span class="v">${fmt(d.arv)}</span></div>
+            <div class="prop-opt-line"><span>Less: Renovation</span><span class="v">(${fmt(d.reno)})</span></div>
+            <div class="prop-opt-line"><span>Less: Commission (6%)</span><span class="v">(${fmt(d.opt3Comm)})</span></div>
+            <div class="prop-opt-line"><span>Less: Holding (6 mo)</span><span class="v">(${fmt(d.opt3Holding)})</span></div>
+            <div class="prop-opt-net"><span class="k">&#9733; Net to Seller</span><span class="v">~${fmt(d.opt3Net)}</span></div>
+            <div style="font-size:11px;color:#777;margin-top:8px;">4&ndash;6 month timeline &bull; Full reno required &bull; Most upside</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="prop-section-title" style="margin-top:24px;">Seller Comparison</div>
+      <table class="prop-comparison">
+        <thead>
+          <tr>
+            <th>Option</th>
+            <th>Net to Seller</th>
+            <th>Timeline</th>
+            <th>Effort</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td><strong>Cash Offer (Option 1)</strong></td><td>${fmt(d.cashOffer)}</td><td>2&ndash;3 weeks</td><td>Very Low</td></tr>
+          <tr><td><strong>As-Is Listing (Option 2)</strong></td><td>~${fmt(d.opt2Net)}</td><td>2&ndash;3 months</td><td>Low</td></tr>
+          <tr><td><strong>Full Retail (Option 3)</strong></td><td>~${fmt(d.opt3Net)}</td><td>4&ndash;6 months</td><td>High</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="prop-footer">
+      <div>
+        <h3>NEW HOME COLLECTIVE</h3>
+        <p>Real Estate Solutions &bull; Lexington, KY &bull; nhcnow.com</p>
+      </div>
+      <div style="text-align:right;font-size:12px;opacity:0.75;">
+        <div>This offer is based on current market conditions.</div>
+        <div>Numbers may change if property conditions change.</div>
+        <div>Offer has an expiration date.</div>
+      </div>
+    </div>
+  `;
+
+  document.getElementById('proposal-section').classList.add('visible');
+  document.getElementById('proposal-section').scrollIntoView({ behavior: 'smooth' });
+}
+
+function toggleAssumptions() {
+  const body = document.getElementById('assumptions-body');
+  const arrow = document.getElementById('toggle-arrow');
+  body.classList.toggle('open');
+  arrow.textContent = body.classList.contains('open') ? '▲' : '▼';
+}
+
+initRepairs();
+recalc();
+</script>
+</body>
+</html>
