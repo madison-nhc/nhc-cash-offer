@@ -604,6 +604,10 @@
       <div class="field"><label>As-Is % of ARV</label><input type="number" id="asis_pct" class="yellow" value="85" step="0.5" oninput="recalc()"></div>
       <div class="field"><label>As-Is Value ($)</label><input type="number" id="asis_override" class="yellow" placeholder="Auto" oninput="recalc()"></div>
     </div>
+    <div class="field">
+      <label>Cash Offer Override ($)</label>
+      <input type="number" id="cash_offer_override" class="yellow" placeholder="Auto (calculated from formula)" oninput="recalc()">
+    </div>
 
     <div class="divider"></div>
     <button class="assumptions-toggle" onclick="toggleAssumptions()">
@@ -615,6 +619,10 @@
         <div class="field-row">
           <div class="field"><label>Commission %</label><input type="number" id="commission_pct" class="blue-input" value="6" step="0.5" oninput="recalc()"></div>
           <div class="field"><label>Profit Margin %</label><input type="number" id="profit_margin" class="blue-input" value="15" step="0.5" oninput="recalc()"></div>
+        </div>
+        <div class="field">
+          <label>Profit Margin $ Override</label>
+          <input type="number" id="profit_margin_override" class="blue-input" placeholder="Auto (uses % of ARV)" oninput="recalc()">
         </div>
 
         <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:0.8px;margin:14px 0 6px;font-weight:600;">Cash Offer (Option 1)</div>
@@ -742,7 +750,9 @@ function calc() {
   const asisValue = (!isNaN(asisOverride) && asisOverride > 0) ? asisOverride : arv * asisPct;
   const commPct = parseFloat(document.getElementById('commission_pct').value) / 100 || 0.06;
   const profitPct = parseFloat(document.getElementById('profit_margin').value) / 100 || 0.15;
-  const profit = arv * profitPct;
+  const profitOverride = parseFloat(document.getElementById('profit_margin_override').value);
+  const profitOverrideActive = !isNaN(profitOverride) && profitOverride > 0;
+  const profit = profitOverrideActive ? profitOverride : arv * profitPct;
   const holdingCashPct = parseFloat(document.getElementById('holding_cash_pct').value) / 100 || 0.0075;
   const holdingCashMonths = parseFloat(document.getElementById('holding_cash_months').value) || 6;
   const holdingOpt2Pct = parseFloat(document.getElementById('holding_opt2_pct').value) / 100 || 0.005;
@@ -751,7 +761,10 @@ function calc() {
   const holdingOpt3Months = parseFloat(document.getElementById('holding_opt3_months').value) || 6;
   const reno = getRepairTotal();
   const cashHolding = holdingCashPct * holdingCashMonths * arv;
-  const cashOffer = arv - reno - (commPct * arv) - cashHolding - profit;
+  const cashOfferCalc = arv - reno - (commPct * arv) - cashHolding - profit;
+  const cashOfferOverride = parseFloat(document.getElementById('cash_offer_override').value);
+  const cashOfferOverrideActive = !isNaN(cashOfferOverride) && cashOfferOverride > 0;
+  const cashOffer = cashOfferOverrideActive ? cashOfferOverride : cashOfferCalc;
   const opt2Comm = commPct * asisValue;
   const opt2Holding = holdingOpt2Pct * holdingOpt2Months * arv;
   const opt2Net = asisValue - opt2Comm - opt2Holding;
@@ -761,6 +774,7 @@ function calc() {
   return { arv, asisValue, asisPct, reno, commPct, profit, profitPct, cashOffer, cashHolding,
            opt2Comm, opt2Holding, opt2Net, opt3Comm, opt3Holding, opt3Net,
            holdingCashMonths, holdingOpt2Months, holdingOpt3Months,
+           profitOverrideActive, cashOfferOverrideActive,
            asisOverride: (!isNaN(asisOverride) && asisOverride > 0) };
 }
 
@@ -769,13 +783,13 @@ function recalc() {
   document.getElementById('repair-total-display').textContent = fmt(d.reno);
   document.getElementById('options-grid').innerHTML = `
     <div class="option-card green">
-      <div class="option-num">OPTION 1</div>
+      <div class="option-num">OPTION 1${d.cashOfferOverrideActive ? ' · manual' : ''}</div>
       <div class="option-title">Cash Offer</div>
       <div class="option-line"><span class="k">After Renovation Value</span><span class="v">${fmt(d.arv)}</span></div>
       <div class="option-line"><span class="k">Less: Renovation</span><span class="v">(${fmt(d.reno)})</span></div>
       <div class="option-line"><span class="k">Less: Commission</span><span class="v">(${fmt(d.commPct * d.arv)})</span></div>
       <div class="option-line"><span class="k">Less: Holding (${d.holdingCashMonths} mo)</span><span class="v">(${fmt(d.cashHolding)})</span></div>
-      <div class="option-line"><span class="k">Less: Profit (${Math.round(d.profitPct*100)}% ARV)</span><span class="v">(${fmt(d.profit)})</span></div>
+      <div class="option-line"><span class="k">Less: Profit ${d.profitOverrideActive ? '(manual)' : '('+Math.round(d.profitPct*100)+'% ARV)'}</span><span class="v">(${fmt(d.profit)})</span></div>
       <div class="option-net"><span class="k">Cash Offer</span><span class="v">${fmt(d.cashOffer)}</span></div>
     </div>
     <div class="option-card blue-v">
