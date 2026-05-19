@@ -586,8 +586,12 @@
       <input type="text" id="address" class="yellow" placeholder="123 Main St, Lexington, KY 40502" oninput="recalc()">
     </div>
     <div class="field-row">
-      <div class="field"><label>Beds / Baths</label><input type="text" id="beds_baths" class="yellow" placeholder="3 Bed · 2 Full / 1 Half Bath" oninput="recalc()"></div>
-      <div class="field"><label>Sq Ft Notes</label><input type="text" id="sqft" class="yellow" placeholder="1,850 sq ft above grade" oninput="recalc()"></div>
+      <div class="field"><label>Beds</label><input type="number" id="beds" class="yellow" placeholder="3" min="0" step="1" oninput="recalc()"></div>
+      <div class="field"><label>Baths</label><input type="number" id="baths" class="yellow" placeholder="2" min="0" step="0.5" oninput="recalc()"></div>
+    </div>
+    <div class="field">
+      <label>Sq Ft</label>
+      <input type="number" id="sqft" class="yellow" placeholder="1850" min="0" step="1" oninput="recalc()">
     </div>
 
     <div class="divider"></div>
@@ -613,8 +617,8 @@
           <div class="field"><label>Profit Margin %</label><input type="number" id="profit_margin" class="blue-input" value="15" step="0.5" oninput="recalc()"></div>
         </div>
         <div class="field-row">
-          <div class="field"><label>Holding % (Cash)</label><input type="number" id="holding_cash" class="blue-input" value="0.75" step="0.05" oninput="recalc()"></div>
           <div class="field"><label>Monthly Holding %</label><input type="number" id="holding_monthly" class="blue-input" value="0.5" step="0.05" oninput="recalc()"></div>
+          <div class="field"><label>&nbsp;</label><div style="font-size:10px;color:var(--muted);line-height:1.4;padding-top:6px;">Monthly rate × number of months on each option</div></div>
         </div>
       </div>
     </div>
@@ -639,6 +643,20 @@
       </tfoot>
     </table>
     <button class="add-item-btn" onclick="addRepairRow()">+ Add Line Item</button>
+    <button class="add-item-btn" onclick="openCsvImport()" style="margin-top:-8px;">📋 Import from CSV / Paste List</button>
+
+    <div id="csv-import-modal" style="display:none;background:var(--input-bg);border:1px solid var(--border);border-radius:6px;padding:12px;margin-bottom:12px;">
+      <div style="font-size:11px;color:var(--muted);margin-bottom:6px;line-height:1.4;">
+        Paste one item per line. Use a comma or tab between name and cost:<br>
+        <span style="font-family:'DM Mono',monospace;color:var(--text);">Flooring, 5200<br>Painting, 7800</span>
+      </div>
+      <textarea id="csv-import-text" placeholder="Flooring, 5200&#10;Painting, 7800&#10;Demo / Cleanup, 1200" style="width:100%;min-height:120px;background:#fff;border:1px solid var(--border);border-radius:4px;padding:8px;font-family:'DM Mono',monospace;font-size:12px;outline:none;resize:vertical;"></textarea>
+      <div style="display:flex;gap:8px;margin-top:8px;">
+        <button onclick="importCsv(false)" style="flex:1;background:var(--gold);color:#111;border:none;border-radius:4px;padding:7px;font-size:11px;font-weight:600;cursor:pointer;">Replace All</button>
+        <button onclick="importCsv(true)" style="flex:1;background:transparent;color:var(--text);border:1px solid var(--border);border-radius:4px;padding:7px;font-size:11px;font-weight:600;cursor:pointer;">Append</button>
+        <button onclick="closeCsvImport()" style="background:transparent;color:var(--muted);border:1px solid var(--border);border-radius:4px;padding:7px 10px;font-size:11px;cursor:pointer;">Cancel</button>
+      </div>
+    </div>
     <button class="finalize-btn" onclick="generateProposal()">Finalize Offer</button>
   </div>
 
@@ -711,10 +729,9 @@ function calc() {
   const commPct = parseFloat(document.getElementById('commission_pct').value) / 100 || 0.06;
   const profitPct = parseFloat(document.getElementById('profit_margin').value) / 100 || 0.15;
   const profit = arv * profitPct;
-  const holdingCashPct = parseFloat(document.getElementById('holding_cash').value) / 100 || 0.0075;
   const holdingMonthly = parseFloat(document.getElementById('holding_monthly').value) / 100 || 0.005;
   const reno = getRepairTotal();
-  const cashHolding = holdingCashPct * arv;
+  const cashHolding = holdingMonthly * 6 * arv;
   const cashOffer = arv - reno - (commPct * arv) - cashHolding - profit;
   const opt2Comm = commPct * asisValue;
   const opt2Holding = holdingMonthly * 3 * arv;
@@ -737,7 +754,7 @@ function recalc() {
       <div class="option-line"><span class="k">ARV</span><span class="v">${fmt(d.arv)}</span></div>
       <div class="option-line"><span class="k">Less: Renovation</span><span class="v">(${fmt(d.reno)})</span></div>
       <div class="option-line"><span class="k">Less: Commission</span><span class="v">(${fmt(d.commPct * d.arv)})</span></div>
-      <div class="option-line"><span class="k">Less: Holding</span><span class="v">(${fmt(d.cashHolding)})</span></div>
+      <div class="option-line"><span class="k">Less: Holding (6 mo)</span><span class="v">(${fmt(d.cashHolding)})</span></div>
       <div class="option-line"><span class="k">Less: Profit (${Math.round(d.profitPct*100)}% ARV)</span><span class="v">(${fmt(d.profit)})</span></div>
       <div class="option-net"><span class="k">Cash Offer</span><span class="v">${fmt(d.cashOffer)}</span></div>
     </div>
@@ -783,8 +800,22 @@ function pageHeader(addressForNote) {
 function generateProposal() {
   const d = calc();
   const address = document.getElementById('address').value || '— Address Not Entered —';
-  const bedsBaths = document.getElementById('beds_baths').value || '';
-  const sqft = document.getElementById('sqft').value || '';
+  const beds = parseFloat(document.getElementById('beds').value);
+  const baths = parseFloat(document.getElementById('baths').value);
+  const sqftRaw = parseFloat(document.getElementById('sqft').value);
+
+  // Build formatted strings: "3 Bed · 2 Bath" and "1,850 sq ft"
+  let bedsBaths = '';
+  if (!isNaN(beds) && beds > 0 && !isNaN(baths) && baths > 0) {
+    bedsBaths = `${beds} Bed · ${baths} Bath`;
+  } else if (!isNaN(beds) && beds > 0) {
+    bedsBaths = `${beds} Bed`;
+  } else if (!isNaN(baths) && baths > 0) {
+    bedsBaths = `${baths} Bath`;
+  }
+  const sqft = (!isNaN(sqftRaw) && sqftRaw > 0)
+    ? `${sqftRaw.toLocaleString('en-US')} sq ft`
+    : '';
   const repairItems = getRepairItems();
   const repairRows = repairItems.map(i => `<tr><td>${i.name}</td><td>${fmt(i.cost)}</td></tr>`).join('');
 
@@ -948,6 +979,50 @@ function generateProposal() {
   `;
   doc.classList.add('visible');
   doc.scrollIntoView({ behavior: 'smooth' });
+}
+
+function openCsvImport() {
+  document.getElementById('csv-import-modal').style.display = 'block';
+  document.getElementById('csv-import-text').focus();
+}
+
+function closeCsvImport() {
+  document.getElementById('csv-import-modal').style.display = 'none';
+  document.getElementById('csv-import-text').value = '';
+}
+
+function importCsv(append) {
+  const raw = document.getElementById('csv-import-text').value.trim();
+  if (!raw) {
+    closeCsvImport();
+    return;
+  }
+  const lines = raw.split(/\r?\n/).filter(l => l.trim().length > 0);
+  const parsed = [];
+  for (const line of lines) {
+    // Split on tab or comma (handles both CSV and TSV / pasted from spreadsheet)
+    const parts = line.split(/[\t,]/).map(p => p.trim());
+    if (parts.length === 0) continue;
+    const name = parts[0];
+    // Find first part that looks like a number (strip $ and commas)
+    let cost = 0;
+    for (let i = 1; i < parts.length; i++) {
+      const numStr = parts[i].replace(/[$,]/g, '').trim();
+      const n = parseFloat(numStr);
+      if (!isNaN(n)) { cost = n; break; }
+    }
+    if (name) parsed.push({ name, cost });
+  }
+  if (parsed.length === 0) {
+    alert('No valid lines found. Use format like:  Flooring, 5200');
+    return;
+  }
+  if (!append) {
+    // Clear existing rows
+    document.getElementById('repair-tbody').innerHTML = '';
+  }
+  parsed.forEach(item => addRepairRow(item.name, item.cost));
+  closeCsvImport();
 }
 
 function toggleAssumptions() {
