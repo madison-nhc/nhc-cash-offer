@@ -834,6 +834,27 @@ function pageHeader(addressForNote) {
   `;
 }
 
+function printProposal() {
+  // Set the document title to drive the suggested PDF filename ("Address - Cash Offer.pdf")
+  const addressRaw = document.getElementById('address').value.trim();
+  const cleanAddress = addressRaw
+    ? addressRaw.replace(/[\\/:*?"<>|]/g, '').replace(/\s+/g, ' ').trim()
+    : 'Property';
+  const originalTitle = document.title;
+  document.title = `${cleanAddress} - Cash Offer`;
+
+  // Restore the original title after the print dialog closes
+  const restore = () => {
+    document.title = originalTitle;
+    window.removeEventListener('afterprint', restore);
+  };
+  window.addEventListener('afterprint', restore);
+  // Safety fallback in case afterprint doesn't fire
+  setTimeout(restore, 60000);
+
+  window.print();
+}
+
 function generateProposal() {
   const d = calc();
   const address = document.getElementById('address').value || '— Address Not Entered —';
@@ -858,7 +879,7 @@ function generateProposal() {
 
   const doc = document.getElementById('proposal-doc');
   doc.innerHTML = `
-    <button class="print-btn" onclick="window.print()">Print / Save as PDF</button>
+    <button class="print-btn" onclick="printProposal()">Print / Save as PDF</button>
 
     <!-- PAGE 1 -->
     <div class="proposal-page">
