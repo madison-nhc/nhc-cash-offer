@@ -603,7 +603,7 @@
       <input type="number" id="arv" class="orange-input" placeholder="385000" oninput="recalc()">
     </div>
     <div class="field-row">
-      <div class="field"><label>As-Is % of ARV</label><input type="number" id="asis_pct" class="blue-input" value="85" step="0.5" oninput="recalc()"></div>
+      <div class="field"><label>As-Is Reno Discount %</label><input type="number" id="asis_pct" class="blue-input" value="50" step="5" oninput="recalc()"></div>
       <div class="field"><label>As-Is Override ($)</label><input type="number" id="asis_override" class="blue-input" placeholder="Auto" oninput="recalc()"></div>
     </div>
     <div class="field-row">
@@ -623,7 +623,7 @@
     <div class="assumptions-body" id="assumptions-body">
       <div class="assumptions-inner">
         <div class="field-row">
-          <div class="field"><label>Cash Offer Commission %</label><input type="number" id="commission_cash_pct" class="blue-input" value="9" step="0.5" oninput="recalc()"></div>
+          <div class="field"><label>Cash Commission %</label><input type="number" id="commission_cash_pct" class="blue-input" value="9" step="0.5" oninput="recalc()"></div>
           <div class="field"><label>Listing Commission %</label><input type="number" id="commission_list_pct" class="blue-input" value="6" step="0.5" oninput="recalc()"></div>
         </div>
 
@@ -748,8 +748,7 @@ function fmtNeg(n) {
 function calc() {
   const arv = parseFloat(document.getElementById('arv').value) || 0;
   const asisOverride = parseFloat(document.getElementById('asis_override').value);
-  const asisPct = parseFloat(document.getElementById('asis_pct').value) / 100 || 0.85;
-  const asisValue = (!isNaN(asisOverride) && asisOverride > 0) ? asisOverride : arv * asisPct;
+  const renoDiscountPct = parseFloat(document.getElementById('asis_pct').value) / 100 || 0.50;
   const commCashPct = parseFloat(document.getElementById('commission_cash_pct').value) / 100 || 0.09;
   const commListPct = parseFloat(document.getElementById('commission_list_pct').value) / 100 || 0.06;
   const profitPct = parseFloat(document.getElementById('profit_margin').value) / 100 || 0.15;
@@ -763,6 +762,8 @@ function calc() {
   const holdingOpt3Pct = parseFloat(document.getElementById('holding_opt3_pct').value) / 100 || 0.005;
   const holdingOpt3Months = parseFloat(document.getElementById('holding_opt3_months').value) || 6;
   const reno = getRepairTotal();
+  const renoDiscount = renoDiscountPct * reno;
+  const asisValue = (!isNaN(asisOverride) && asisOverride > 0) ? asisOverride : (arv - renoDiscount);
   const cashHolding = holdingCashPct * holdingCashMonths * arv;
   const cashOfferCalc = arv - reno - (commCashPct * arv) - cashHolding - profit;
   const cashOfferOverride = parseFloat(document.getElementById('cash_offer_override').value);
@@ -774,7 +775,7 @@ function calc() {
   const opt3Comm = commListPct * arv;
   const opt3Holding = holdingOpt3Pct * holdingOpt3Months * arv;
   const opt3Net = arv - reno - opt3Comm - opt3Holding;
-  return { arv, asisValue, asisPct, reno, commCashPct, commListPct, profit, profitPct, cashOffer, cashHolding,
+  return { arv, asisValue, renoDiscountPct, renoDiscount, reno, commCashPct, commListPct, profit, profitPct, cashOffer, cashHolding,
            opt2Comm, opt2Holding, opt2Net, opt3Comm, opt3Holding, opt3Net,
            holdingCashMonths, holdingOpt2Months, holdingOpt3Months,
            profitOverrideActive, cashOfferOverrideActive,
@@ -798,7 +799,9 @@ function recalc() {
     <div class="option-card blue-v">
       <div class="option-num">OPTION 2</div>
       <div class="option-title">As-Is Listing</div>
-      <div class="option-line"><span class="k">As-Is Price ${d.asisOverride ? '(manual)' : '('+Math.round(d.asisPct*100)+'% ARV)'}</span><span class="v">${fmt(d.asisValue)}</span></div>
+      <div class="option-line"><span class="k">After Renovation Value</span><span class="v">${fmt(d.arv)}</span></div>
+      <div class="option-line"><span class="k">Less: Renovation Cost (${Math.round(d.renoDiscountPct*100)}%)</span><span class="v">(${fmt(d.renoDiscount)})</span></div>
+      <div class="option-line"><span class="k">As-Is Price ${d.asisOverride ? '(manual)' : ''}</span><span class="v">${fmt(d.asisValue)}</span></div>
       <div class="option-line"><span class="k">Less: Commission (${(d.commListPct*100).toFixed(1).replace(/\.0$/,'')}%)</span><span class="v">(${fmt(d.opt2Comm)})</span></div>
       <div class="option-line"><span class="k">Less: Holding (${d.holdingOpt2Months} mo)</span><span class="v">(${fmt(d.opt2Holding)})</span></div>
       <div class="option-net"><span class="k">Net to Seller</span><span class="v">${fmt(d.opt2Net)}</span></div>
