@@ -244,10 +244,10 @@
       setField('holding_opt3_pct', r.holding_opt3_pct);
       setField('holding_opt3_months', r.holding_opt3_months);
 
-      // Restore repair items
+      // Always clear default rows (initRepairs already ran) then load saved ones
+      const tbody = document.getElementById('repair-tbody');
+      if (tbody) tbody.innerHTML = '';
       if (r.repair_items && Array.isArray(r.repair_items) && r.repair_items.length > 0) {
-        const tbody = document.getElementById('repair-tbody');
-        if (tbody) tbody.innerHTML = '';
         r.repair_items.forEach(item => {
           if (typeof addRepairRow === 'function') {
             addRepairRow(item.name || '', item.cost || 0);
@@ -283,8 +283,9 @@
       if (addrEl.value.trim()) onAddressChange();
     }
 
-    // Load from URL param
-    loadFromUrl();
+    // Delay load so it runs after calculator.html's initRepairs() + recalc()
+    // which are called synchronously at the bottom of the inline <script>.
+    setTimeout(loadFromUrl, 50);
   }
 
   // Run after DOM is ready
