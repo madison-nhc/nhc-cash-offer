@@ -567,6 +567,40 @@
     .app { flex-direction: column; }
     .proposal-page { width: 100%; height: auto; min-height: 100vh; }
   }
+
+  /* ── Address Autocomplete ── */
+  #ac-dropdown {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    z-index: 9999;
+    background: #fff;
+    border: 1px solid var(--border);
+    border-top: none;
+    border-radius: 0 0 8px 8px;
+    box-shadow: 0 6px 16px rgba(0,0,0,0.14);
+    max-height: 240px;
+    overflow-y: auto;
+  }
+  .ac-item {
+    padding: 9px 12px;
+    font-size: 12px;
+    color: var(--text);
+    cursor: pointer;
+    border-bottom: 1px solid #f0f0f0;
+    line-height: 1.45;
+  }
+  .ac-item:last-child { border-bottom: none; }
+  .ac-item:hover, .ac-item.ac-active { background: #eef3ff; color: var(--blue); }
+  .ac-spinner {
+    padding: 10px 12px;
+    font-size: 11px;
+    color: var(--muted);
+    font-style: italic;
+  }
+
 </style>
 </head>
 <body>
@@ -583,9 +617,13 @@
 <div class="app">
   <div class="sidebar">
     <div class="section-label">Property Info</div>
-    <div class="field">
+    <div class="field" style="position:relative;">
       <label>Property Address</label>
-      <input type="text" id="address" class="yellow" placeholder="123 Main St, Lexington, KY 40502" oninput="recalc()">
+      <input type="text" id="address" class="yellow" placeholder="123 Main St, Lexington, KY 40502"
+        oninput="recalc(); acQuery(this.value)"
+        onkeydown="acKeydown(event)"
+        autocomplete="off">
+      <div id="ac-dropdown"></div>
     </div>
     <div class="field-row">
       <div class="field"><label>Beds</label><input type="number" id="beds" class="yellow" placeholder="3" min="0" step="1" oninput="recalc()"></div>
@@ -1095,6 +1133,128 @@ function toggleAssumptions() {
 
 initRepairs();
 recalc();
+
+// ── Address Autocomplete (Nominatim / OpenStreetMap — no key required) ────────
+(function () {
+  let acTimer = null;
+  let acResults = [];
+  let acIndex = -1;
+
+  function dropdown() { return document.getElementById('ac-dropdown'); }
+
+  window.acQuery = function(val) {
+    clearTimeout(acTimer);
+    const dd = dropdown();
+    if (!val || val.length < 4) { hideAc(); return; }
+    // Show spinner
+    dd.innerHTML = '<div class="ac-spinner">Searching…</div>';
+    dd.style.display = 'block';
+    acTimer = setTimeout(() => fetchAc(val), 350);
+  };
+
+  async function fetchAc(val) {
+    const dd = dropdown();
+    try {
+      // Bias toward Lexington/Kentucky; countrycodes=us for US only
+      const params = new URLSearchParams({
+        q: val,
+        format: 'json',
+        addressdetails: '1',
+        limit: '7',
+        countrycodes: 'us',
+        viewbox: '-85.5,39.0,-82.5,37.0',  // KY bounding box
+        bounded: '0',  // 0 = show outside box if not enough results
+      });
+      const res = await fetch(
+        `https://nominatim.openstreetmap.org/search?${params}`,
+        { headers: { 'Accept-Language': 'en', 'User-Agent': 'NHC-CashOffer/1.0' } }
+      );
+      const data = await res.json();
+
+      // Filter to addresses only (houses + roads), dedupe by display_name
+      acResults = data.filter(r =>
+        ['house','building','residential','road','yes'].includes(r.type) ||
+        r.class === 'highway' || r.class === 'building' ||
+        (r.address && r.address.house_number)
+      );
+      // If nothing matched the filter, show all results
+      if (acResults.length === 0) acResults = data;
+      acIndex = -1;
+
+      if (acResults.length === 0) { hideAc(); return; }
+
+      dd.innerHTML = acResults.map((r, i) => {
+        // Build a clean address string: "123 Main St, Lexington, KY 40502"
+        const a = r.address || {};
+        const parts = [];
+        if (a.house_number && a.road) parts.push(a.house_number + ' ' + a.road);
+        else if (a.road) parts.push(a.road);
+        else parts.push(r.display_name.split(',')[0]);
+        if (a.city || a.town || a.village) parts.push(a.city || a.town || a.village);
+        if (a.state) parts.push(a.state);
+        if (a.postcode) parts.push(a.postcode);
+        const label = parts.join(', ');
+        return `<div class="ac-item" data-i="${i}" onmousedown="acSelect(${i})">${label}</div>`;
+      }).join('');
+      dd.style.display = 'block';
+    } catch(e) {
+      hideAc();
+    }
+  }
+
+  window.acSelect = function(i) {
+    const r = acResults[i];
+    if (!r) return;
+    const a = r.address || {};
+    const parts = [];
+    if (a.house_number && a.road) parts.push(a.house_number + ' ' + a.road);
+    else if (a.road) parts.push(a.road);
+    else parts.push(r.display_name.split(',')[0]);
+    if (a.city || a.town || a.village) parts.push(a.city || a.town || a.village);
+    if (a.state) parts.push(a.state);
+    if (a.postcode) parts.push(a.postcode);
+    const full = parts.join(', ');
+    const input = document.getElementById('address');
+    input.value = full;
+    hideAc();
+    recalc();
+    // Trigger supabase-patch address lookup
+    input.dispatchEvent(new Event('input'));
+  };
+
+  window.acKeydown = function(e) {
+    const dd = dropdown();
+    if (dd.style.display === 'none') return;
+    const items = dd.querySelectorAll('.ac-item');
+    if (!items.length) return;
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      acIndex = Math.min(acIndex + 1, items.length - 1);
+      items.forEach((el, i) => el.classList.toggle('ac-active', i === acIndex));
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      acIndex = Math.max(acIndex - 1, 0);
+      items.forEach((el, i) => el.classList.toggle('ac-active', i === acIndex));
+    } else if (e.key === 'Enter' && acIndex >= 0) {
+      e.preventDefault();
+      acSelect(acIndex);
+    } else if (e.key === 'Escape') {
+      hideAc();
+    }
+  };
+
+  function hideAc() {
+    const dd = dropdown();
+    dd.style.display = 'none';
+    acResults = [];
+    acIndex = -1;
+  }
+
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('#address') && !e.target.closest('#ac-dropdown')) hideAc();
+  });
+})();
+
 </script>
 <script src="supabase-patch.js"></script>
 </body>
