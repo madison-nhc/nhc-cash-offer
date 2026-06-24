@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NHC Cash Offer Engine</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --red: #B91C1C; --gold: #E8A819; --blue: #2D6FAF; --green: #5B8C3E;
+    --orange: #D97825; --dark: #f4f5f7; --mid: #ffffff; --border: #e0e3e8;
+    --text: #1a1e2e; --muted: #6b7280;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { background: var(--dark); color: var(--text); font-family: 'DM Sans', sans-serif; min-height: 100vh; }
+  .app-stripe { height: 6px; background: linear-gradient(90deg, var(--blue) 0%, var(--blue) 25%, var(--green) 25%, var(--green) 50%, var(--gold) 50%, var(--gold) 75%, var(--orange) 75%, var(--orange) 87%, var(--red) 87%); }
+  .app-header { background: var(--mid); border-bottom: 2px solid var(--border); padding: 16px 32px; display: flex; align-items: center; gap: 16px; }
+  .app-header h1 { font-size: 20px; font-weight: 700; color: var(--text); line-height: 1; }
+  .app-header p { font-size: 11px; color: var(--muted); letter-spacing: 1px; text-transform: uppercase; margin-top: 4px; }
+  .container { max-width: 900px; margin: 0 auto; padding: 40px 24px; }
+  .page-title { font-size: 28px; font-weight: 800; color: var(--text); margin-bottom: 6px; }
+  .page-subtitle { font-size: 14px; color: var(--muted); margin-bottom: 32px; }
+  .new-btn { display: inline-flex; align-items: center; gap: 8px; background: var(--gold); color: #111; border: none; border-radius: 8px; padding: 14px 28px; font-size: 15px; font-weight: 700; cursor: pointer; text-decoration: none; margin-bottom: 40px; font-family: 'DM Sans', sans-serif; }
+  .new-btn:hover { background: #d59512; }
+  .offers-header { font-size: 11px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); margin-bottom: 14px; display: flex; align-items: center; gap: 10px; }
+  .offers-header::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+  .offer-list { display: flex; flex-direction: column; gap: 12px; }
+  .offer-card { background: var(--mid); border: 1px solid var(--border); border-left: 4px solid var(--gold); border-radius: 8px; padding: 18px 22px; display: flex; align-items: center; justify-content: space-between; cursor: pointer; text-decoration: none; color: inherit; transition: box-shadow 0.15s; }
+  .offer-card:hover { box-shadow: 0 4px 14px rgba(0,0,0,0.08); }
+  .offer-address { font-size: 16px; font-weight: 700; color: var(--text); margin-bottom: 4px; }
+  .offer-meta { font-size: 12px; color: var(--muted); }
+  .offer-actions { display: flex; align-items: center; gap: 16px; }
+  .offer-amount .label { font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); margin-bottom: 2px; }
+  .offer-amount .value { font-family: 'DM Mono', monospace; font-size: 20px; font-weight: 700; color: var(--green); }
+  .del-offer-btn { background: none; border: none; color: #ccc; font-size: 20px; cursor: pointer; padding: 4px 8px; border-radius: 4px; line-height: 1; }
+  .del-offer-btn:hover { color: var(--red); background: #fef2f2; }
+  .empty-state { background: var(--mid); border: 1px dashed var(--border); border-radius: 8px; padding: 48px; text-align: center; color: var(--muted); }
+  .empty-state .icon { font-size: 40px; margin-bottom: 12px; }
+  .empty-state strong { font-size: 16px; color: var(--text); }
+  .empty-state p { margin-top: 6px; font-size: 13px; }
+  .loading { text-align: center; padding: 48px; color: var(--muted); font-size: 14px; }
+  .error-msg { background: #fef2f2; border: 1px solid #fca5a5; border-radius: 6px; padding: 14px 18px; color: var(--red); font-size: 13px; margin-bottom: 20px; }
+</style>
+</head>
+<body>
+<div class="app-stripe"></div>
+<div class="app-header">
+  <div>
+    <h1>NHC Cash Offer Engine</h1>
+    <p>BE Property Ventures · Powered by BRRRD Man</p>
+  </div>
+</div>
+
+<div class="container">
+  <div class="page-title">Saved Offers</div>
+  <div class="page-subtitle">Pick up where you left off, or start fresh.</div>
+  <a class="new-btn" href="calculator.html">+ Generate New Offer</a>
+
+  <div>
+    <div class="offers-header">Previous Offers</div>
+    <div id="offer-list" class="offer-list">
+      <div class="loading">Loading...</div>
+    </div>
+  </div>
+</div>
+
+<script>
+const SUPABASE_URL = 'https://rigoqxtyxlmidbkrppbo.supabase.co';
+const ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJpZ29xeHR5eGxtaWRia3JwcGJvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA1ODg2MjMsImV4cCI6MjA5NjE2NDYyM30.11Vct2Vu7UA5bdu3QeY5taXglG9Ys_jqVn3WtrKZksQ';
+
+async function api(path, opts = {}) {
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
+    headers: { 'apikey': ANON_KEY, 'Authorization': `Bearer ${ANON_KEY}`, 'Content-Type': 'application/json', 'Prefer': 'return=representation', ...(opts.headers || {}) },
+    ...opts
+  });
+  if (!res.ok) throw new Error(await res.text());
+  const t = await res.text();
+  return t ? JSON.parse(t) : null;
+}
+
+function fmt(n) { return isNaN(n) || !n ? '—' : '$' + Math.round(n).toLocaleString('en-US'); }
+
+function timeAgo(d) {
+  const mins = Math.floor((Date.now() - new Date(d)) / 60000);
+  if (mins < 2) return 'Just now';
+  if (mins < 60) return `${mins}m ago`;
+  const h = Math.floor(mins / 60);
+  if (h < 24) return `${h}h ago`;
+  const days = Math.floor(h / 24);
+  return days === 1 ? 'Yesterday' : `${days} days ago`;
+}
+
+async function deleteOffer(id, e) {
+  e.preventDefault(); e.stopPropagation();
+  if (!confirm('Delete this offer?')) return;
+  try { await api(`cash_offers?id=eq.${id}`, { method: 'DELETE' }); loadOffers(); }
+  catch(err) { alert('Error: ' + err.message); }
+}
+
+async function loadOffers() {
+  const el = document.getElementById('offer-list');
+  try {
+    const rows = await api('cash_offers?select=id,address,beds,baths,arv,cash_offer_override,updated_at&order=updated_at.desc');
+    if (!rows || rows.length === 0) {
+      el.innerHTML = `<div class="empty-state"><div class="icon">🏠</div><strong>No saved offers yet</strong><p>Click "Generate New Offer" to get started.</p></div>`;
+      return;
+    }
+    el.innerHTML = rows.map(o => {
+      const arv = parseFloat(o.arv) || 0;
+      const cashOffer = parseFloat(o.cash_offer_override) || null;
+      const meta = [o.beds ? `${o.beds} bd` : '', o.baths ? `${o.baths} ba` : '', arv ? 'ARV ' + fmt(arv) : ''].filter(Boolean).join(' · ');
+      return `<a class="offer-card" href="calculator.html?id=${o.id}">
+        <div>
+          <div class="offer-address">${o.address || 'Untitled Property'}</div>
+          <div class="offer-meta">${meta} &nbsp;·&nbsp; ${timeAgo(o.updated_at)}</div>
+        </div>
+        <div class="offer-actions">
+          <div class="offer-amount">
+            <div class="label">Cash Offer</div>
+            <div class="value">${cashOffer ? fmt(cashOffer) : (arv ? '~' + fmt(arv * 0.65) : '—')}</div>
+          </div>
+          <button class="del-offer-btn" onclick="deleteOffer('${o.id}',event)" title="Delete">×</button>
+        </div>
+      </a>`;
+    }).join('');
+  } catch(err) {
+    el.innerHTML = `<div class="error-msg">Could not load offers: ${err.message}</div>`;
+  }
+}
+
+loadOffers();
+</script>
+</body>
+</html>
