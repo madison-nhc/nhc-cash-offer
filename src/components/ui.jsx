@@ -1,0 +1,188 @@
+// Shared UI building blocks for NHC Cash Offer Hub
+
+export function Card({ children, style = {}, topColor = '#B8892A' }) {
+  return (
+    <div style={{
+      background: '#fff', borderRadius: 8,
+      border: '0.5px solid #D6D2CA',
+      borderTop: `3px solid ${topColor}`,
+      padding: '12px 16px',
+      ...style
+    }}>
+      {children}
+    </div>
+  )
+}
+
+export function StatCard({ label, value, sub, topColor = '#B8892A', onClick }) {
+  return (
+    <div onClick={onClick} style={{
+      background: '#fff', borderRadius: 8,
+      border: '0.5px solid #D6D2CA',
+      borderTop: `3px solid ${topColor}`,
+      padding: '14px 16px',
+      cursor: onClick ? 'pointer' : 'default',
+      transition: 'box-shadow 0.15s',
+    }}
+    onMouseEnter={e => { if (onClick) e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.1)' }}
+    onMouseLeave={e => { e.currentTarget.style.boxShadow = 'none' }}
+    >
+      <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: 1.2, color: '#6b7280', textTransform: 'uppercase', marginBottom: 6 }}>{label}</div>
+      <div style={{ fontSize: 26, fontWeight: 700, color: '#2C2C2C', lineHeight: 1 }}>{value}</div>
+      {sub && <div style={{ fontSize: 11, color: '#6b7280', marginTop: 4 }}>{sub}</div>}
+    </div>
+  )
+}
+
+export function SectionBar({ children }) {
+  return (
+    <div style={{
+      background: '#2C2C2C', color: '#fff',
+      fontSize: 11, fontWeight: 700, letterSpacing: 2,
+      textTransform: 'uppercase', padding: '8px 16px'
+    }}>
+      {children}
+    </div>
+  )
+}
+
+export function Modal({ title, onClose, children, width = 560 }) {
+  return (
+    <div style={{
+      position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)',
+      zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center',
+      padding: 16
+    }} onClick={e => e.target === e.currentTarget && onClose()}>
+      <div style={{
+        background: '#fff', borderRadius: 10, width: '100%', maxWidth: width,
+        maxHeight: '90vh', overflowY: 'auto',
+        boxShadow: '0 20px 60px rgba(0,0,0,0.25)',
+        borderTop: '3px solid #B8892A'
+      }}>
+        {/* Header */}
+        <div style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          padding: '14px 20px', borderBottom: '1px solid #F0EDE6'
+        }}>
+          <span style={{ fontSize: 15, fontWeight: 700, color: '#2C2C2C' }}>{title}</span>
+          <button onClick={onClose} style={{
+            background: 'none', border: 'none', fontSize: 20, cursor: 'pointer',
+            color: '#6b7280', lineHeight: 1, padding: '0 4px'
+          }}>×</button>
+        </div>
+        <div style={{ padding: '20px' }}>
+          {children}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+export function EmptyState({ icon = '○', text }) {
+  return (
+    <div style={{ textAlign: 'center', padding: '48px 24px', color: '#9ca3af' }}>
+      <div style={{ fontSize: 36, marginBottom: 10 }}>{icon}</div>
+      <div style={{ fontSize: 13 }}>{text}</div>
+    </div>
+  )
+}
+
+export function PageWrap({ children, pad = true }) {
+  return (
+    <div style={{ padding: pad ? '24px' : 0, maxWidth: 1200, margin: '0 auto' }}>
+      {children}
+    </div>
+  )
+}
+
+export function FieldRow({ children }) {
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: `repeat(${children.length || 2}, 1fr)`, gap: 12 }}>
+      {children}
+    </div>
+  )
+}
+
+export function Field({ label, children }) {
+  return (
+    <div>
+      <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 5 }}>
+        {label}
+      </label>
+      {children}
+    </div>
+  )
+}
+
+export const inp = {
+  width: '100%', padding: '8px 10px',
+  borderRadius: 6, border: '1px solid #D6D2CA',
+  fontSize: 13, fontFamily: 'inherit',
+  background: '#f9fafb', outline: 'none',
+  color: '#2C2C2C'
+}
+
+export const monoInp = {
+  ...inp, fontFamily: "'DM Mono', monospace"
+}
+
+export function Btn({ children, onClick, variant = 'primary', style: s = {}, disabled = false }) {
+  const base = {
+    border: 'none', borderRadius: 6, padding: '9px 18px',
+    fontSize: 13, fontWeight: 600, cursor: disabled ? 'not-allowed' : 'pointer',
+    fontFamily: 'inherit', transition: 'all 0.15s', opacity: disabled ? 0.5 : 1, ...s
+  }
+  const variants = {
+    primary:   { background: '#B8892A', color: '#fff' },
+    secondary: { background: '#2C2C2C', color: '#fff' },
+    outline:   { background: 'transparent', color: '#2C2C2C', border: '1px solid #D6D2CA' },
+    danger:    { background: '#B91C1C', color: '#fff' },
+    green:     { background: '#3B6D11', color: '#fff' },
+  }
+  return (
+    <button onClick={onClick} disabled={disabled} style={{ ...base, ...variants[variant] }}>
+      {children}
+    </button>
+  )
+}
+
+export function Badge({ children, color = '#B8892A' }) {
+  return (
+    <span style={{
+      display: 'inline-block', padding: '2px 8px', borderRadius: 4,
+      fontSize: 10, fontWeight: 700, letterSpacing: 0.8, textTransform: 'uppercase',
+      background: color + '18', color: color, border: `1px solid ${color}40`
+    }}>
+      {children}
+    </span>
+  )
+}
+
+export function fmt(n) {
+  if (!n && n !== 0) return '—'
+  const num = parseFloat(n)
+  if (isNaN(num)) return '—'
+  return '$' + Math.round(num).toLocaleString('en-US')
+}
+
+export function fmtK(n) {
+  if (!n && n !== 0) return '—'
+  const num = parseFloat(n)
+  if (isNaN(num)) return '—'
+  if (Math.abs(num) >= 1000000) return '$' + (num / 1000000).toFixed(1) + 'M'
+  if (Math.abs(num) >= 1000) return '$' + Math.round(num / 1000) + 'K'
+  return '$' + num.toLocaleString()
+}
+
+export function pct(n) {
+  if (!n) return '—'
+  return parseFloat(n).toFixed(1) + '%'
+}
+
+export function LoadingSpinner() {
+  return (
+    <div style={{ textAlign: 'center', padding: 48, color: '#B8892A', fontSize: 24 }}>
+      ⟳
+    </div>
+  )
+}

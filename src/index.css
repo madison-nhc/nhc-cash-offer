@@ -1,0 +1,31 @@
+/* NHC Design System */
+:root {
+  --charcoal: #2C2C2C;
+  --gold: #B8892A;
+  --green: #3B6D11;
+  --warm-white: #FAFAF8;
+  --border: #D6D2CA;
+  --divider: #F0EDE6;
+  --red: #B91C1C;
+  --blue: #2D6FAF;
+  --orange: #D97825;
+  --text: #1a1e2e;
+  --muted: #6b7280;
+  --input-bg: #f9fafb;
+  --font: 'DM Sans', 'Helvetica Neue', sans-serif;
+  --mono: 'DM Mono', monospace;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body, #root {
+  height: 100%;
+  font-family: var(--font);
+  background: var(--warm-white);
+  color: var(--text);
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
