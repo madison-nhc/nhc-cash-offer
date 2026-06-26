@@ -23,7 +23,7 @@ export default function Deals() {
   async function load() {
     setLoading(true)
     const [{ data:d }, { data:m }] = await Promise.all([
-      supabase.from('mailing_deals').select('*').order('created_at',{ascending:false}),
+      supabase.from('mailing_deals').select('*').not('deal_type','eq','cash_purchase').order('created_at',{ascending:false}),
       supabase.from('mailings').select('id,campaign_name,drop_date').order('drop_date',{ascending:false}),
     ])
     setDeals(d||[])
