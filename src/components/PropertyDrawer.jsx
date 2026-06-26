@@ -3,7 +3,6 @@ import { supabase } from '../lib/supabase.js'
 import { Field, FieldRow, inp, monoInp, Btn, fmt, fmtK } from './ui.jsx'
 import Drawer from './Drawer.jsx'
 import AddressInput from './AddressInput.jsx'
-import { inp as INP } from './ui.jsx'
 
 const STATUSES = [
   { value:'analyzing',      label:'Analyzing' },
@@ -52,7 +51,6 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
   const [tab, setTab] = useState('analyzer')
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
-  const [linkedDeal, setLinkedDeal] = useState(null)
   const [incomeForm, setIncomeForm] = useState({ income_month:'', rent_received:'', expenses:'', notes:'' })
 
   useEffect(() => {
@@ -61,19 +59,8 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
       setRepairs(property.repair_items?.length ? property.repair_items.map((r,i)=>({...r,id:i})) : DEFAULT_REPAIRS.map((r,i)=>({...r,id:i})))
       setTab('analyzer')
       if (property.id && (property.investment_type==='hold')) loadIncome(property.id)
-      if (property.id) loadLinkedDeal(property.id)
     }
   }, [property])
-
-  async function loadLinkedDeal(propertyId) {
-    // Look for a mailing_deal matching this address
-    if (!propertyId) return
-    const { data } = await supabase.from('properties').select('address').eq('id',propertyId).single()
-    if (data?.address) {
-      const { data:d } = await supabase.from('mailing_deals').select('*').ilike('address',data.address).limit(1).maybeSingle()
-      setLinkedDeal(d||null)
-    }
-  }
 
   async function loadIncome(id) {
     const { data } = await supabase.from('property_income').select('*').eq('property_id',id).order('income_month',{ascending:false})
@@ -104,7 +91,7 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
       hold_opt2_pct:form.hold_opt2_pct||0.5, hold_opt2_months:form.hold_opt2_months||3,
       hold_opt3_pct:form.hold_opt3_pct||0.5, hold_opt3_months:form.hold_opt3_months||6,
       mailing_id:form.mailing_id||null, lead_type:form.lead_type||null,
-      commission_pct:form.commission_pct||null, commission_earned:form.commission_earned||null,
+      commission_pct:form.commission_pct||null, commission_earned:form.commission_earned||null, commission_min:form.commission_min||null,
       nhc_notes:form.nhc_notes||null,
       purchase_price:form.purchase_price||null, closing_costs:form.closing_costs||null,
       rehab_cost:form.rehab_cost||null, sale_price:form.sale_price||null,
@@ -139,7 +126,7 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
   function updateRepair(id,k,v) { setRepairs(rs=>rs.map(r=>r.id===id?{...r,[k]:v}:r)) }
 
   const statusColor = STATUS_COLORS[form.status]||'#6b7280'
-  const tabs = ['analyzer','purchase','investment','deal']
+  const tabs = ['analyzer','investment']
 
   if (!property) return null
 
@@ -225,49 +212,15 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
         </div>
       )}
 
-      {/* ── DEAL TAB (NHC) ── */}
-      {tab==='purchase' && (
-        <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
-          <div style={{ background:'#f0fdf4', borderRadius:6, padding:'8px 12px', fontSize:11, color:'#3B6D11', fontWeight:600 }}>NHC — Commission Tracking</div>
-
-
-          <Field label="Source Campaign">
-            <select style={inp} value={form.mailing_id||''} onChange={set('mailing_id')}>
-              <option value="">No specific campaign</option>
-              {mailings.map(m=><option key={m.id} value={m.id}>{m.campaign_name?.replace(/^Campaign \d+ — /,'')} {m.drop_date?`(${m.drop_date})`:''}</option>)}
-            </select>
-          </Field>
-          <FieldRow>
-            <Field label="Commission %"><input style={monoInp} type="number" value={form.commission_pct||''} onChange={e=>{ const v=e.target.value; setForm(f=>({...f,commission_pct:v,commission_earned:f.arv&&v?(parseFloat(f.arv)*parseFloat(v)/100).toFixed(2):f.commission_earned})) }} placeholder="3" /></Field>
-            <Field label="Commission Earned ($)"><input style={monoInp} type="number" value={form.commission_earned||''} onChange={set('commission_earned')} placeholder="Auto" /></Field>
-          </FieldRow>
-          <Field label="Offer Date"><input style={inp} type="date" value={form.offer_date||''} onChange={set('offer_date')} /></Field>
-          <Field label="Notes"><textarea style={{ ...inp, minHeight:72, resize:'vertical' }} value={form.nhc_notes||''} onChange={set('nhc_notes')} placeholder="Lead source, agent, deal notes..." /></Field>
-
-          {form.commission_earned && (
-            <div style={{ background:'#f0fdf4', borderRadius:8, padding:14 }}>
-              <div style={{ fontSize:11, color:'#6b7280', textTransform:'uppercase', letterSpacing:0.8 }}>NHC Commission</div>
-              <div style={{ fontSize:24, fontWeight:700, color:'#3B6D11', marginTop:2 }}>{fmt(form.commission_earned)}</div>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* ── INVESTMENT TAB (BPV) ── */}
+      {/* ── INVESTMENT TAB ── */}
       {tab==='investment' && (
         <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
-          <div style={{ background:'#f0f6ff', borderRadius:6, padding:'8px 12px', fontSize:11, color:'#2D6FAF', fontWeight:600 }}>BE Property Ventures — Investment Tracking</div>
+          <div style={{ background:'#f0f6ff', borderRadius:6, padding:'8px 12px', fontSize:11, color:'#2D6FAF', fontWeight:600 }}>BE Property Ventures · Investment Tracking</div>
 
-          {/* Flip / Hold toggle */}
           <Field label="Investment Type">
             <div style={{ display:'flex', gap:8 }}>
-              {[['flip','Flip'],['hold','Hold / Rental'],['none','Not BPV']].map(([val,label])=>(
-                <button key={val} onClick={()=>setForm(f=>({...f,investment_type:val==='none'?null:val}))} style={{
-                  flex:1, padding:'8px', border:'none', borderRadius:6, cursor:'pointer',
-                  fontWeight:(form.investment_type||'none')===val?700:400, fontSize:12, fontFamily:'inherit',
-                  background:(form.investment_type||'none')===val?'#2D6FAF':'#F0EDE6',
-                  color:(form.investment_type||'none')===val?'#fff':'#6b7280'
-                }}>{label}</button>
+              {[['flip','Flip'],['hold','Hold'],['none','Not BPV']].map(([val,label])=>(
+                <button key={val} onClick={()=>setForm(f=>({...f,investment_type:val==='none'?null:val}))} style={{ flex:1, padding:'8px', border:'none', borderRadius:6, cursor:'pointer', fontWeight:(form.investment_type||'none')===val?700:400, fontSize:12, fontFamily:'inherit', background:(form.investment_type||'none')===val?'#2D6FAF':'#F0EDE6', color:(form.investment_type||'none')===val?'#fff':'#6b7280' }}>{label}</button>
               ))}
             </div>
           </Field>
@@ -276,54 +229,95 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
             <div className="drawer-section">Acquisition</div>
             <FieldRow>
               <Field label="Purchase Date"><input style={inp} type="date" value={form.purchase_date||''} onChange={set('purchase_date')} /></Field>
-              <Field label="Purchase Price ($)"><input style={monoInp} type="number" value={form.purchase_price||''} onChange={set('purchase_price')} /></Field>
+              <Field label="Purchase Price ($)"><input style={monoInp} type="number" value={form.purchase_price||''} onChange={set('purchase_price')} placeholder="120000" /></Field>
             </FieldRow>
             <FieldRow>
-              <Field label="Closing Costs ($)"><input style={monoInp} type="number" value={form.closing_costs||''} onChange={set('closing_costs')} /></Field>
-              <Field label="Rehab Cost ($)"><input style={monoInp} type="number" value={form.rehab_cost||''} onChange={set('rehab_cost')} /></Field>
+              <Field label="Closing Costs ($)"><input style={monoInp} type="number" value={form.closing_costs||''} onChange={set('closing_costs')} placeholder="2500" /></Field>
+              <Field label="Rehab Cost ($)"><input style={monoInp} type="number" value={form.rehab_cost||''} onChange={set('rehab_cost')} placeholder="0" /></Field>
             </FieldRow>
           </>)}
 
           {form.investment_type==='flip' && (<>
             <div className="drawer-section">Sale</div>
             <FieldRow>
-              <Field label="Sale Price ($)"><input style={monoInp} type="number" value={form.sale_price||''} onChange={set('sale_price')} /></Field>
+              <Field label="Sale Price ($)"><input style={monoInp} type="number" value={form.sale_price||''} onChange={set('sale_price')} placeholder="215000" /></Field>
               <Field label="Sale Date"><input style={inp} type="date" value={form.sale_date||''} onChange={set('sale_date')} /></Field>
             </FieldRow>
-            <Field label="Days on Market"><input style={monoInp} type="number" value={form.days_on_market||''} onChange={set('days_on_market')} /></Field>
+            <Field label="Days on Market"><input style={monoInp} type="number" value={form.days_on_market||''} onChange={set('days_on_market')} placeholder="24" /></Field>
+
+            <div className="drawer-section">NHC Commission on Sale</div>
+            <FieldRow>
+              <Field label="Commission %">
+                <input style={monoInp} type="number" value={form.commission_pct||''} placeholder="3" onChange={e=>{
+                  const pct=parseFloat(e.target.value)||0
+                  const min=parseFloat(form.commission_min)||5000
+                  const earned=form.sale_price?Math.max(min,parseFloat(form.sale_price)*pct/100):''
+                  setForm(f=>({...f,commission_pct:e.target.value,commission_earned:earned?earned.toFixed(2):f.commission_earned}))
+                }} />
+              </Field>
+              <Field label="Minimum ($)">
+                <input style={monoInp} type="number" value={form.commission_min||''} placeholder="5000" onChange={e=>{
+                  const min=parseFloat(e.target.value)||0
+                  const pct=parseFloat(form.commission_pct)||0
+                  const earned=form.sale_price?Math.max(min,parseFloat(form.sale_price)*pct/100):''
+                  setForm(f=>({...f,commission_min:e.target.value,commission_earned:earned?earned.toFixed(2):f.commission_earned}))
+                }} />
+              </Field>
+            </FieldRow>
+            <Field label="Commission Earned ($)"><input style={monoInp} type="number" value={form.commission_earned||''} onChange={set('commission_earned')} placeholder="Auto — greater of % or minimum" /></Field>
 
             {form.purchase_price && form.sale_price && (() => {
-              const cost = (parseFloat(form.purchase_price)||0)+(parseFloat(form.closing_costs)||0)+(parseFloat(form.rehab_cost)||0)
-              const profit = (parseFloat(form.sale_price)||0)-cost
-              const roi = cost>0?((profit/cost)*100).toFixed(1):null
+              const cost=(parseFloat(form.purchase_price)||0)+(parseFloat(form.closing_costs)||0)+(parseFloat(form.rehab_cost)||0)
+              const profit=(parseFloat(form.sale_price)||0)-cost
+              const roi=cost>0?((profit/cost)*100).toFixed(1):null
+              const comm=parseFloat(form.commission_earned)||0
               return (
-                <div style={{ background:profit>=0?'#f0fdf4':'#fef2f2', borderRadius:8, padding:14, display:'flex', justifyContent:'space-between' }}>
-                  <div><div style={{ fontSize:11, color:'#6b7280', textTransform:'uppercase', letterSpacing:0.8 }}>BPV Profit</div><div style={{ fontSize:22, fontWeight:700, color:profit>=0?'#3B6D11':'#B91C1C' }}>{profit>=0?'+':''}{fmt(profit)}</div></div>
-                  {roi && <div style={{ textAlign:'right' }}><div style={{ fontSize:11, color:'#6b7280', textTransform:'uppercase', letterSpacing:0.8 }}>ROI</div><div style={{ fontSize:22, fontWeight:700, color:profit>=0?'#3B6D11':'#B91C1C' }}>{roi}%</div></div>}
+                <div style={{ background:profit>=0?'#f0fdf4':'#fef2f2', borderRadius:8, padding:14, display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:12 }}>
+                  <div><div style={{ fontSize:10, color:'#6b7280', textTransform:'uppercase', letterSpacing:0.8 }}>BPV Profit</div><div style={{ fontSize:20, fontWeight:700, color:profit>=0?'#3B6D11':'#B91C1C' }}>{profit>=0?'+':''}{fmt(profit)}</div></div>
+                  <div><div style={{ fontSize:10, color:'#6b7280', textTransform:'uppercase', letterSpacing:0.8 }}>NHC Comm</div><div style={{ fontSize:20, fontWeight:700, color:'#B8892A' }}>{fmt(comm)}</div></div>
+                  {roi && <div><div style={{ fontSize:10, color:'#6b7280', textTransform:'uppercase', letterSpacing:0.8 }}>ROI</div><div style={{ fontSize:20, fontWeight:700, color:profit>=0?'#3B6D11':'#B91C1C' }}>{roi}%</div></div>}
                 </div>
               )
             })()}
           </>)}
 
           {form.investment_type==='hold' && (<>
+            <div className="drawer-section">NHC Commission</div>
+            <FieldRow>
+              <Field label="Commission %">
+                <input style={monoInp} type="number" value={form.commission_pct||''} placeholder="3" onChange={e=>{
+                  const pct=parseFloat(e.target.value)||0
+                  const min=parseFloat(form.commission_min)||5000
+                  const earned=form.purchase_price?Math.max(min,parseFloat(form.purchase_price)*pct/100):''
+                  setForm(f=>({...f,commission_pct:e.target.value,commission_earned:earned?earned.toFixed(2):f.commission_earned}))
+                }} />
+              </Field>
+              <Field label="Minimum ($)">
+                <input style={monoInp} type="number" value={form.commission_min||''} placeholder="5000" onChange={e=>{
+                  const min=parseFloat(e.target.value)||0
+                  const pct=parseFloat(form.commission_pct)||0
+                  const earned=form.purchase_price?Math.max(min,parseFloat(form.purchase_price)*pct/100):''
+                  setForm(f=>({...f,commission_min:e.target.value,commission_earned:earned?earned.toFixed(2):f.commission_earned}))
+                }} />
+              </Field>
+            </FieldRow>
+            <Field label="Commission Earned ($)"><input style={monoInp} type="number" value={form.commission_earned||''} onChange={set('commission_earned')} placeholder="Auto — greater of % or minimum" /></Field>
+
             <div className="drawer-section">Mortgage</div>
             <FieldRow>
-              <Field label="Mortgage Balance ($)"><input style={monoInp} type="number" value={form.mortgage_amount||''} onChange={set('mortgage_amount')} /></Field>
-              <Field label="Monthly Payment ($)"><input style={monoInp} type="number" value={form.monthly_payment||''} onChange={set('monthly_payment')} /></Field>
+              <Field label="Mortgage Balance ($)"><input style={monoInp} type="number" value={form.mortgage_amount||''} onChange={set('mortgage_amount')} placeholder="145000" /></Field>
+              <Field label="Monthly Payment ($)"><input style={monoInp} type="number" value={form.monthly_payment||''} onChange={set('monthly_payment')} placeholder="1050" /></Field>
             </FieldRow>
 
             <div className="drawer-section">Income History</div>
-
-            {/* Add income row */}
             {form.id && (
               <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr auto', gap:8, alignItems:'end' }}>
                 <Field label="Month"><input style={inp} type="month" value={incomeForm.income_month} onChange={e=>setIncomeForm(f=>({...f,income_month:e.target.value}))} /></Field>
                 <Field label="Rent ($)"><input style={monoInp} type="number" value={incomeForm.rent_received} onChange={e=>setIncomeForm(f=>({...f,rent_received:e.target.value}))} placeholder="950" /></Field>
                 <Field label="Expenses ($)"><input style={monoInp} type="number" value={incomeForm.expenses} onChange={e=>setIncomeForm(f=>({...f,expenses:e.target.value}))} placeholder="620" /></Field>
-                <button onClick={addIncome} style={{ background:'#B8892A', color:'#fff', border:'none', borderRadius:6, padding:'9px 12px', cursor:'pointer', fontFamily:'inherit', fontSize:12, fontWeight:600, marginBottom:0 }}>Add</button>
+                <button onClick={addIncome} style={{ background:'#B8892A', color:'#fff', border:'none', borderRadius:6, padding:'9px 12px', cursor:'pointer', fontFamily:'inherit', fontSize:12, fontWeight:600 }}>Add</button>
               </div>
             )}
-
             {income.length>0 && (
               <table style={{ width:'100%', borderCollapse:'collapse', fontSize:12 }}>
                 <thead><tr style={{ background:'#F0EDE6' }}>
@@ -352,37 +346,11 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
             )}
           </>)}
 
-          {form.investment_type && <Field label="BPV Notes"><textarea style={{ ...inp, minHeight:60, resize:'vertical' }} value={form.bpv_notes||''} onChange={set('bpv_notes')} /></Field>}
+          {form.investment_type && <Field label="BPV Notes"><textarea style={{ ...inp, minHeight:56, resize:'vertical' }} value={form.bpv_notes||''} onChange={set('bpv_notes')} /></Field>}
         </div>
       )}
 
-      {/* ── DEAL TAB (linked mailing deal) ── */}
-      {tab==='deal' && (
-        <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
-          <div style={{ background:'#f0f6ff', borderRadius:6, padding:'8px 12px', fontSize:11, color:'#2D6FAF', fontWeight:600 }}>
-            Linked Deal Record — Listing / Wholesale / Referral tracking
-          </div>
-          {linkedDeal ? (
-            <>
-              <div className="drawer-row"><span className="drawer-label">Address</span><span className="drawer-value">{linkedDeal.address}</span></div>
-              <div className="drawer-row"><span className="drawer-label">Type</span><span className="drawer-value" style={{ textTransform:'capitalize' }}>{linkedDeal.deal_type}</span></div>
-              <div className="drawer-row"><span className="drawer-label">Status</span><span className="drawer-value" style={{ textTransform:'capitalize' }}>{linkedDeal.status?.replace(/_/g,' ')}</span></div>
-              <div className="drawer-row"><span className="drawer-label">Sale Price</span><span className="drawer-value" style={{ fontFamily:'monospace' }}>{linkedDeal.sale_price?'$'+parseInt(linkedDeal.sale_price).toLocaleString():'—'}</span></div>
-              <div className="drawer-row"><span className="drawer-label">Commission</span><span className="drawer-value" style={{ fontFamily:'monospace', color:'#3B6D11' }}>{linkedDeal.commission_earned?'$'+parseInt(linkedDeal.commission_earned).toLocaleString():'—'}</span></div>
-              {linkedDeal.notes && <div className="drawer-row"><span className="drawer-label">Notes</span><span className="drawer-value">{linkedDeal.notes}</span></div>}
-              <div style={{ fontSize:11, color:'#9ca3af', marginTop:4 }}>Edit this deal in the Deals tab for full editing.</div>
-            </>
-          ) : (
-            <div style={{ textAlign:'center', padding:'32px 0', color:'#9ca3af' }}>
-              <div style={{ fontSize:32, marginBottom:8 }}>○</div>
-              <div style={{ fontSize:13 }}>No linked deal record found for this address.</div>
-              <div style={{ fontSize:11, marginTop:4 }}>Add a deal in the Deals page to link it here.</div>
-            </div>
-          )}
-        </div>
-      )}
 
-      {/* Footer */}
       <div style={{ display:'flex', justifyContent:'space-between', marginTop:20, paddingTop:16, borderTop:'1px solid #F0EDE6' }}>
         {!isNew && <Btn variant="danger" onClick={del}>Delete</Btn>}
         <div style={{ display:'flex', gap:8, marginLeft:'auto' }}>
