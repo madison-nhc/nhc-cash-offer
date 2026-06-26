@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase.js'
 import { PageWrap, SectionBar, Card, Field, FieldRow, inp, monoInp, Btn, Badge, EmptyState, LoadingSpinner, StatCard, fmt, fmtK } from '../components/ui.jsx'
 import Drawer from '../components/Drawer.jsx'
+import AddressInput from '../components/AddressInput.jsx'
 
 const STATUS_LABELS = { active_listing:'Active', pending:'Pending', closed:'Closed' }
 const STATUS_COLORS = { active_listing:'#2D6FAF', pending:'#D97825', closed:'#3B6D11' }
@@ -260,7 +261,7 @@ function DealDrawer({ deal, mailings, open, onClose, onSave }) {
   return (
     <Drawer open={open} onClose={onClose} title={form.address||'New Deal'} subtitle={form.status ? STATUS_LABELS[form.status] : ''}>
       <div style={{ display:'flex', flexDirection:'column', gap:14, paddingTop:12 }}>
-        <Field label="Property Address"><input style={inp} value={form.address||''} onChange={set('address')} placeholder="123 Main St, Lexington KY" /></Field>
+        <Field label="Property Address"><AddressInput value={form.address||''} onChange={v=>setForm(f=>({...f,address:v}))} /></Field>
         <div>
           <label style={{ display:'block', fontSize:11, fontWeight:600, color:'#6b7280', textTransform:'uppercase', letterSpacing:0.8, marginBottom:6 }}>Type</label>
           <div style={{ display:'flex', gap:8 }}>

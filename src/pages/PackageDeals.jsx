@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase.js'
 import { PageWrap, SectionBar, Card, Field, FieldRow, inp, monoInp, Btn, Badge, EmptyState, LoadingSpinner, fmt, fmtK } from '../components/ui.jsx'
 import Drawer from '../components/Drawer.jsx'
+import AddressInput from '../components/AddressInput.jsx'
 
 const STATUS_COLORS = { analyzing:'#B8892A', active:'#2D6FAF', closed:'#3B6D11', passed:'#6b7280' }
 const UNIT_COLORS   = { 1:'#3B6D11', 2:'#2D6FAF', 3:'#D97825', 4:'#B8892A', 5:'#6b21a8' }
@@ -371,7 +372,7 @@ function PropertyDrawer({ data, open, onClose, onSave }) {
   return (
     <Drawer open={open} onClose={onClose} title={form.address||'New Property'} subtitle={isNew?`Adding to: ${data.pkg.deal_name}`:data.pkg.deal_name} width={540}>
       <div style={{ display:'flex', flexDirection:'column', gap:14, paddingTop:12 }}>
-        <Field label="Address"><input style={inp} value={form.address||''} onChange={set('address')} placeholder="789 Elm St, Lexington KY" /></Field>
+        <Field label="Address"><AddressInput value={form.address||''} onChange={v=>setForm(f=>({...f,address:v}))} /></Field>
         <Field label="Number of Units"><UnitPicker value={parseInt(form.unit_count)||1} onChange={v=>setForm(f=>({...f,unit_count:v}))} /></Field>
         <Field label="Condition">
           <ConditionStars rating={form.condition_rating} onChange={v=>setForm(f=>({...f,condition_rating:v}))} />

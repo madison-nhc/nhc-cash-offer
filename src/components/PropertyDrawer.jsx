@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase.js'
 import { Field, FieldRow, inp, monoInp, Btn, fmt, fmtK } from './ui.jsx'
 import Drawer from './Drawer.jsx'
+import AddressInput from './AddressInput.jsx'
 
 const STATUSES = [
   { value:'analyzing',      label:'Analyzing' },
@@ -158,7 +159,9 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
       {tab==='analyzer' && (
         <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
           <div className="drawer-section">Property</div>
-          <Field label="Address"><input style={inp} value={form.address||''} onChange={set('address')} placeholder="123 Main St, Lexington KY" /></Field>
+          <Field label="Address">
+            <AddressInput value={form.address||''} onChange={v=>setForm(f=>({...f,address:v}))} />
+          </Field>
           <FieldRow>
             <Field label="Beds"><input style={monoInp} type="number" value={form.beds||''} onChange={set('beds')} placeholder="3" /></Field>
             <Field label="Baths"><input style={monoInp} type="number" value={form.baths||''} onChange={set('baths')} placeholder="2" /></Field>
