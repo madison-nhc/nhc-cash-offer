@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase.js'
 import { useIsMobile } from '../hooks/useIsMobile.js'
+import MobileCard, { CardRow, CardLabel, CardValue } from '../components/MobileCard.jsx'
 import { PageWrap, SectionBar, Card, Btn, Badge, EmptyState, LoadingSpinner, StatCard, fmt, fmtK } from '../components/ui.jsx'
 import PropertyDrawer from '../components/PropertyDrawer.jsx'
 
@@ -67,7 +68,27 @@ export default function Flips() {
 
       <SectionBar>Flip Properties ({filtered.length})</SectionBar>
 
-      {filtered.length===0 ? <EmptyState icon="⟳" text="No flip properties yet. Add one in the Analyzer and set Investment Type to Flip." /> : (
+      {filtered.length===0 ? <EmptyState icon="⟳" text="No flip properties yet." /> : mobile ? (
+        <div style={{ marginTop:8 }}>
+          {filtered.map(p=>{
+            const cost=(parseFloat(p.purchase_price)||0)+(parseFloat(p.closing_costs)||0)+(parseFloat(p.rehab_cost)||0)
+            const profit=p.sale_price?(parseFloat(p.sale_price)||0)-cost:null
+            const roi=cost>0&&profit!==null?((profit/cost)*100).toFixed(1):null
+            return (
+              <MobileCard key={p.id} onClick={()=>setDrawer(p)} accent={profit===null?'#D97825':profit>=0?'#3B6D11':'#B91C1C'}>
+                <span style={{ fontSize:13, fontWeight:700, color:'#2C2C2C' }}>{p.address}</span>
+                <CardRow style={{ marginTop:4 }}>
+                  <div><CardLabel>Cost</CardLabel><br/><CardValue mono>{fmt(cost)}</CardValue></div>
+                  <div><CardLabel>ARV</CardLabel><br/><CardValue mono>{fmt(p.arv)}</CardValue></div>
+                  <div><CardLabel>Profit</CardLabel><br/><CardValue mono color={profit===null?'#9ca3af':profit>=0?'#3B6D11':'#B91C1C'}>{profit===null?'Active':(profit>=0?'+':'')+fmt(profit)}</CardValue></div>
+                  {roi && <div><CardLabel>ROI</CardLabel><br/><CardValue color="#6b7280">{roi}%</CardValue></div>}
+                </CardRow>
+                {p.purchase_date && <span style={{ fontSize:11, color:'#9ca3af' }}>{new Date(p.purchase_date+'T12:00:00').toLocaleDateString()}{p.days_on_market?` · ${p.days_on_market} DOM`:''}</span>}
+              </MobileCard>
+            )
+          })}
+        </div>
+      ) : (
         <Card style={{ padding:0 }}>
           <table style={{ width:'100%', borderCollapse:'collapse', minWidth: mobile ? 0 : 600 }}>
             <thead><tr style={{ background:'#F0EDE6' }}>

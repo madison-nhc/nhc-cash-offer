@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase.js'
 import { useIsMobile } from '../hooks/useIsMobile.js'
+import MobileCard, { CardRow, CardLabel, CardValue } from '../components/MobileCard.jsx'
 import { PageWrap, SectionBar, Card, Btn, Badge, EmptyState, LoadingSpinner, StatCard, fmt, fmtK } from '../components/ui.jsx'
 import PropertyDrawer from '../components/PropertyDrawer.jsx'
 

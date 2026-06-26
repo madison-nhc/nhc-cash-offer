@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase.js'
 import { Field, FieldRow, inp, monoInp, Btn, fmt, fmtK } from './ui.jsx'
 import Drawer from './Drawer.jsx'
 import AddressInput from './AddressInput.jsx'
+import { inp as INP } from './ui.jsx'
 
 const STATUSES = [
   { value:'analyzing',      label:'Analyzing' },
@@ -51,6 +52,7 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
   const [tab, setTab] = useState('analyzer')
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
+  const [linkedDeal, setLinkedDeal] = useState(null)
   const [incomeForm, setIncomeForm] = useState({ income_month:'', rent_received:'', expenses:'', notes:'' })
 
   useEffect(() => {
@@ -59,8 +61,19 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
       setRepairs(property.repair_items?.length ? property.repair_items.map((r,i)=>({...r,id:i})) : DEFAULT_REPAIRS.map((r,i)=>({...r,id:i})))
       setTab('analyzer')
       if (property.id && (property.investment_type==='hold')) loadIncome(property.id)
+      if (property.id) loadLinkedDeal(property.id)
     }
   }, [property])
+
+  async function loadLinkedDeal(propertyId) {
+    // Look for a mailing_deal matching this address
+    if (!propertyId) return
+    const { data } = await supabase.from('properties').select('address').eq('id',propertyId).single()
+    if (data?.address) {
+      const { data:d } = await supabase.from('mailing_deals').select('*').ilike('address',data.address).limit(1).maybeSingle()
+      setLinkedDeal(d||null)
+    }
+  }
 
   async function loadIncome(id) {
     const { data } = await supabase.from('property_income').select('*').eq('property_id',id).order('income_month',{ascending:false})
@@ -126,7 +139,7 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
   function updateRepair(id,k,v) { setRepairs(rs=>rs.map(r=>r.id===id?{...r,[k]:v}:r)) }
 
   const statusColor = STATUS_COLORS[form.status]||'#6b7280'
-  const tabs = ['analyzer','purchase','investment']
+  const tabs = ['analyzer','purchase','investment','deal']
 
   if (!property) return null
 
@@ -340,6 +353,32 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
           </>)}
 
           {form.investment_type && <Field label="BPV Notes"><textarea style={{ ...inp, minHeight:60, resize:'vertical' }} value={form.bpv_notes||''} onChange={set('bpv_notes')} /></Field>}
+        </div>
+      )}
+
+      {/* ── DEAL TAB (linked mailing deal) ── */}
+      {tab==='deal' && (
+        <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
+          <div style={{ background:'#f0f6ff', borderRadius:6, padding:'8px 12px', fontSize:11, color:'#2D6FAF', fontWeight:600 }}>
+            Linked Deal Record — Listing / Wholesale / Referral tracking
+          </div>
+          {linkedDeal ? (
+            <>
+              <div className="drawer-row"><span className="drawer-label">Address</span><span className="drawer-value">{linkedDeal.address}</span></div>
+              <div className="drawer-row"><span className="drawer-label">Type</span><span className="drawer-value" style={{ textTransform:'capitalize' }}>{linkedDeal.deal_type}</span></div>
+              <div className="drawer-row"><span className="drawer-label">Status</span><span className="drawer-value" style={{ textTransform:'capitalize' }}>{linkedDeal.status?.replace(/_/g,' ')}</span></div>
+              <div className="drawer-row"><span className="drawer-label">Sale Price</span><span className="drawer-value" style={{ fontFamily:'monospace' }}>{linkedDeal.sale_price?'$'+parseInt(linkedDeal.sale_price).toLocaleString():'—'}</span></div>
+              <div className="drawer-row"><span className="drawer-label">Commission</span><span className="drawer-value" style={{ fontFamily:'monospace', color:'#3B6D11' }}>{linkedDeal.commission_earned?'$'+parseInt(linkedDeal.commission_earned).toLocaleString():'—'}</span></div>
+              {linkedDeal.notes && <div className="drawer-row"><span className="drawer-label">Notes</span><span className="drawer-value">{linkedDeal.notes}</span></div>}
+              <div style={{ fontSize:11, color:'#9ca3af', marginTop:4 }}>Edit this deal in the Deals tab for full editing.</div>
+            </>
+          ) : (
+            <div style={{ textAlign:'center', padding:'32px 0', color:'#9ca3af' }}>
+              <div style={{ fontSize:32, marginBottom:8 }}>○</div>
+              <div style={{ fontSize:13 }}>No linked deal record found for this address.</div>
+              <div style={{ fontSize:11, marginTop:4 }}>Add a deal in the Deals page to link it here.</div>
+            </div>
+          )}
         </div>
       )}
 
