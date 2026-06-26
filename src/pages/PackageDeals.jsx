@@ -109,7 +109,7 @@ export default function PackageDeals() {
       <SectionBar>All Packages ({packages.length})</SectionBar>
 
       {packages.length===0 ? <EmptyState icon="⊕" text="No package deals yet." /> : packages.map(pkg => {
-        const allProps  = properties.filter(pr=>pr.package_id===pkg.id)
+        const allProps  = properties.filter(pr=>pr.package_id===pkg.id).sort((a,b)=>{ const u=(parseInt(b.unit_count)||1)-(parseInt(a.unit_count)||1); return u!==0?u:(a.address||"").localeCompare(b.address||"") })
         const active    = allProps.filter(pr=>!pr.excluded)
         const excluded  = allProps.filter(pr=>pr.excluded)
 
