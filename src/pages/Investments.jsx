@@ -85,7 +85,7 @@ export default function Investments() {
             <Card style={{ padding:0 }}>
               <table style={{ width:'100%', borderCollapse:'collapse' }}>
                 <thead><tr style={{ background:'#F0EDE6' }}>
-                  {['Address','Status','Type','Purchase Price','ARV','NHC Commission','Lead Type','Purchase Date'].map(h=>(
+                  {['Address','Status','Type','Purchase Price','ARV','NHC Commission','Source Campaign','Purchase Date'].map(h=>(
                     <th key={h} style={{ padding:'8px 14px', textAlign:'left', fontSize:11, fontWeight:600, letterSpacing:0.8, color:'#6b7280', textTransform:'uppercase', whiteSpace:'nowrap' }}>{h}</th>
                   ))}
                 </tr></thead>
@@ -100,7 +100,7 @@ export default function Investments() {
                       <td style={{ padding:'10px 14px', fontSize:13, fontFamily:'monospace' }}>{fmt(p.purchase_price)}</td>
                       <td style={{ padding:'10px 14px', fontSize:13, fontFamily:'monospace' }}>{fmt(p.arv)}</td>
                       <td style={{ padding:'10px 14px', fontSize:13, fontFamily:'monospace', fontWeight:700, color:'#3B6D11' }}>{fmt(p.commission_earned)}</td>
-                      <td style={{ padding:'10px 14px', fontSize:12, color:'#6b7280', textTransform:'capitalize' }}>{p.lead_type?.replace(/_/g,' ')||'—'}</td>
+                      <td style={{ padding:'10px 14px', fontSize:12, color:'#2D6FAF' }}>{mailings.find(m=>m.id===p.mailing_id)?.campaign_name?.replace(/^Campaign \d+ — /,'')||'—'}</td>
                       <td style={{ padding:'10px 14px', fontSize:12, color:'#6b7280' }}>{p.purchase_date?new Date(p.purchase_date+'T12:00:00').toLocaleDateString():'—'}</td>
                     </tr>
                   ))}
