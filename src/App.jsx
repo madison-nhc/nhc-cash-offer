@@ -18,16 +18,21 @@ const TABS = [
 ]
 
 export default function App() {
-  const [active, setActive] = useState('dashboard')
+  const [active, setActive] = useState(() => localStorage.getItem('nhc_hub_tab') || 'dashboard')
+
+  function navigate(tab) {
+    localStorage.setItem('nhc_hub_tab', tab)
+    setActive(tab)
+  }
   const [loadedOffer, setLoadedOffer] = useState(null)
 
   function handleLoadCalc(offer) {
     setLoadedOffer(offer)
-    setActive('calculator')
+    navigate('calculator')
   }
 
   const pages = {
-    dashboard:  <Dashboard onNavigate={setActive} />,
+    dashboard:  <Dashboard onNavigate={navigate} />,
     mailings:   <MailingTracker />,
     flips:      <Flips />,
     holds:      <Holds />,
@@ -58,7 +63,7 @@ export default function App() {
         </div>
         <div style={{ display: 'flex', gap: 2, overflowX: 'auto' }}>
           {TABS.map(t => (
-            <button key={t.id} onClick={() => setActive(t.id)} style={{
+            <button key={t.id} onClick={() => navigate(t.id)} style={{
               background: active === t.id ? '#B8892A' : 'transparent',
               color: active === t.id ? '#fff' : '#6b7280',
               border: 'none', borderRadius: 4,
