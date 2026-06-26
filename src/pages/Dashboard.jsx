@@ -47,11 +47,11 @@ export default function Dashboard({ onNavigate }) {
       totalProperties: props?.length || 0,
     })
 
-    // Recent activity — last 5 items across sources
+    // Recent activity — last 8 items across sources, sorted by date
     const activity = [
-      ...(deals || []).slice(0, 3).map(d => ({ type: 'deal', label: d.address || 'Deal', sub: d.status?.replace('_', ' '), ts: d.created_at })),
-      ...(props || []).slice(0, 3).map(p => ({ type: p.property_type, label: p.address, sub: p.status, ts: p.created_at })),
-    ].sort((a, b) => new Date(b.ts) - new Date(a.ts)).slice(0, 6)
+      ...(deals || []).filter(d => d.address).map(d => ({ type: 'deal', label: d.address, sub: d.status?.replace(/_/g, ' '), ts: d.created_at })),
+      ...(props || []).filter(p => p.address).map(p => ({ type: p.property_type, label: p.address, sub: p.status, ts: p.created_at })),
+    ].sort((a, b) => new Date(b.ts) - new Date(a.ts)).slice(0, 8)
     setRecentActivity(activity)
   }
 
