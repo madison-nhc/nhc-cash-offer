@@ -126,7 +126,7 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
   function updateRepair(id,k,v) { setRepairs(rs=>rs.map(r=>r.id===id?{...r,[k]:v}:r)) }
 
   const statusColor = STATUS_COLORS[form.status]||'#6b7280'
-  const tabs = ['analyzer','deal','investment']
+  const tabs = ['analyzer','purchase','investment']
 
   if (!property) return null
 
@@ -213,19 +213,11 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
       )}
 
       {/* ── DEAL TAB (NHC) ── */}
-      {tab==='deal' && (
+      {tab==='purchase' && (
         <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
           <div style={{ background:'#f0fdf4', borderRadius:6, padding:'8px 12px', fontSize:11, color:'#3B6D11', fontWeight:600 }}>NHC — Commission Tracking</div>
 
-          <Field label="Lead Type">
-            <select style={inp} value={form.lead_type||''} onChange={set('lead_type')}>
-              <option value="">Select lead type</option>
-              <option value="nhc_lead">NHC Lead</option>
-              <option value="agent_generated">Agent Generated</option>
-              <option value="personal">Personal Transaction</option>
-              <option value="mailing">Mailing Campaign</option>
-            </select>
-          </Field>
+
           <Field label="Source Campaign">
             <select style={inp} value={form.mailing_id||''} onChange={set('mailing_id')}>
               <option value="">No specific campaign</option>
