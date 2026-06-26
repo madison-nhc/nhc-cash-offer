@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase.js'
 import { PageWrap, SectionBar, Card, Btn, Badge, EmptyState, LoadingSpinner, StatCard, fmt, fmtK } from '../components/ui.jsx'
 import PropertyDrawer from '../components/PropertyDrawer.jsx'
+import ProposalModal from '../components/ProposalModal.jsx'
 import PackageDeals from './PackageDeals.jsx'
 
 const STATUS_COLORS = {

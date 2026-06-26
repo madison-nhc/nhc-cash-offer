@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import Dashboard from './pages/Dashboard.jsx'
 import Analyzer from './pages/Analyzer.jsx'
+import Deals from './pages/Deals.jsx'
 import Purchases from './pages/Purchases.jsx'
 import Flips from './pages/Flips.jsx'
 import Holds from './pages/Holds.jsx'
@@ -9,6 +10,7 @@ import MailingTracker from './pages/MailingTracker.jsx'
 const TABS = [
   { id:'dashboard',  label:'Dashboard' },
   { id:'analyzer',   label:'Analyzer' },
+  { id:'deals',      label:'Deals' },
   { id:'purchases',  label:'Purchases' },
   { id:'flips',      label:'Flips' },
   { id:'holds',      label:'Holds' },
@@ -26,6 +28,7 @@ export default function App() {
   const pages = {
     dashboard:  <Dashboard onNavigate={navigate} />,
     analyzer:   <Analyzer />,
+    deals:      <Deals />,
     purchases:  <Purchases />,
     flips:      <Flips />,
     holds:      <Holds />,
