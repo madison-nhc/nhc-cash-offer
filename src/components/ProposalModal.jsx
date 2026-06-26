@@ -84,11 +84,13 @@ const SEC_HDR = {
   paddingBottom: 4,
 }
 
-function CostLine({ label, value, bold, indent }) {
+function CostLine({ label, value, bold, indent, red, blue }) {
+  const labelColor = bold ? '#222' : red ? '#c0392b' : '#444'
+  const valueColor = bold && blue ? BLUE : bold ? '#222' : red ? '#c0392b' : '#444'
   return (
-    <div style={{ display: 'flex', justifyContent: 'space-between', padding: indent ? '3px 0 3px 12px' : '3px 0', fontSize: 13, fontWeight: bold ? 700 : 400, color: bold ? '#222' : '#444', borderBottom: '1px solid #f0f3f7' }}>
-      <span>{label}</span>
-      <span style={{ fontFamily: 'monospace' }}>{value}</span>
+    <div style={{ display: 'flex', justifyContent: 'space-between', padding: indent ? '4px 0 4px 0' : '4px 0', fontSize: 13, fontWeight: bold ? 700 : 400, borderBottom: bold ? 'none' : '1px solid #f0f3f7' }}>
+      <span style={{ color: labelColor }}>{label}</span>
+      <span style={{ fontFamily: 'monospace', color: valueColor }}>{value}</span>
     </div>
   )
 }
@@ -207,20 +209,22 @@ export default function ProposalModal({ property, onClose }) {
               <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: 0.5 }}>OPTION 1 — CASH OFFER (RECOMMENDED)</div>
               <div style={{ fontSize: 12, fontStyle: 'italic', opacity: 0.9 }}>Fast, As-Is, No Hassle</div>
             </div>
-            <div style={{ border: '1px solid #dde3eb', borderTop: 'none', borderRadius: '0 0 4px 4px', display: 'grid', gridTemplateColumns: '1fr 1fr' }}>
-              <div style={{ padding: '14px 18px', borderRight: '1px solid #edf0f4' }}>
-                <div style={{ fontSize: 11, color: '#777', marginBottom: 4 }}>Purchase Price</div>
-                <div style={{ fontSize: 26, fontWeight: 800, color: '#3B6D11', fontFamily: 'monospace', marginBottom: 10 }}>{fmt(d.cashOffer)}</div>
-                <CostLine label="Net to Seller:" value={fmt(d.cashOffer)} bold />
-              </div>
-              <div style={{ padding: '14px 18px' }}>
-                <div style={{ fontSize: 12, fontWeight: 700, color: '#555', marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.5 }}>Highlights</div>
-                <ul style={{ margin: 0, paddingLeft: 16, fontSize: 13, lineHeight: 2, color: '#444' }}>
-                  <li>Close in 2–3 weeks</li>
-                  <li>No repairs required</li>
-                  <li>No commissions, no fees</li>
-                  <li>Quick, clean sale</li>
-                </ul>
+            <div style={{ border: '1px solid #dde3eb', borderTop: 'none', borderRadius: '0 0 4px 4px', padding: '16px 18px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
+                <div>
+                  <div style={{ fontSize: 11, color: '#777', marginBottom: 4 }}>Purchase Price</div>
+                  <div style={{ fontSize: 30, fontWeight: 800, color: '#3B6D11', fontFamily: 'monospace', marginBottom: 12 }}>{fmt(d.cashOffer)}</div>
+                  <CostLine label="Net to Seller:" value={fmt(d.cashOffer)} bold blue />
+                </div>
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: BLUE, marginBottom: 8 }}>Highlights</div>
+                  <ul style={{ margin: 0, paddingLeft: 16, fontSize: 13, lineHeight: 2, color: '#444' }}>
+                    <li>Close in 2–3 weeks</li>
+                    <li>No repairs required</li>
+                    <li>No commissions, no fees</li>
+                    <li>Quick, clean sale</li>
+                  </ul>
+                </div>
               </div>
             </div>
           </div>
@@ -231,23 +235,25 @@ export default function ProposalModal({ property, onClose }) {
               <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: 0.5 }}>OPTION 2 — AS-IS LISTING</div>
               <div style={{ fontSize: 12, fontStyle: 'italic', opacity: 0.9 }}>Sell on the Open Market to an Investor Buyer</div>
             </div>
-            <div style={{ border: '1px solid #dde3eb', borderTop: 'none', borderRadius: '0 0 4px 4px', display: 'grid', gridTemplateColumns: '1fr 1fr' }}>
-              <div style={{ padding: '14px 18px', borderRight: '1px solid #edf0f4' }}>
-                <div style={{ fontSize: 11, color: '#777', marginBottom: 4 }}>List Price</div>
-                <div style={{ fontSize: 26, fontWeight: 800, color: BLUE, fontFamily: 'monospace', marginBottom: 10 }}>{fmt(d.asisVal)}</div>
-                <div style={{ fontSize: 12, color: '#777', marginBottom: 6 }}>Less Costs:</div>
-                <CostLine label={`Commission (${(d.commList*100).toFixed(0)}%):`} value={`−${fmt(d.opt2Comm)}`} indent />
-                <CostLine label={`Holding (${property.hold_opt2_months||3} mo):`} value={`−${fmt(d.opt2Hold)}`} indent />
-                <CostLine label="Net to Seller:" value={`~${fmt(d.opt2Net)}`} bold />
-              </div>
-              <div style={{ padding: '14px 18px' }}>
-                <div style={{ fontSize: 12, fontWeight: 700, color: '#555', marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.5 }}>Considerations</div>
-                <ul style={{ margin: 0, paddingLeft: 16, fontSize: 13, lineHeight: 2, color: '#444' }}>
-                  <li>2–3 month timeline</li>
-                  <li>Investor buyer most likely</li>
-                  <li>Showings &amp; negotiation required</li>
-                  <li>Inspection / financing risk</li>
-                </ul>
+            <div style={{ border: '1px solid #dde3eb', borderTop: 'none', borderRadius: '0 0 4px 4px', padding: '16px 18px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
+                <div>
+                  <div style={{ fontSize: 11, color: '#777', marginBottom: 4 }}>List Price</div>
+                  <div style={{ fontSize: 30, fontWeight: 800, color: BLUE, fontFamily: 'monospace', marginBottom: 12 }}>{fmt(d.asisVal)}</div>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: '#333', marginBottom: 6 }}>Less Costs:</div>
+                  <CostLine label={`Commission (${(d.commList*100).toFixed(0)}%):`} value={`−${fmt(d.opt2Comm)}`} red />
+                  <CostLine label={`Holding (${property.hold_opt2_months||3} mo):`} value={`−${fmt(d.opt2Hold)}`} red />
+                  <div style={{ marginTop: 6 }}><CostLine label="Net to Seller:" value={`~${fmt(d.opt2Net)}`} bold blue /></div>
+                </div>
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: BLUE, marginBottom: 8 }}>Considerations</div>
+                  <ul style={{ margin: 0, paddingLeft: 16, fontSize: 13, lineHeight: 2, color: '#444' }}>
+                    <li>2–3 month timeline</li>
+                    <li>Showings &amp; negotiation required</li>
+                    <li>Inspection / financing risk</li>
+                    <li>Carrying costs while listed</li>
+                  </ul>
+                </div>
               </div>
             </div>
           </div>
@@ -258,24 +264,26 @@ export default function ProposalModal({ property, onClose }) {
               <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: 0.5 }}>OPTION 3 — FULL RETAIL (After Renovation)</div>
               <div style={{ fontSize: 12, fontStyle: 'italic', opacity: 0.9 }}>Renovate First, Then List at Top of Market</div>
             </div>
-            <div style={{ border: '1px solid #dde3eb', borderTop: 'none', borderRadius: '0 0 4px 4px', display: 'grid', gridTemplateColumns: '1fr 1fr' }}>
-              <div style={{ padding: '14px 18px', borderRight: '1px solid #edf0f4' }}>
-                <div style={{ fontSize: 11, color: '#777', marginBottom: 4 }}>Projected Sale Price</div>
-                <div style={{ fontSize: 26, fontWeight: 800, color: '#D97825', fontFamily: 'monospace', marginBottom: 10 }}>{fmt(d.arv)}</div>
-                <div style={{ fontSize: 12, color: '#777', marginBottom: 6 }}>Less Costs:</div>
-                <CostLine label="Repairs:" value={`−${fmt(d.reno)}`} indent />
-                <CostLine label={`Commission (${(d.commList*100).toFixed(0)}%):`} value={`−${fmt(d.opt3Comm)}`} indent />
-                <CostLine label={`Holding (${property.hold_opt3_months||6} mo):`} value={`−${fmt(d.opt3Hold)}`} indent />
-                <CostLine label="Net to Seller:" value={`~${fmt(d.opt3Net)}`} bold />
-              </div>
-              <div style={{ padding: '14px 18px' }}>
-                <div style={{ fontSize: 12, fontWeight: 700, color: '#555', marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.5 }}>Considerations</div>
-                <ul style={{ margin: 0, paddingLeft: 16, fontSize: 13, lineHeight: 2, color: '#444' }}>
-                  <li>4–6 month timeline</li>
-                  <li>Full renovation required</li>
-                  <li>Project management &amp; coordination</li>
-                  <li>Market &amp; cost overrun risk</li>
-                </ul>
+            <div style={{ border: '1px solid #dde3eb', borderTop: 'none', borderRadius: '0 0 4px 4px', padding: '16px 18px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
+                <div>
+                  <div style={{ fontSize: 11, color: '#777', marginBottom: 4 }}>Projected Sale Price</div>
+                  <div style={{ fontSize: 30, fontWeight: 800, color: '#D97825', fontFamily: 'monospace', marginBottom: 12 }}>{fmt(d.arv)}</div>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: '#333', marginBottom: 6 }}>Less Costs:</div>
+                  <CostLine label="Repairs:" value={`−${fmt(d.reno)}`} red />
+                  <CostLine label={`Commission (${(d.commList*100).toFixed(0)}%):`} value={`−${fmt(d.opt3Comm)}`} red />
+                  <CostLine label={`Holding (${property.hold_opt3_months||6} mo):`} value={`−${fmt(d.opt3Hold)}`} red />
+                  <div style={{ marginTop: 6 }}><CostLine label="Net to Seller:" value={`~${fmt(d.opt3Net)}`} bold blue /></div>
+                </div>
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: BLUE, marginBottom: 8 }}>Considerations</div>
+                  <ul style={{ margin: 0, paddingLeft: 16, fontSize: 13, lineHeight: 2, color: '#444' }}>
+                    <li>4–6 month timeline</li>
+                    <li>Full renovation required</li>
+                    <li>Project management &amp; coordination</li>
+                    <li>Market &amp; cost overrun risk</li>
+                  </ul>
+                </div>
               </div>
             </div>
           </div>
@@ -301,11 +309,11 @@ export default function ProposalModal({ property, onClose }) {
               </tr>
             </thead>
             <tbody>
-              <tr style={{ background: '#f0fdf4' }}>
-                <td style={{ padding: '10px 14px', fontWeight: 700, color: '#3B6D11', borderBottom: '1px solid #dde3eb' }}>✓ Cash Offer (Option 1)</td>
-                <td style={{ padding: '10px 14px', fontFamily: 'monospace', fontWeight: 700, color: '#3B6D11', borderBottom: '1px solid #dde3eb' }}>{fmt(d.cashOffer)}</td>
-                <td style={{ padding: '10px 14px', fontWeight: 700, color: '#3B6D11', borderBottom: '1px solid #dde3eb' }}>2–3 weeks</td>
-                <td style={{ padding: '10px 14px', fontWeight: 700, color: '#3B6D11', borderBottom: '1px solid #dde3eb' }}>Very Low</td>
+              <tr style={{ background: '#fff' }}>
+                <td style={{ padding: '10px 14px', fontWeight: 700, borderBottom: '1px solid #dde3eb' }}>Cash Offer (Option 1)</td>
+                <td style={{ padding: '10px 14px', fontFamily: 'monospace', borderBottom: '1px solid #dde3eb' }}>{fmt(d.cashOffer)}</td>
+                <td style={{ padding: '10px 14px', borderBottom: '1px solid #dde3eb' }}>2–3 weeks</td>
+                <td style={{ padding: '10px 14px', borderBottom: '1px solid #dde3eb' }}>Very Low</td>
               </tr>
               <tr style={{ background: '#fff' }}>
                 <td style={{ padding: '10px 14px', borderBottom: '1px solid #edf0f4' }}>As-Is Listing (Option 2)</td>
@@ -321,15 +329,6 @@ export default function ProposalModal({ property, onClose }) {
               </tr>
             </tbody>
           </table>
-
-          {/* Recommendation */}
-          <div style={{ fontSize: 15, fontWeight: 700, color: BLUE, marginBottom: 10 }}>Our Recommendation</div>
-          <p style={{ fontSize: 13, color: '#444', lineHeight: 1.75, marginBottom: 10 }}>
-            The Cash Offer is the cleanest path. While Option 2 looks higher on paper, that number assumes the home sells at full as-is value with no concessions, no extended holding, and no inspection issues — none of which are guaranteed. Option 3 requires you to take on contractor risk, market risk, and four to six months of carrying costs.
-          </p>
-          <p style={{ fontSize: 13, color: '#222', lineHeight: 1.75, fontWeight: 600, marginBottom: 28 }}>
-            With the cash offer, what you see is what you get: {fmt(d.cashOffer)}, in your hands, in 2–3 weeks. No surprises.
-          </p>
 
           {/* CTA */}
           <div style={{ borderTop: '1px solid #dde3eb', paddingTop: 20, textAlign: 'center', marginBottom: 24 }}>
