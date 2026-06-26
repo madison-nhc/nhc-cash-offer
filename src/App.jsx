@@ -5,54 +5,57 @@ import Flips from './pages/Flips.jsx'
 import Holds from './pages/Holds.jsx'
 import CashOfferCalculator from './pages/CashOfferCalculator.jsx'
 import PackageDeals from './pages/PackageDeals.jsx'
+import SavedOffers from './pages/SavedOffers.jsx'
 
 const TABS = [
-  { id: 'dashboard',    label: 'Dashboard',       icon: '◈' },
-  { id: 'mailings',     label: 'Mailing Tracker', icon: '✉' },
-  { id: 'flips',        label: 'Flips',           icon: '⟳' },
-  { id: 'holds',        label: 'Holds',           icon: '⌂' },
-  { id: 'calculator',   label: 'Cash Offer Calc', icon: '⊞' },
-  { id: 'packages',     label: 'Package Deals',   icon: '⊕' },
+  { id: 'dashboard',  label: 'Dashboard' },
+  { id: 'mailings',   label: 'Mailing Tracker' },
+  { id: 'flips',      label: 'Flips' },
+  { id: 'holds',      label: 'Holds' },
+  { id: 'calculator', label: 'Cash Offer Calc' },
+  { id: 'saved',      label: 'Saved Proposals' },
+  { id: 'packages',   label: 'Package Deals' },
 ]
-
-const NAV_H = 56
 
 export default function App() {
   const [active, setActive] = useState('dashboard')
+  const [loadedOffer, setLoadedOffer] = useState(null)
+
+  function handleLoadCalc(offer) {
+    setLoadedOffer(offer)
+    setActive('calculator')
+  }
 
   const pages = {
     dashboard:  <Dashboard onNavigate={setActive} />,
     mailings:   <MailingTracker />,
     flips:      <Flips />,
     holds:      <Holds />,
-    calculator: <CashOfferCalculator />,
+    calculator: <CashOfferCalculator key={loadedOffer?.id || 'new'} initialOffer={loadedOffer} />,
+    saved:      <SavedOffers onLoadCalc={handleLoadCalc} />,
     packages:   <PackageDeals />,
   }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
-      {/* Top nav */}
       <nav style={{
         position: 'sticky', top: 0, zIndex: 100,
-        height: NAV_H, background: '#fff',
-        borderBottom: `2px solid #B8892A`,
+        height: 56, background: '#fff',
+        borderBottom: '2px solid #B8892A',
         display: 'flex', alignItems: 'center', gap: 0,
         padding: '0 24px',
         boxShadow: '0 1px 4px rgba(0,0,0,0.06)'
       }}>
-        {/* Wordmark */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginRight: 28 }}>
           <div style={{
             width: 28, height: 28, borderRadius: '50%',
             background: '#2C2C2C', display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: 14, color: '#B8892A', fontWeight: 700, letterSpacing: 1
+            fontSize: 14, color: '#B8892A', fontWeight: 700
           }}>N</div>
           <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: 1.5, color: '#2C2C2C', whiteSpace: 'nowrap' }}>
             CASH OFFER HUB
           </span>
         </div>
-
-        {/* Tabs */}
         <div style={{ display: 'flex', gap: 2, overflowX: 'auto' }}>
           {TABS.map(t => (
             <button key={t.id} onClick={() => setActive(t.id)} style={{
@@ -69,8 +72,6 @@ export default function App() {
           ))}
         </div>
       </nav>
-
-      {/* Page */}
       <main style={{ flex: 1, overflow: 'auto' }}>
         {pages[active]}
       </main>

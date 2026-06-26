@@ -62,10 +62,41 @@ function calcOffers(fields, repairs, assumptions) {
 }
 
 // ─── Component ───────────────────────────────────────────────────────────────
-export default function CashOfferCalculator() {
-  const [fields, setFields] = useState({ address: '', beds: '', baths: '', sqft: '', arv: '', asisPct: '50', asisOverride: '', profitMargin: '15', profitOverride: '', cashOfferOverride: '' })
-  const [repairs, setRepairs] = useState(DEFAULT_REPAIRS.map((r, i) => ({ ...r, id: i })))
-  const [assumptions, setAssumptions] = useState(DEFAULT_ASSUMPTIONS)
+export default function CashOfferCalculator({ initialOffer = null }) {
+  const [fields, setFields] = useState(() => {
+    if (!initialOffer) return { address: '', beds: '', baths: '', sqft: '', arv: '', asisPct: '50', asisOverride: '', profitMargin: '15', profitOverride: '', cashOfferOverride: '' }
+    return {
+      address: initialOffer.address || '',
+      beds: initialOffer.beds || '',
+      baths: initialOffer.baths || '',
+      sqft: initialOffer.sqft || '',
+      arv: initialOffer.arv || '',
+      asisPct: initialOffer.asis_pct || '50',
+      asisOverride: initialOffer.asis_override || '',
+      profitMargin: initialOffer.profit_margin || '15',
+      profitOverride: initialOffer.profit_margin_override || '',
+      cashOfferOverride: initialOffer.cash_offer_override || '',
+    }
+  })
+  const [repairs, setRepairs] = useState(() => {
+    if (initialOffer?.repair_items?.length) {
+      return initialOffer.repair_items.map((r, i) => ({ ...r, id: i }))
+    }
+    return DEFAULT_REPAIRS.map((r, i) => ({ ...r, id: i }))
+  })
+  const [assumptions, setAssumptions] = useState(() => {
+    if (!initialOffer) return DEFAULT_ASSUMPTIONS
+    return {
+      commCash: parseFloat(initialOffer.commission_cash_pct) || 9,
+      commList: parseFloat(initialOffer.commission_list_pct) || 6,
+      holdCashPct: parseFloat(initialOffer.holding_cash_pct) || 0.75,
+      holdCashMonths: parseFloat(initialOffer.holding_cash_months) || 6,
+      holdOpt2Pct: parseFloat(initialOffer.holding_opt2_pct) || 0.5,
+      holdOpt2Months: parseFloat(initialOffer.holding_opt2_months) || 3,
+      holdOpt3Pct: parseFloat(initialOffer.holding_opt3_pct) || 0.5,
+      holdOpt3Months: parseFloat(initialOffer.holding_opt3_months) || 6,
+    }
+  })
   const [showAssumptions, setShowAssumptions] = useState(false)
   const [showCsvModal, setShowCsvModal] = useState(false)
   const [csvText, setCsvText] = useState('')
