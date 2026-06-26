@@ -66,6 +66,7 @@ export default function PackageDeals() {
   const [pkgDrawer, setPkgDrawer] = useState(null)
   const [propDrawer, setPropDrawer] = useState(null)
   const [expandedId, setExpandedId] = useState(null)
+  const [sortConfig, setSortConfig] = useState({}) // { [pkgId]: { key, dir } }
 
   useEffect(() => { load() }, [])
   async function load() {
@@ -109,7 +110,18 @@ export default function PackageDeals() {
       <SectionBar>All Packages ({packages.length})</SectionBar>
 
       {packages.length===0 ? <EmptyState icon="⊕" text="No package deals yet." /> : packages.map(pkg => {
-        const allProps  = properties.filter(pr=>pr.package_id===pkg.id).sort((a,b)=>{ const u=(parseInt(b.unit_count)||1)-(parseInt(a.unit_count)||1); return u!==0?u:(a.address||"").localeCompare(b.address||"") })
+        const sc = sortConfig[pkg.id] || { key:'unit_count', dir:'asc' }
+        const allProps  = properties
+          .filter(pr=>pr.package_id===pkg.id)
+          .sort((a,b)=>{
+            let av, bv
+            if (sc.key==='unit_count') { av=parseInt(a.unit_count)||1; bv=parseInt(b.unit_count)||1 }
+            else if (sc.key==='condition_rating') { av=parseInt(a.condition_rating)||0; bv=parseInt(b.condition_rating)||0 }
+            else if (sc.key==='address') { return sc.dir==='asc'?(a.address||'').localeCompare(b.address||''):(b.address||'').localeCompare(a.address||'') }
+            else { av=parseFloat(a[sc.key])||0; bv=parseFloat(b[sc.key])||0 }
+            const diff = sc.dir==='asc' ? av-bv : bv-av
+            return diff!==0 ? diff : (a.address||'').localeCompare(b.address||'')
+          })
         const active    = allProps.filter(pr=>!pr.excluded)
         const excluded  = allProps.filter(pr=>pr.excluded)
 
@@ -188,10 +200,28 @@ export default function PackageDeals() {
                   ? <div style={{ padding:16, textAlign:'center', color:'#9ca3af', fontSize:12 }}>No properties yet.</div>
                   : (
                     <table style={{ width:'100%', borderCollapse:'collapse' }}>
-                      <thead><tr style={{ background:'#fff' }}>
-                        {['','Address','Units','Condition','Purchase','Rehab','ARV','Curr Rent','Mkt Rent',''].map(h=>(
-                          <th key={h} style={{ padding:'7px 10px', textAlign:'left', fontSize:10, fontWeight:600, color:'#9ca3af', textTransform:'uppercase', whiteSpace:'nowrap' }}>{h}</th>
-                        ))}
+                      <thead><tr style={{ background:'#F0EDE6' }}>
+                        {[
+                          {label:'', key:null},
+                          {label:'Address', key:'address'},
+                          {label:'Units', key:'unit_count'},
+                          {label:'Condition', key:'condition_rating'},
+                          {label:'Purchase', key:'purchase_price'},
+                          {label:'Rehab', key:'rehab_cost'},
+                          {label:'ARV', key:'arv'},
+                          {label:'Curr Rent', key:'current_rent'},
+                          {label:'Mkt Rent', key:'market_rent'},
+                          {label:'', key:null},
+                        ].map(({label,key})=>{
+                          const sc2 = sortConfig[pkg.id]||{key:'unit_count',dir:'asc'}
+                          const active2 = sc2.key===key
+                          return (
+                            <th key={label} onClick={key?()=>setSortConfig(s=>({...s,[pkg.id]:{key,dir:s[pkg.id]?.key===key&&s[pkg.id]?.dir==='asc'?'desc':'asc'}})):undefined}
+                              style={{ padding:'7px 10px', textAlign:'left', fontSize:10, fontWeight:700, color:active2?'#B8892A':'#6b7280', textTransform:'uppercase', whiteSpace:'nowrap', cursor:key?'pointer':'default', userSelect:'none' }}>
+                              {label}{active2?(sc2.dir==='asc'?' ▲':' ▼'):(key?' ·':'')}
+                            </th>
+                          )
+                        })}
                       </tr></thead>
                       <tbody>
                         {allProps.map((pr,j)=>{
