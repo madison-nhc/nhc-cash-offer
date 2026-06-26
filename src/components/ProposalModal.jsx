@@ -24,7 +24,7 @@ export default function ProposalModal({ property, onClose }) {
   const repairs = (property.repair_items||[]).filter(r=>r.name||r.cost)
 
   const stripe = { height:14, margin:'5px 0 0', display:'flex' }
-  const pg = { background:'#fff', color:'#111', width:'100%', padding:'0.35in 0.45in', position:'relative', pageBreakAfter:'always', fontFamily:"'DM Sans', sans-serif" }
+  const pg = { background:'#fff', color:'#111', width:'100%', padding: typeof window !== 'undefined' && window.innerWidth < 768 ? '16px' : '0.35in 0.45in', position:'relative', pageBreakAfter:'always', fontFamily:"'DM Sans', sans-serif" }
   const optLine = { display:'flex', justifyContent:'space-between', fontSize:11.5, padding:'3px 0', borderBottom:'1px solid #f0f0f0' }
 
   return (
@@ -41,7 +41,7 @@ export default function ProposalModal({ property, onClose }) {
         </button>
       </div>
 
-      <div id="proposal-doc" style={{ maxWidth:'8.5in', margin:'0 auto' }}>
+      <div id="proposal-doc" style={{ maxWidth:'8.5in', margin:'0 auto', padding:'0 8px' }}>
 
         {/* PAGE 1 — Property & Repairs */}
         <div style={pg}>

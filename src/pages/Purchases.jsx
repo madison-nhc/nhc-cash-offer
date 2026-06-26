@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase.js'
+import { useIsMobile } from '../hooks/useIsMobile.js'
 import { PageWrap, SectionBar, Card, Btn, Badge, EmptyState, LoadingSpinner, StatCard, fmt, fmtK } from '../components/ui.jsx'
 import PropertyDrawer from '../components/PropertyDrawer.jsx'
 
 export default function Purchases() {
+  const mobile = useIsMobile()
   const [properties, setProperties] = useState([])
   const [mailings, setMailings] = useState([])
   const [loading, setLoading] = useState(true)
@@ -38,7 +40,7 @@ export default function Purchases() {
   if (loading) return <LoadingSpinner />
 
   return (
-    <PageWrap>
+    <PageWrap pad={!mobile}>
       <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:20 }}>
         <div>
           <h1 style={{ fontSize:20, fontWeight:700, color:'#2C2C2C' }}>Purchases</h1>
@@ -47,7 +49,7 @@ export default function Purchases() {
       </div>
 
       {/* Reporting */}
-      <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:12, marginBottom:20 }}>
+      <div style={{ display:'grid', gridTemplateColumns: mobile ? 'repeat(2,1fr)' : 'repeat(4,1fr)', gap:12, marginBottom:20 }}>
         <StatCard label="Total Properties" value={properties.length} topColor="#B8892A" />
         <StatCard label="Pipeline" value={pipeline} sub="not yet sold" topColor="#2D6FAF" />
         <StatCard label="Closed" value={closed} topColor="#3B6D11" />
@@ -67,7 +69,7 @@ export default function Purchases() {
 
       {filtered.length===0 ? <EmptyState icon="○" text="No purchased properties yet. Mark a property as Purchased in the Analyzer." /> : (
         <Card style={{ padding:0 }}>
-          <table style={{ width:'100%', borderCollapse:'collapse' }}>
+          <table style={{ width:'100%', borderCollapse:'collapse', minWidth: mobile ? 0 : 600 }}>
             <thead><tr style={{ background:'#F0EDE6' }}>
               {['Address','Status','Type','Purchase Price','ARV','NHC Commission','Source Campaign','Purchase Date'].map(h=>(
                 <th key={h} style={{ padding:'8px 14px', textAlign:'left', fontSize:11, fontWeight:600, letterSpacing:0.8, color:'#6b7280', textTransform:'uppercase', whiteSpace:'nowrap' }}>{h}</th>

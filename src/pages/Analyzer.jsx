@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase.js'
+import { useIsMobile } from '../hooks/useIsMobile.js'
 import { PageWrap, SectionBar, Card, Btn, Badge, EmptyState, LoadingSpinner, StatCard, fmt, fmtK } from '../components/ui.jsx'
 import PropertyDrawer from '../components/PropertyDrawer.jsx'
 import ProposalModal from '../components/ProposalModal.jsx'
@@ -26,6 +27,7 @@ function calcCashOffer(p) {
 }
 
 export default function Analyzer() {
+  const mobile = useIsMobile()
   const [tab, setTab] = useState('properties')
   const [properties, setProperties] = useState([])
   const [mailings, setMailings] = useState([])
@@ -68,7 +70,7 @@ export default function Analyzer() {
   if (loading) return <LoadingSpinner />
 
   return (
-    <PageWrap>
+    <PageWrap pad={!mobile}>
       <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:20 }}>
         <div>
           <h1 style={{ fontSize:20, fontWeight:700, color:'#2C2C2C' }}>Property Analyzer</h1>
@@ -88,7 +90,7 @@ export default function Analyzer() {
 
       {tab==='properties' && (<>
         {/* Stats */}
-        <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:12, marginBottom:20 }}>
+        <div style={{ display:'grid', gridTemplateColumns: mobile ? 'repeat(2,1fr)' : 'repeat(4,1fr)', gap:12, marginBottom:20 }}>
           <StatCard label="Total Properties" value={properties.length} topColor="#B8892A" />
           <StatCard label="Active Pipeline" value={active.length} topColor="#2D6FAF" />
           <StatCard label="NHC Commission" value={fmtK(totalComm)} sub="all closed" topColor="#3B6D11" />
@@ -111,7 +113,7 @@ export default function Analyzer() {
 
         {filtered.length===0 ? <EmptyState icon="○" text="No properties yet. Add your first." /> : (
           <Card style={{ padding:0 }}>
-            <table style={{ width:'100%', borderCollapse:'collapse' }}>
+            <table style={{ width:'100%', borderCollapse:'collapse', minWidth: mobile ? 0 : 600 }}>
               <thead>
                 <tr style={{ background:'#F0EDE6' }}>
                   {['Address','Status','ARV','Cash Offer','Repairs','NHC Comm','BPV Type','Updated',''].map(h=>(

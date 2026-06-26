@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase.js'
+import { useIsMobile } from '../hooks/useIsMobile.js'
 import { PageWrap, SectionBar, Card, Btn, Badge, EmptyState, LoadingSpinner, StatCard, fmt, fmtK } from '../components/ui.jsx'
 import PropertyDrawer from '../components/PropertyDrawer.jsx'
 
 export default function Flips() {
+  const mobile = useIsMobile()
   const [properties, setProperties] = useState([])
   const [mailings, setMailings] = useState([])
   const [loading, setLoading] = useState(true)
@@ -39,7 +41,7 @@ export default function Flips() {
   if (loading) return <LoadingSpinner />
 
   return (
-    <PageWrap>
+    <PageWrap pad={!mobile}>
       <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:20 }}>
         <div>
           <h1 style={{ fontSize:20, fontWeight:700, color:'#2C2C2C' }}>Flips</h1>
@@ -48,7 +50,7 @@ export default function Flips() {
       </div>
 
       {/* Reporting */}
-      <div style={{ display:'grid', gridTemplateColumns:'repeat(5,1fr)', gap:12, marginBottom:20 }}>
+      <div style={{ display:'grid', gridTemplateColumns: mobile ? 'repeat(2,1fr)' : 'repeat(5,1fr)', gap:12, marginBottom:20 }}>
         <StatCard label="Active Flips" value={active.length} topColor="#D97825" />
         <StatCard label="Completed" value={completed.length} topColor="#3B6D11" />
         <StatCard label="Total BPV Profit" value={fmtK(totalProfit)} sub="all completed" topColor={totalProfit>=0?'#3B6D11':'#B91C1C'} />
@@ -67,7 +69,7 @@ export default function Flips() {
 
       {filtered.length===0 ? <EmptyState icon="⟳" text="No flip properties yet. Add one in the Analyzer and set Investment Type to Flip." /> : (
         <Card style={{ padding:0 }}>
-          <table style={{ width:'100%', borderCollapse:'collapse' }}>
+          <table style={{ width:'100%', borderCollapse:'collapse', minWidth: mobile ? 0 : 600 }}>
             <thead><tr style={{ background:'#F0EDE6' }}>
               {['Address','Purchase','Closing','Rehab','Total Cost','ARV','Sale Price','BPV Profit','ROI','DOM','Purchase Date'].map(h=>(
                 <th key={h} style={{ padding:'8px 12px', textAlign:'left', fontSize:11, fontWeight:600, letterSpacing:0.8, color:'#6b7280', textTransform:'uppercase', whiteSpace:'nowrap' }}>{h}</th>

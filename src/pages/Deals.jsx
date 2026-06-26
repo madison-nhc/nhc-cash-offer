@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase.js'
+import { useIsMobile } from '../hooks/useIsMobile.js'
 import { PageWrap, SectionBar, Card, Field, FieldRow, inp, monoInp, Btn, Badge, EmptyState, LoadingSpinner, StatCard, fmt, fmtK } from '../components/ui.jsx'
 import Drawer from '../components/Drawer.jsx'
 import AddressInput from '../components/AddressInput.jsx'
@@ -11,6 +12,7 @@ const STATUS_LABELS = { active_listing:'Active', pending:'Pending', closed:'Clos
 const EMPTY = { address:'', deal_type:'listing', status:'active_listing', sale_price:'', commission_pct:'', commission_earned:'', mailing_id:'', notes:'' }
 
 export default function Deals() {
+  const mobile = useIsMobile()
   const [deals, setDeals] = useState([])
   const [mailings, setMailings] = useState([])
   const [loading, setLoading] = useState(true)
@@ -48,7 +50,7 @@ export default function Deals() {
   if (loading) return <LoadingSpinner />
 
   return (
-    <PageWrap>
+    <PageWrap pad={!mobile}>
       <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:20 }}>
         <div>
           <h1 style={{ fontSize:20, fontWeight:700, color:'#2C2C2C' }}>Deals</h1>
@@ -58,7 +60,7 @@ export default function Deals() {
       </div>
 
       {/* Reporting */}
-      <div style={{ display:'grid', gridTemplateColumns:'repeat(5,1fr)', gap:12, marginBottom:20 }}>
+      <div style={{ display:'grid', gridTemplateColumns: mobile ? 'repeat(2,1fr)' : 'repeat(5,1fr)', gap:12, marginBottom:20 }}>
         <StatCard label="Total Deals" value={deals.length} topColor="#B8892A" />
         <StatCard label="Pipeline" value={pipeline.length} sub="active + pending" topColor="#2D6FAF" />
         <StatCard label="Closed" value={closed.length} topColor="#3B6D11" />
@@ -67,7 +69,7 @@ export default function Deals() {
       </div>
 
       {/* Type breakdown */}
-      <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:10, marginBottom:20 }}>
+      <div style={{ display:'grid', gridTemplateColumns: mobile ? '1fr' : 'repeat(3,1fr)', gap:10, marginBottom:20 }}>
         {[['listing','Listings',listings.length,'#3B6D11'],['wholesale','Wholesales',wholesales.length,'#6b21a8'],['referral','Referrals',deals.filter(d=>d.deal_type==='referral').length,'#2D6FAF']].map(([t,l,c,color])=>(
           <div key={t} onClick={()=>setTypeFilter(typeFilter===t?'all':t)} style={{ background:'#fff', borderRadius:8, border:`2px solid ${typeFilter===t?color:'#D6D2CA'}`, padding:'10px 14px', cursor:'pointer', transition:'all 0.15s' }}>
             <div style={{ fontSize:11, fontWeight:600, letterSpacing:1, color:typeFilter===t?color:'#6b7280', textTransform:'uppercase' }}>{l}</div>
@@ -89,7 +91,7 @@ export default function Deals() {
 
       {filtered.length===0 ? <EmptyState icon="○" text="No deals yet. Add your first listing, wholesale or referral." /> : (
         <Card style={{ padding:0 }}>
-          <table style={{ width:'100%', borderCollapse:'collapse' }}>
+          <table style={{ width:'100%', borderCollapse:'collapse', minWidth: mobile ? 0 : 600 }}>
             <thead><tr style={{ background:'#F0EDE6' }}>
               {['Address','Type','Status','Sale Price','Commission','Source Campaign','Notes'].map(h=>(
                 <th key={h} style={{ padding:'8px 14px', textAlign:'left', fontSize:11, fontWeight:600, letterSpacing:0.8, color:'#6b7280', textTransform:'uppercase', whiteSpace:'nowrap' }}>{h}</th>

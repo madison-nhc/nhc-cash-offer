@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase.js'
+import { useIsMobile } from '../hooks/useIsMobile.js'
 import { PageWrap, SectionBar, Card, EmptyState, LoadingSpinner, StatCard, fmt, fmtK } from '../components/ui.jsx'
 import PropertyDrawer from '../components/PropertyDrawer.jsx'
 
 export default function Holds() {
+  const mobile = useIsMobile()
   const [properties, setProperties] = useState([])
   const [income, setIncome] = useState([])
   const [mailings, setMailings] = useState([])
@@ -34,7 +36,7 @@ export default function Holds() {
   if (loading) return <LoadingSpinner />
 
   return (
-    <PageWrap>
+    <PageWrap pad={!mobile}>
       <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:20 }}>
         <div>
           <h1 style={{ fontSize:20, fontWeight:700, color:'#2C2C2C' }}>Holds</h1>
@@ -43,7 +45,7 @@ export default function Holds() {
       </div>
 
       {/* Reporting */}
-      <div style={{ display:'grid', gridTemplateColumns:'repeat(5,1fr)', gap:12, marginBottom:20 }}>
+      <div style={{ display:'grid', gridTemplateColumns: mobile ? 'repeat(2,1fr)' : 'repeat(5,1fr)', gap:12, marginBottom:20 }}>
         <StatCard label="Active Holds" value={properties.filter(p=>p.status==='active').length} topColor="#2D6FAF" />
         <StatCard label="Total Rent Collected" value={fmtK(totalRent)} sub="all time" topColor="#3B6D11" />
         <StatCard label="Total Expenses" value={fmtK(totalExp)} sub="all time" topColor="#D97825" />
@@ -89,7 +91,7 @@ export default function Holds() {
               {/* Income history */}
               {propIncome.length>0 && (
                 <div style={{ borderTop:'1px solid #F0EDE6' }}>
-                  <table style={{ width:'100%', borderCollapse:'collapse' }}>
+                  <table style={{ width:'100%', borderCollapse:'collapse', minWidth: mobile ? 0 : 600 }}>
                     <thead><tr style={{ background:'#F0EDE6' }}>
                       {['Month','Rent','Expenses','Net','Notes'].map(h=><th key={h} style={{ padding:'5px 14px', textAlign:'left', fontSize:10, fontWeight:600, color:'#9ca3af', textTransform:'uppercase' }}>{h}</th>)}
                     </tr></thead>

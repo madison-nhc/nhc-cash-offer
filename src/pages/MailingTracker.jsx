@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase.js'
+import { useIsMobile } from '../hooks/useIsMobile.js'
 import { PageWrap, SectionBar, Card, Field, FieldRow, inp, monoInp, Btn, Badge, EmptyState, LoadingSpinner, StatCard, fmt, fmtK } from '../components/ui.jsx'
 import Drawer from '../components/Drawer.jsx'
 import AddressInput from '../components/AddressInput.jsx'
@@ -9,6 +10,7 @@ const STATUS_COLORS = { active_listing:'#2D6FAF', pending:'#D97825', closed:'#3B
 const EMPTY_MAILING = { campaign_name:'', drop_date:'', list_size:'', piece_type:'Postcard', mailer_cost:'', calls_total:'', calls_answered:'', calls_missed:'', listings_sourced:'', purchased:'', wholesaled:'', notes:'' }
 
 export default function MailingTracker() {
+  const mobile = useIsMobile()
   const [mailings, setMailings] = useState([])
   const [loading, setLoading] = useState(true)
   const [campaignDrawer, setCampaignDrawer] = useState(null)
@@ -35,7 +37,7 @@ export default function MailingTracker() {
   if (loading) return <LoadingSpinner />
 
   return (
-    <PageWrap>
+    <PageWrap pad={!mobile}>
       <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:20 }}>
         <div>
           <h1 style={{ fontSize:20, fontWeight:700, color:'#2C2C2C' }}>Mailing Tracker</h1>
@@ -46,7 +48,7 @@ export default function MailingTracker() {
         </div>
       </div>
 
-      <div style={{ display:'grid', gridTemplateColumns:'repeat(7,1fr)', gap:10, marginBottom:20 }}>
+      <div style={{ display:'grid', gridTemplateColumns: mobile ? 'repeat(2,1fr)' : 'repeat(7,1fr)', gap:10, marginBottom:20 }}>
         <StatCard label="Total Pieces" value={totalPieces.toLocaleString()} topColor="#B8892A" />
         <StatCard label="Total Spend" value={totalSpend>0?fmtK(totalSpend):'—'} topColor="#D97825" />
         <StatCard label="Total Calls" value={totalCalls.toLocaleString()} topColor="#2D6FAF" />
@@ -60,7 +62,7 @@ export default function MailingTracker() {
         <>
           <SectionBar>Mailing Campaigns ({mailings.length})</SectionBar>
           {mailings.length===0 ? <EmptyState icon="✉" text="No campaigns yet." /> : (
-            <Card style={{ padding:0, overflowX:'auto' }}>
+            <Card style={{ padding:0 }}><div style={{ overflowX:'auto', WebkitOverflowScrolling:'touch' }}>
               <table style={{ width:'100%', borderCollapse:'collapse', minWidth:900 }}>
                 <thead>
                   <tr style={{ background:'#2C2C2C' }}>
@@ -110,6 +112,7 @@ export default function MailingTracker() {
                   </tr>
                 </tfoot>
               </table>
+            </div>
             </Card>
           )}
         </>
@@ -120,7 +123,7 @@ export default function MailingTracker() {
           <SectionBar>Deals Sourced ({deals.length})</SectionBar>
           {deals.length===0 ? <EmptyState icon="○" text="No deals yet." /> : (
             <Card style={{ padding:0 }}>
-              <table style={{ width:'100%', borderCollapse:'collapse' }}>
+              <table style={{ width:'100%', borderCollapse:'collapse', minWidth: mobile ? 0 : 600 }}>
                 <thead>
                   <tr style={{ background:'#F0EDE6' }}>
                     {['Address','Type','Status','Sale Price','Commission','Source Campaign'].map(h=>(

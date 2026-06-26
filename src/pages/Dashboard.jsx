@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase.js'
+import { useIsMobile } from '../hooks/useIsMobile.js'
 import { PageWrap, Card, SectionBar, fmt, fmtK, Badge } from '../components/ui.jsx'
 
 const STATUS_COLORS = {
@@ -30,6 +31,7 @@ function ClickCard({ label, value, sub, topColor = '#B8892A', onClick }) {
 }
 
 export default function Dashboard({ onNavigate }) {
+  const mobile = useIsMobile()
   const [stats, setStats] = useState(null)
   const [recent, setRecent] = useState([])
 
@@ -111,14 +113,14 @@ export default function Dashboard({ onNavigate }) {
   const TYPE_COLORS = { property:'#B8892A', flip:'#D97825', hold:'#2D6FAF', 'mailing deal':'#3B6D11' }
 
   return (
-    <PageWrap>
+    <PageWrap pad={!mobile}>
       <div style={{ marginBottom:24 }}>
         <h1 style={{ fontSize:22, fontWeight:700, color:'#2C2C2C', marginBottom:4 }}>NHC Command Center</h1>
         <p style={{ fontSize:13, color:'#6b7280' }}>New Home Collective · BE Property Ventures</p>
       </div>
 
       {/* P&L Banner */}
-      <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:12, marginBottom:24, padding:'16px 20px', background:'#2C2C2C', borderRadius:10 }}>
+      <div style={{ display:'grid', gridTemplateColumns: mobile ? '1fr' : '1fr 1fr 1fr', gap:12, marginBottom:24, padding: mobile ? '14px 16px' : '16px 20px', background:'#2C2C2C', borderRadius:10 }}>
         {[
           ['NHC Commission', fmtK(stats?.nhcComm), 'all properties', '#B8892A'],
           ['BPV Flip Profit', fmtK(stats?.bpvProfit), `${stats?.soldFlips||0} completed flips`, stats?.bpvProfit >= 0 ? '#3B6D11' : '#B91C1C'],
@@ -134,7 +136,7 @@ export default function Dashboard({ onNavigate }) {
 
       {/* Analyzer */}
       <SectionBar>Analyzer</SectionBar>
-      <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:12, marginTop:12, marginBottom:20 }}>
+      <div style={{ display:'grid', gridTemplateColumns: mobile ? '1fr' : 'repeat(3,1fr)', gap:12, marginTop:12, marginBottom:20 }}>
         <ClickCard label="Total Properties" value={stats?.totalAnalyzed ?? '—'} topColor="#B8892A" onClick={()=>onNavigate('analyzer')} />
         <ClickCard label="Active Pipeline" value={stats?.pipeline ?? '—'} sub="not sold or passed" topColor="#2D6FAF" onClick={()=>onNavigate('analyzer')} />
         <ClickCard label="Analyzing" value={stats?.analyzing ?? '—'} sub="awaiting offer" topColor="#D97825" onClick={()=>onNavigate('analyzer')} />
@@ -142,7 +144,7 @@ export default function Dashboard({ onNavigate }) {
 
       {/* Investments */}
       <SectionBar>Investments</SectionBar>
-      <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:12, marginTop:12, marginBottom:20 }}>
+      <div style={{ display:'grid', gridTemplateColumns: mobile ? 'repeat(2,1fr)' : 'repeat(4,1fr)', gap:12, marginTop:12, marginBottom:20 }}>
         <ClickCard label="Active Flips" value={stats?.flips ?? '—'} topColor="#D97825" onClick={()=>onNavigate('flips')} />
         <ClickCard label="Completed Flips" value={stats?.soldFlips ?? '—'} topColor="#3B6D11" onClick={()=>onNavigate('flips')} />
         <ClickCard label="Active Holds" value={stats?.holds ?? '—'} topColor="#2D6FAF" onClick={()=>onNavigate('holds')} />
@@ -151,7 +153,7 @@ export default function Dashboard({ onNavigate }) {
 
       {/* Mailing */}
       <SectionBar>Mailing Tracker</SectionBar>
-      <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:12, marginTop:12, marginBottom:20 }}>
+      <div style={{ display:'grid', gridTemplateColumns: mobile ? 'repeat(2,1fr)' : 'repeat(4,1fr)', gap:12, marginTop:12, marginBottom:20 }}>
         <ClickCard label="Mailers Sent" value={stats?.totalPieces?.toLocaleString() ?? '—'} topColor="#B8892A" onClick={()=>onNavigate('mailings')} />
         <ClickCard label="Total Spend" value={stats?.totalSpend ? fmtK(stats.totalSpend) : '—'} topColor="#D97825" onClick={()=>onNavigate('mailings')} />
         <ClickCard label="Deals Closed" value={stats?.mdClosed ?? '—'} topColor="#3B6D11" onClick={()=>onNavigate('mailings')} />
@@ -173,7 +175,7 @@ export default function Dashboard({ onNavigate }) {
             {recent.map((item, i) => (
               <div key={i} onClick={()=>onNavigate(item.dest)} style={{
                 display:'flex', alignItems:'center', justifyContent:'space-between',
-                padding:'11px 16px', cursor:'pointer',
+                padding: mobile ? '13px 14px' : '11px 16px', cursor:'pointer',
                 borderBottom: i < recent.length-1 ? '1px solid #F0EDE6' : 'none',
                 transition:'background 0.1s'
               }}

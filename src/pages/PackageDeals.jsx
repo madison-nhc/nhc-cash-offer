@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase.js'
+import { useIsMobile } from '../hooks/useIsMobile.js'
 import { PageWrap, SectionBar, Card, Field, FieldRow, inp, monoInp, Btn, Badge, EmptyState, LoadingSpinner, fmt, fmtK } from '../components/ui.jsx'
 import Drawer from '../components/Drawer.jsx'
 import AddressInput from '../components/AddressInput.jsx'
@@ -52,6 +53,7 @@ function ConditionDisplay({ rating }) {
 }
 
 export default function PackageDeals() {
+  const mobile = useIsMobile()
   const [packages, setPackages] = useState([])
   const [properties, setProperties] = useState([])
   const [loading, setLoading] = useState(true)
@@ -172,7 +174,7 @@ export default function PackageDeals() {
             {isExpanded && (
               <div style={{ borderTop:'1px solid #F0EDE6' }}>
                 {/* Financials bar */}
-                <div style={{ display:'grid', gridTemplateColumns:'repeat(6,1fr)', background:'#FAFAF8', borderBottom:'1px solid #F0EDE6' }}>
+                <div style={{ display:'grid', gridTemplateColumns: mobile ? 'repeat(3,1fr)' : 'repeat(6,1fr)', background:'#FAFAF8', borderBottom:'1px solid #F0EDE6' }}>
                   {[
                     ['Total Purchase', fmtK(calcPurch), '#B8892A'],
                     ['Total Rehab',    fmtK(calcRehab), '#2D6FAF'],

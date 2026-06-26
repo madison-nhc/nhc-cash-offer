@@ -1,6 +1,8 @@
 import { useEffect } from 'react'
 
 export default function Drawer({ open, onClose, title, subtitle, children, width = 520 }) {
+  const isMobile = typeof window !== 'undefined' && window.innerWidth < 768
+  const actualWidth = isMobile ? '100vw' : width
   // Lock scroll when open
   useEffect(() => {
     if (open) document.body.style.overflow = 'hidden'
@@ -28,11 +30,12 @@ export default function Drawer({ open, onClose, title, subtitle, children, width
       {/* Drawer panel */}
       <div style={{
         position: 'fixed', top: 0, right: 0, bottom: 0,
-        width, maxWidth: '100vw',
+        width: actualWidth, maxWidth: '100vw',
         background: '#fff', zIndex: 201,
         boxShadow: '-4px 0 32px rgba(0,0,0,0.15)',
         display: 'flex', flexDirection: 'column',
-        borderLeft: '3px solid #B8892A',
+        borderLeft: isMobile ? 'none' : '3px solid #B8892A',
+        borderTop: isMobile ? '3px solid #B8892A' : 'none',
         animation: 'slideIn 0.22s ease-out'
       }}>
         <style>{`
