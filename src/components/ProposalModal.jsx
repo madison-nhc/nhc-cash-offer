@@ -18,16 +18,11 @@ function calcOffers(p) {
   return { arv, reno, cashOffer, asisVal, opt2Net, opt3Net, profit, profitPct, commCash, commList, asisDisc, cashHold, opt2Hold, opt3Hold }
 }
 
-// NHC logo — SVG inline so it works without a file server and prints cleanly
+// NHC logo from public folder
 function NHCLogo({ height = 48 }) {
   return (
-    <div style={{ display:'flex', alignItems:'center', gap:12 }}>
-      {/* Circle icon placeholder — replace src with actual logo once uploaded */}
-      <div style={{ width:height, height:height, borderRadius:'50%', background:'#1a1e2e', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-        <svg width={height*0.55} height={height*0.55} viewBox="0 0 40 40" fill="none">
-          <text x="50%" y="72%" textAnchor="middle" fontSize="22" fontWeight="800" fill="#B8892A" fontFamily="'DM Sans',sans-serif">N</text>
-        </svg>
-      </div>
+    <div style={{ display:'flex', alignItems:'center', gap:14 }}>
+      <img src="/nhc-logo.svg" alt="NHC" style={{ height:height, width:height, objectFit:'contain', flexShrink:0 }} />
       <div>
         <div style={{ fontSize:20, fontWeight:800, color:'#1a1e2e', letterSpacing:1, lineHeight:1.1 }}>NEW HOME COLLECTIVE</div>
         <div style={{ fontSize:11, color:'#888', fontStyle:'italic', marginTop:1 }}>Real Estate Solutions · Fast, Fair, Honest</div>

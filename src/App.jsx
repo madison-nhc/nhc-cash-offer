@@ -48,7 +48,7 @@ export default function App() {
       }}>
         {/* Logo row */}
         <div style={{ display:'flex', alignItems:'center', padding: mobile ? '0 12px' : '0 24px', height:48, gap:10 }}>
-          <div style={{ width:26, height:26, borderRadius:'50%', background:'#2C2C2C', display:'flex', alignItems:'center', justifyContent:'center', fontSize:13, color:'#B8892A', fontWeight:700, flexShrink:0 }}>N</div>
+          <img src="/nhc-logo.svg" alt="NHC" style={{ width:28, height:28, objectFit:'contain', flexShrink:0 }} />
           {!mobile && <span style={{ fontSize:12, fontWeight:700, letterSpacing:1.5, color:'#2C2C2C', whiteSpace:'nowrap' }}>CASH OFFER HUB</span>}
 
           {/* Desktop tabs inline */}
