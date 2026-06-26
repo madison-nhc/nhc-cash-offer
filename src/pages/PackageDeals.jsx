@@ -1,13 +1,13 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase.js'
-import { PageWrap, SectionBar, Card, Field, FieldRow, inp, monoInp, Btn, Badge, EmptyState, LoadingSpinner, StatCard, fmt, fmtK } from '../components/ui.jsx'
+import { PageWrap, SectionBar, Card, Field, FieldRow, inp, monoInp, Btn, Badge, EmptyState, LoadingSpinner, fmt, fmtK } from '../components/ui.jsx'
 import Drawer from '../components/Drawer.jsx'
 
 const STATUS_COLORS = { analyzing:'#B8892A', active:'#2D6FAF', closed:'#3B6D11', passed:'#6b7280' }
 const UNIT_COLORS   = { 1:'#3B6D11', 2:'#2D6FAF', 3:'#D97825', 4:'#B8892A', 5:'#6b21a8' }
 const UNIT_LABELS   = { 1:'SFR', 2:'Duplex', 3:'Triplex', 4:'Quad' }
 const EMPTY_PKG  = { deal_name:'', status:'analyzing', total_arv:'', total_purchase:'', total_rehab:'', notes:'' }
-const EMPTY_PROP = { address:'', arv:'', purchase_price:'', rehab_cost:'', unit_count:1, monthly_rent:'', current_rent:'', market_rent:'', condition_rating:null, property_type:'hold', notes:'', excluded:false }
+const EMPTY_PROP = { address:'', arv:'', purchase_price:'', closing_costs:'', rehab_cost:'', unit_count:1, current_rent:'', market_rent:'', condition_rating:null, property_type:'hold', notes:'', excluded:false, purchased:false, purchased_date:'' }
 
 function UnitPicker({ value, onChange }) {
   return (
@@ -29,34 +29,25 @@ function UnitPicker({ value, onChange }) {
 function UnitBadge({ n }) {
   const num = parseInt(n)||1
   const color = UNIT_COLORS[Math.min(num,5)]||'#6b21a8'
-  const label = num===1?'SFR':num===2?'Duplex':num===3?'Triplex':num===4?'Quad':`${num} units`
-  return <span style={{ display:'inline-block', padding:'2px 7px', borderRadius:4, fontSize:10, fontWeight:700, letterSpacing:0.5, background:color+'18', color, border:`1px solid ${color}40` }}>{label}</span>
+  const label = num===1?'SFR':num===2?'Duplex':num===3?'Triplex':num===4?'Quad':`${num}u`
+  return <span style={{ display:'inline-block', padding:'2px 7px', borderRadius:4, fontSize:10, fontWeight:700, letterSpacing:0.5, background:color+'18', color, border:`1px solid ${color}40`, whiteSpace:'nowrap' }}>{label}</span>
 }
 
 function ConditionStars({ rating, onChange }) {
   return (
-    <div style={{ display:'flex', gap:4 }}>
+    <div style={{ display:'flex', gap:3, alignItems:'center' }}>
       {[1,2,3,4,5].map(n => (
-        <button key={n} onClick={()=>onChange(n===rating?null:n)} style={{
-          background:'none', border:'none', cursor:'pointer', fontSize:18, padding:'2px',
-          color: n<=(rating||0) ? '#B8892A' : '#D6D2CA',
-          transition:'color 0.1s'
-        }}>★</button>
+        <button key={n} onClick={()=>onChange(n===rating?null:n)} style={{ background:'none', border:'none', cursor:'pointer', fontSize:18, padding:'1px', color:n<=(rating||0)?'#B8892A':'#D6D2CA', transition:'color 0.1s', lineHeight:1 }}>★</button>
       ))}
-      {rating && <span style={{ fontSize:11, color:'#6b7280', alignSelf:'center', marginLeft:2 }}>{['','Poor','Fair','Average','Good','Excellent'][rating]}</span>}
+      {rating && <span style={{ fontSize:11, color:'#6b7280', marginLeft:4 }}>{['','Poor','Fair','Average','Good','Excellent'][rating]}</span>}
     </div>
   )
 }
 
 function ConditionDisplay({ rating }) {
-  if (!rating) return <span style={{ color:'#9ca3af', fontSize:12 }}>—</span>
-  const labels = ['','Poor','Fair','Average','Good','Excellent']
+  if (!rating) return <span style={{ color:'#D6D2CA', fontSize:12 }}>☆☆☆☆☆</span>
   const colors = ['','#B91C1C','#D97825','#B8892A','#2D6FAF','#3B6D11']
-  return (
-    <span style={{ fontSize:12, fontWeight:600, color:colors[rating] }}>
-      {'★'.repeat(rating)}{'☆'.repeat(5-rating)} <span style={{ fontSize:11 }}>{labels[rating]}</span>
-    </span>
-  )
+  return <span style={{ fontSize:12, color:colors[rating], letterSpacing:1 }}>{'★'.repeat(rating)}{'☆'.repeat(5-rating)}</span>
 }
 
 export default function PackageDeals() {
@@ -66,7 +57,7 @@ export default function PackageDeals() {
   const [pkgDrawer, setPkgDrawer] = useState(null)
   const [propDrawer, setPropDrawer] = useState(null)
   const [expandedId, setExpandedId] = useState(null)
-  const [sortConfig, setSortConfig] = useState({}) // { [pkgId]: { key, dir } }
+  const [sortConfig, setSortConfig] = useState({})
 
   useEffect(() => { load() }, [])
   async function load() {
@@ -85,8 +76,12 @@ export default function PackageDeals() {
     load()
   }
 
-  const totalUnits = properties.filter(p=>!p.excluded).reduce((s,p)=>s+(parseInt(p.unit_count)||1),0)
-  const totalRent  = properties.filter(p=>!p.excluded).reduce((s,p)=>s+(parseFloat(p.market_rent||p.monthly_rent)||0),0)
+  async function markPurchased(pr) {
+    await supabase.from('package_deal_properties').update({ purchased: true, purchased_date: new Date().toISOString().split('T')[0] }).eq('id', pr.id)
+    // Also add to mailing_deals as a purchased deal
+    await supabase.from('mailing_deals').insert({ address: pr.address, deal_type: 'cash_purchase', status: 'closed', purchase_price: pr.purchase_price, notes: `From package deal. ${pr.notes||''}`.trim(), entity: 'NHC' })
+    load()
+  }
 
   if (loading) return <LoadingSpinner />
 
@@ -100,51 +95,55 @@ export default function PackageDeals() {
         <Btn onClick={()=>setPkgDrawer({...EMPTY_PKG})}>+ New Package</Btn>
       </div>
 
-      <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:12, marginBottom:20 }}>
-        <StatCard label="Total Packages" value={packages.length} topColor="#6b21a8" />
-        <StatCard label="Active / Analyzing" value={packages.filter(p=>p.status==='analyzing'||p.status==='active').length} topColor="#B8892A" />
-        <StatCard label="Active Units" value={totalUnits.toLocaleString()} sub="excluded properties removed" topColor="#2D6FAF" />
-        <StatCard label="Market Rent (active)" value={fmtK(totalRent)} sub="per month" topColor="#3B6D11" />
-      </div>
-
       <SectionBar>All Packages ({packages.length})</SectionBar>
 
       {packages.length===0 ? <EmptyState icon="⊕" text="No package deals yet." /> : packages.map(pkg => {
         const sc = sortConfig[pkg.id] || { key:'unit_count', dir:'asc' }
-        const allProps  = properties
+
+        const allProps = properties
           .filter(pr=>pr.package_id===pkg.id)
           .sort((a,b)=>{
             let av, bv
-            if (sc.key==='unit_count') { av=parseInt(a.unit_count)||1; bv=parseInt(b.unit_count)||1 }
+            if (sc.key==='unit_count')        { av=parseInt(a.unit_count)||1;        bv=parseInt(b.unit_count)||1 }
             else if (sc.key==='condition_rating') { av=parseInt(a.condition_rating)||0; bv=parseInt(b.condition_rating)||0 }
-            else if (sc.key==='address') { return sc.dir==='asc'?(a.address||'').localeCompare(b.address||''):(b.address||'').localeCompare(a.address||'') }
-            else { av=parseFloat(a[sc.key])||0; bv=parseFloat(b[sc.key])||0 }
+            else if (sc.key==='address')      { return sc.dir==='asc'?(a.address||'').localeCompare(b.address||''):(b.address||'').localeCompare(a.address||'') }
+            else                              { av=parseFloat(a[sc.key])||0;          bv=parseFloat(b[sc.key])||0 }
             const diff = sc.dir==='asc' ? av-bv : bv-av
             return diff!==0 ? diff : (a.address||'').localeCompare(b.address||'')
           })
-        const active    = allProps.filter(pr=>!pr.excluded)
-        const excluded  = allProps.filter(pr=>pr.excluded)
 
-        const calcPurch   = active.reduce((s,pr)=>s+(parseFloat(pr.purchase_price)||0),0)
-        const calcRehab   = active.reduce((s,pr)=>s+(parseFloat(pr.rehab_cost)||0),0)
-        const calcARV     = active.reduce((s,pr)=>s+(parseFloat(pr.arv)||0),0)
-        const calcCurrRent= active.reduce((s,pr)=>s+(parseFloat(pr.current_rent)||0),0)
-        const calcMktRent = active.reduce((s,pr)=>s+(parseFloat(pr.market_rent)||0),0)
-        const calcUnits   = active.reduce((s,pr)=>s+(parseInt(pr.unit_count)||1),0)
+        const active   = allProps.filter(pr=>!pr.excluded)
+        const excluded = allProps.filter(pr=>pr.excluded)
 
-        const purchase  = parseFloat(pkg.total_purchase)||calcPurch
-        const rehab     = parseFloat(pkg.total_rehab)||calcRehab
-        const arv       = parseFloat(pkg.total_arv)||calcARV
-        const profit    = arv - purchase - rehab
-        const grossYield= purchase>0 ? ((calcMktRent*12)/purchase*100).toFixed(1) : null
-        const isExpanded= expandedId===pkg.id
+        const calcPurch    = active.reduce((s,pr)=>s+(parseFloat(pr.purchase_price)||0),0)
+        const calcRehab    = active.reduce((s,pr)=>s+(parseFloat(pr.rehab_cost)||0),0)
+        const calcARV      = active.reduce((s,pr)=>s+(parseFloat(pr.arv)||0),0)
+        const calcCurrRent = active.reduce((s,pr)=>s+(parseFloat(pr.current_rent)||0),0)
+        const calcMktRent  = active.reduce((s,pr)=>s+(parseFloat(pr.market_rent)||0),0)
+        const calcUnits    = active.reduce((s,pr)=>s+(parseInt(pr.unit_count)||1),0)
+        const calcProfit   = calcARV - calcPurch - calcRehab
+
+        const purchase   = parseFloat(pkg.total_purchase)||calcPurch
+        const rehab      = parseFloat(pkg.total_rehab)||calcRehab
+        const arv        = parseFloat(pkg.total_arv)||calcARV
+        const grossYield = purchase>0 ? ((calcMktRent*12)/purchase*100).toFixed(1) : null
+        const isExpanded = expandedId===pkg.id
 
         const byType = {}
         active.forEach(p=>{ const n=parseInt(p.unit_count)||1; const l=n===1?'SFR':n===2?'Duplex':n===3?'Triplex':n===4?'Quad':`${n}+ Units`; byType[l]=(byType[l]||0)+1 })
 
+        function colHeader(label, key) {
+          const isActive = sc.key===key
+          return (
+            <th key={label} onClick={key?()=>setSortConfig(s=>({...s,[pkg.id]:{key,dir:s[pkg.id]?.key===key&&s[pkg.id]?.dir==='asc'?'desc':'asc'}})):undefined}
+              style={{ padding:'7px 10px', textAlign:'left', fontSize:10, fontWeight:700, color:isActive?'#B8892A':'#6b7280', textTransform:'uppercase', whiteSpace:'nowrap', cursor:key?'pointer':'default', userSelect:'none', background:'#F0EDE6' }}>
+              {label}{key?(isActive?(sc.dir==='asc'?' ▲':' ▼'):''):''}</th>
+          )
+        }
+
         return (
           <Card key={pkg.id} style={{ marginTop:10, padding:0, overflow:'hidden' }}>
-            {/* Header */}
+            {/* Header row */}
             <div onClick={()=>setExpandedId(isExpanded?null:pkg.id)} style={{ display:'flex', alignItems:'center', gap:12, padding:'14px 16px', cursor:'pointer', background:isExpanded?'#FAFAF8':'#fff' }}
               onMouseEnter={e=>{ if(!isExpanded) e.currentTarget.style.background='#fef9f0' }}
               onMouseLeave={e=>{ e.currentTarget.style.background=isExpanded?'#FAFAF8':'#fff' }}>
@@ -153,7 +152,7 @@ export default function PackageDeals() {
                 <div style={{ fontWeight:700, fontSize:15, color:'#2C2C2C' }}>{pkg.deal_name}</div>
                 <div style={{ fontSize:11, color:'#6b7280', marginTop:3, display:'flex', gap:10, flexWrap:'wrap' }}>
                   <span>{active.length} active · {calcUnits} units</span>
-                  {excluded.length>0 && <span style={{ color:'#9ca3af' }}>{excluded.length} excluded</span>}
+                  {excluded.length>0 && <span style={{ color:'#9ca3af' }}>{excluded.length} hidden</span>}
                   {Object.entries(byType).map(([t,c])=><span key={t} style={{ color:'#9ca3af' }}>{c} {t}</span>)}
                 </div>
               </div>
@@ -163,7 +162,7 @@ export default function PackageDeals() {
                 {grossYield && <div style={{ fontSize:11, color:'#6b7280' }}>{grossYield}% yield</div>}
               </div>}
               <div style={{ textAlign:'right', marginLeft:12 }}>
-                <div style={{ fontSize:13, fontFamily:'monospace', fontWeight:700 }}>{fmtK(purchase)}</div>
+                <div style={{ fontSize:13, fontFamily:'monospace', fontWeight:700 }}>{fmtK(calcPurch)}</div>
                 <div style={{ fontSize:11, color:'#6b7280' }}>purchase</div>
               </div>
               <button onClick={e=>{e.stopPropagation();setPkgDrawer({...pkg})}} style={{ background:'none', border:'1px solid #D6D2CA', borderRadius:4, color:'#6b7280', cursor:'pointer', fontSize:11, fontFamily:'inherit', padding:'4px 10px', marginLeft:4 }}>Edit</button>
@@ -174,12 +173,12 @@ export default function PackageDeals() {
                 {/* Financials bar */}
                 <div style={{ display:'grid', gridTemplateColumns:'repeat(6,1fr)', background:'#FAFAF8', borderBottom:'1px solid #F0EDE6' }}>
                   {[
-                    ['Purchase',fmtK(purchase),'#B8892A'],
-                    ['Rehab',fmtK(rehab),'#2D6FAF'],
-                    ['ARV',fmtK(arv),'#B8892A'],
-                    ['Current Rent',fmtK(calcCurrRent)+'/mo','#6b7280'],
-                    ['Market Rent',fmtK(calcMktRent)+'/mo','#3B6D11'],
-                    ['Est. Profit',(profit>=0?'+':'')+fmtK(profit),profit>=0?'#3B6D11':'#B91C1C'],
+                    ['Total Purchase', fmtK(calcPurch), '#B8892A'],
+                    ['Total Rehab',    fmtK(calcRehab), '#2D6FAF'],
+                    ['Total ARV',      fmtK(calcARV),   '#B8892A'],
+                    ['Curr Rent',      fmtK(calcCurrRent)+'/mo', '#6b7280'],
+                    ['Mkt Rent',       fmtK(calcMktRent)+'/mo',  '#3B6D11'],
+                    ['Profit on Sale', (calcProfit>=0?'+':'')+fmtK(calcProfit), calcProfit>=0?'#3B6D11':'#B91C1C'],
                   ].map(([l,v,c])=>(
                     <div key={l} style={{ padding:'10px 12px', borderRight:'1px solid #F0EDE6' }}>
                       <div style={{ fontSize:10, color:'#9ca3af', textTransform:'uppercase', letterSpacing:0.8 }}>{l}</div>
@@ -188,7 +187,7 @@ export default function PackageDeals() {
                   ))}
                 </div>
 
-                {/* Properties table */}
+                {/* Table toolbar */}
                 <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'8px 16px', background:'#F0EDE6' }}>
                   <span style={{ fontSize:11, fontWeight:700, letterSpacing:1.2, color:'#6b7280', textTransform:'uppercase' }}>
                     Properties ({active.length} active{excluded.length>0?`, ${excluded.length} hidden`:''})
@@ -199,55 +198,67 @@ export default function PackageDeals() {
                 {allProps.length===0
                   ? <div style={{ padding:16, textAlign:'center', color:'#9ca3af', fontSize:12 }}>No properties yet.</div>
                   : (
-                    <table style={{ width:'100%', borderCollapse:'collapse' }}>
-                      <thead><tr style={{ background:'#F0EDE6' }}>
-                        {[
-                          {label:'', key:null},
-                          {label:'Address', key:'address'},
-                          {label:'Units', key:'unit_count'},
-                          {label:'Condition', key:'condition_rating'},
-                          {label:'Purchase', key:'purchase_price'},
-                          {label:'Rehab', key:'rehab_cost'},
-                          {label:'ARV', key:'arv'},
-                          {label:'Curr Rent', key:'current_rent'},
-                          {label:'Mkt Rent', key:'market_rent'},
-                          {label:'', key:null},
-                        ].map(({label,key})=>{
-                          const sc2 = sortConfig[pkg.id]||{key:'unit_count',dir:'asc'}
-                          const active2 = sc2.key===key
-                          return (
-                            <th key={label} onClick={key?()=>setSortConfig(s=>({...s,[pkg.id]:{key,dir:s[pkg.id]?.key===key&&s[pkg.id]?.dir==='asc'?'desc':'asc'}})):undefined}
-                              style={{ padding:'7px 10px', textAlign:'left', fontSize:10, fontWeight:700, color:active2?'#B8892A':'#6b7280', textTransform:'uppercase', whiteSpace:'nowrap', cursor:key?'pointer':'default', userSelect:'none' }}>
-                              {label}{active2?(sc2.dir==='asc'?' ▲':' ▼'):(key?' ·':'')}
-                            </th>
-                          )
-                        })}
+                    <div style={{ overflowX:'auto' }}>
+                    <table style={{ width:'100%', borderCollapse:'collapse', minWidth:900 }}>
+                      <thead><tr>
+                        {colHeader('', null)}
+                        {colHeader('Address', 'address')}
+                        {colHeader('Units', 'unit_count')}
+                        {colHeader('Cond', 'condition_rating')}
+                        {colHeader('Purchase', 'purchase_price')}
+                        {colHeader('Rehab', 'rehab_cost')}
+                        {colHeader('ARV', 'arv')}
+                        {colHeader('Profit', null)}
+                        {colHeader('Curr Rent', 'current_rent')}
+                        {colHeader('Mkt Rent', 'market_rent')}
+                        {colHeader('', null)}
                       </tr></thead>
                       <tbody>
                         {allProps.map((pr,j)=>{
                           const isExcluded = pr.excluded
+                          const isPurchased = pr.purchased
+                          const propProfit = (parseFloat(pr.arv)||0)-(parseFloat(pr.purchase_price)||0)-(parseFloat(pr.rehab_cost)||0)-(parseFloat(pr.closing_costs)||0)
+                          const hasProfit = pr.arv && pr.purchase_price
                           return (
-                            <tr key={pr.id} style={{ background:isExcluded?'#f9f9f9':j%2===0?'#fff':'#FAFAF8', borderTop:'0.5px solid #F0EDE6', opacity:isExcluded?0.45:1, transition:'opacity 0.2s' }}>
-                              {/* Eye toggle */}
-                              <td style={{ padding:'8px 6px 8px 12px', width:28 }}>
-                                <button onClick={()=>toggleExclude(pr)} title={isExcluded?'Include in calculation':'Exclude from calculation'} style={{ background:'none', border:'none', cursor:'pointer', fontSize:15, color:isExcluded?'#D6D2CA':'#6b7280', padding:0, lineHeight:1 }}>
-                                  {isExcluded?'👁️‍🗨️':'👁'}
-                                </button>
+                            <tr key={pr.id} style={{ background:isExcluded?'#f5f5f5':isPurchased?'#f0fdf4':j%2===0?'#fff':'#FAFAF8', borderTop:'0.5px solid #F0EDE6', opacity:isExcluded?0.45:1, transition:'all 0.15s' }}>
+
+                              {/* Eye + purchased indicator */}
+                              <td style={{ padding:'8px 4px 8px 12px', width:52 }}>
+                                <div style={{ display:'flex', gap:4, alignItems:'center' }}>
+                                  <button onClick={()=>toggleExclude(pr)} title={isExcluded?'Include':'Exclude from calc'} style={{ background:'none', border:'none', cursor:'pointer', fontSize:14, padding:0, lineHeight:1, color:isExcluded?'#D6D2CA':'#6b7280' }}>
+                                    {isExcluded?'🚫':'👁'}
+                                  </button>
+                                  {isPurchased && <span title="Purchased" style={{ fontSize:12 }}>✅</span>}
+                                </div>
                               </td>
-                              <td onClick={()=>setPropDrawer({pkg,prop:pr})} style={{ padding:'8px 10px', fontSize:13, fontWeight:600, cursor:'pointer', textDecoration:isExcluded?'line-through':'none', color:isExcluded?'#9ca3af':'#2C2C2C' }}>{pr.address}</td>
-                              <td onClick={()=>setPropDrawer({pkg,prop:pr})} style={{ padding:'8px 10px', cursor:'pointer' }}><UnitBadge n={pr.unit_count} /></td>
-                              <td onClick={()=>setPropDrawer({pkg,prop:pr})} style={{ padding:'8px 10px', cursor:'pointer' }}><ConditionDisplay rating={pr.condition_rating} /></td>
+
+                              <td onClick={()=>setPropDrawer({pkg,prop:pr})} style={{ padding:'8px 10px', fontSize:13, fontWeight:600, cursor:'pointer', textDecoration:isExcluded?'line-through':'none', color:isExcluded?'#9ca3af':isPurchased?'#3B6D11':'#2C2C2C', whiteSpace:'nowrap' }}>{pr.address}</td>
+                              <td onClick={()=>setPropDrawer({pkg,prop:pr})} style={{ padding:'8px 8px', cursor:'pointer' }}><UnitBadge n={pr.unit_count} /></td>
+                              <td onClick={()=>setPropDrawer({pkg,prop:pr})} style={{ padding:'8px 8px', cursor:'pointer' }}><ConditionDisplay rating={pr.condition_rating} /></td>
                               <td onClick={()=>setPropDrawer({pkg,prop:pr})} style={{ padding:'8px 10px', fontSize:13, fontFamily:'monospace', cursor:'pointer' }}>{fmt(pr.purchase_price)}</td>
                               <td onClick={()=>setPropDrawer({pkg,prop:pr})} style={{ padding:'8px 10px', fontSize:13, fontFamily:'monospace', cursor:'pointer' }}>{fmt(pr.rehab_cost)}</td>
                               <td onClick={()=>setPropDrawer({pkg,prop:pr})} style={{ padding:'8px 10px', fontSize:13, fontFamily:'monospace', cursor:'pointer' }}>{fmt(pr.arv)}</td>
+                              <td onClick={()=>setPropDrawer({pkg,prop:pr})} style={{ padding:'8px 10px', fontSize:13, fontFamily:'monospace', cursor:'pointer', fontWeight:600, color:hasProfit?(propProfit>=0?'#3B6D11':'#B91C1C'):'#9ca3af' }}>
+                                {hasProfit?(propProfit>=0?'+':'')+fmt(propProfit):'—'}
+                              </td>
                               <td onClick={()=>setPropDrawer({pkg,prop:pr})} style={{ padding:'8px 10px', fontSize:13, fontFamily:'monospace', color:'#6b7280', cursor:'pointer' }}>{fmt(pr.current_rent)}</td>
                               <td onClick={()=>setPropDrawer({pkg,prop:pr})} style={{ padding:'8px 10px', fontSize:13, fontFamily:'monospace', color:'#3B6D11', fontWeight:600, cursor:'pointer' }}>{fmt(pr.market_rent)}</td>
-                              <td style={{ padding:'8px 10px' }}></td>
+
+                              {/* Mark as purchased */}
+                              <td style={{ padding:'8px 10px' }}>
+                                {!isPurchased && !isExcluded && (
+                                  <button onClick={()=>{ if(confirm(`Mark ${pr.address} as purchased and add to Deals?`)) markPurchased(pr) }}
+                                    style={{ background:'none', border:'1px solid #3B6D11', borderRadius:4, color:'#3B6D11', cursor:'pointer', fontSize:10, fontFamily:'inherit', padding:'3px 8px', fontWeight:600, whiteSpace:'nowrap' }}>
+                                    Mark Purchased
+                                  </button>
+                                )}
+                                {isPurchased && <span style={{ fontSize:11, color:'#3B6D11', fontWeight:600 }}>Purchased {pr.purchased_date ? new Date(pr.purchased_date+'T12:00:00').toLocaleDateString() : ''}</span>}
+                              </td>
                             </tr>
                           )
                         })}
                       </tbody>
-                      {/* Totals footer — active only */}
+                      {/* Totals footer */}
                       {active.length>0 && (
                         <tfoot>
                           <tr style={{ borderTop:'2px solid #D6D2CA', background:'#F0EDE6' }}>
@@ -258,6 +269,7 @@ export default function PackageDeals() {
                             <td style={{ padding:'8px 10px', fontSize:13, fontFamily:'monospace', fontWeight:700 }}>{fmtK(calcPurch)}</td>
                             <td style={{ padding:'8px 10px', fontSize:13, fontFamily:'monospace', fontWeight:700 }}>{fmtK(calcRehab)}</td>
                             <td style={{ padding:'8px 10px', fontSize:13, fontFamily:'monospace', fontWeight:700 }}>{fmtK(calcARV)}</td>
+                            <td style={{ padding:'8px 10px', fontSize:13, fontFamily:'monospace', fontWeight:700, color:calcProfit>=0?'#3B6D11':'#B91C1C' }}>{calcProfit>=0?'+':''}{fmtK(calcProfit)}</td>
                             <td style={{ padding:'8px 10px', fontSize:13, fontFamily:'monospace', fontWeight:700, color:'#6b7280' }}>{fmtK(calcCurrRent)}/mo</td>
                             <td style={{ padding:'8px 10px', fontSize:13, fontFamily:'monospace', fontWeight:700, color:'#3B6D11' }}>{fmtK(calcMktRent)}/mo</td>
                             <td></td>
@@ -265,6 +277,7 @@ export default function PackageDeals() {
                         </tfoot>
                       )}
                     </table>
+                    </div>
                   )
                 }
                 {pkg.notes && <div style={{ padding:'10px 16px', borderTop:'1px solid #F0EDE6', fontSize:12, color:'#6b7280', background:'#FAFAF8' }}><strong>Notes:</strong> {pkg.notes}</div>}
@@ -311,7 +324,7 @@ function PackageDrawer({ pkg, open, onClose, onSave }) {
             <option value="passed">Passed</option>
           </select>
         </Field>
-        <div className="drawer-section">Override Totals (optional — auto from properties)</div>
+        <div className="drawer-section">Override Totals (optional)</div>
         <FieldRow>
           <Field label="Total ARV ($)"><input style={monoInp} type="number" value={form.total_arv||''} onChange={set('total_arv')} placeholder="Auto" /></Field>
           <Field label="Total Purchase ($)"><input style={monoInp} type="number" value={form.total_purchase||''} onChange={set('total_purchase')} placeholder="Auto" /></Field>
@@ -337,13 +350,14 @@ function PropertyDrawer({ data, open, onClose, onSave }) {
   const isNew = !form.id
   const set = k => e => setForm(f=>({...f,[k]:e.target.value}))
 
-  const upside = (parseFloat(form.market_rent)||0) - (parseFloat(form.current_rent)||0)
-  const yield_ = form.market_rent&&form.purchase_price ? ((parseFloat(form.market_rent)*12)/parseFloat(form.purchase_price)*100).toFixed(1) : null
-  const margin = (parseFloat(form.arv)||0)-(parseFloat(form.purchase_price)||0)-(parseFloat(form.rehab_cost)||0)
+  const rentUpside   = (parseFloat(form.market_rent)||0)-(parseFloat(form.current_rent)||0)
+  const grossYield   = form.market_rent&&form.purchase_price ? ((parseFloat(form.market_rent)*12)/parseFloat(form.purchase_price)*100).toFixed(1) : null
+  const totalCost    = (parseFloat(form.purchase_price)||0)+(parseFloat(form.closing_costs)||0)+(parseFloat(form.rehab_cost)||0)
+  const profitOnSale = form.arv ? (parseFloat(form.arv)||0)-totalCost : null
 
   async function save() {
     if (!form.address) return
-    const payload = { package_id:data.pkg.id, address:form.address, arv:form.arv||null, purchase_price:form.purchase_price||null, rehab_cost:form.rehab_cost||null, unit_count:form.unit_count||1, monthly_rent:form.market_rent||null, current_rent:form.current_rent||null, market_rent:form.market_rent||null, condition_rating:form.condition_rating||null, property_type:form.property_type||'hold', notes:form.notes||null, excluded:form.excluded||false }
+    const payload = { package_id:data.pkg.id, address:form.address, arv:form.arv||null, purchase_price:form.purchase_price||null, closing_costs:form.closing_costs||null, rehab_cost:form.rehab_cost||null, unit_count:form.unit_count||1, monthly_rent:form.market_rent||null, current_rent:form.current_rent||null, market_rent:form.market_rent||null, condition_rating:form.condition_rating||null, property_type:form.property_type||'hold', notes:form.notes||null, excluded:form.excluded||false, purchased:form.purchased||false, purchased_date:form.purchased_date||null }
     if (isNew) await supabase.from('package_deal_properties').insert(payload)
     else await supabase.from('package_deal_properties').update(payload).eq('id',form.id)
     onSave()
@@ -358,22 +372,21 @@ function PropertyDrawer({ data, open, onClose, onSave }) {
     <Drawer open={open} onClose={onClose} title={form.address||'New Property'} subtitle={isNew?`Adding to: ${data.pkg.deal_name}`:data.pkg.deal_name} width={540}>
       <div style={{ display:'flex', flexDirection:'column', gap:14, paddingTop:12 }}>
         <Field label="Address"><input style={inp} value={form.address||''} onChange={set('address')} placeholder="789 Elm St, Lexington KY" /></Field>
-
-        <Field label="Number of Units">
-          <UnitPicker value={parseInt(form.unit_count)||1} onChange={v=>setForm(f=>({...f,unit_count:v}))} />
-        </Field>
-
-        <Field label="Condition Rating">
+        <Field label="Number of Units"><UnitPicker value={parseInt(form.unit_count)||1} onChange={v=>setForm(f=>({...f,unit_count:v}))} /></Field>
+        <Field label="Condition">
           <ConditionStars rating={form.condition_rating} onChange={v=>setForm(f=>({...f,condition_rating:v}))} />
-          <div style={{ fontSize:11, color:'#9ca3af', marginTop:4 }}>1 = Poor · 3 = Average · 5 = Excellent · Click again to clear</div>
+          <div style={{ fontSize:10, color:'#9ca3af', marginTop:3 }}>1 = Poor · 3 = Average · 5 = Excellent · click again to clear</div>
         </Field>
 
         <div className="drawer-section">Financials</div>
         <FieldRow>
           <Field label="Purchase Price ($)"><input style={monoInp} type="number" value={form.purchase_price||''} onChange={set('purchase_price')} placeholder="110000" /></Field>
-          <Field label="Rehab Estimate ($)"><input style={monoInp} type="number" value={form.rehab_cost||''} onChange={set('rehab_cost')} placeholder="0" /></Field>
+          <Field label="Closing Costs ($)"><input style={monoInp} type="number" value={form.closing_costs||''} onChange={set('closing_costs')} placeholder="2500" /></Field>
         </FieldRow>
-        <Field label="ARV ($)"><input style={monoInp} type="number" value={form.arv||''} onChange={set('arv')} placeholder="145000" /></Field>
+        <FieldRow>
+          <Field label="Rehab Estimate ($)"><input style={monoInp} type="number" value={form.rehab_cost||''} onChange={set('rehab_cost')} placeholder="0" /></Field>
+          <Field label="ARV ($)"><input style={monoInp} type="number" value={form.arv||''} onChange={set('arv')} placeholder="145000" /></Field>
+        </FieldRow>
 
         <div className="drawer-section">Rent</div>
         <FieldRow>
@@ -382,36 +395,39 @@ function PropertyDrawer({ data, open, onClose, onSave }) {
         </FieldRow>
 
         {/* Live metrics */}
-        {(form.purchase_price || form.current_rent || form.market_rent) && (
-          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:8 }}>
-            {yield_ && (
-              <div style={{ background:'#f0fdf4', borderRadius:6, padding:'8px 10px' }}>
-                <div style={{ fontSize:10, color:'#6b7280', textTransform:'uppercase', letterSpacing:0.8 }}>Gross Yield</div>
-                <div style={{ fontSize:16, fontWeight:700, fontFamily:'monospace', color:'#3B6D11' }}>{yield_}%</div>
-              </div>
-            )}
-            {upside !== 0 && form.current_rent && form.market_rent && (
-              <div style={{ background:upside>0?'#f0fdf4':'#fef2f2', borderRadius:6, padding:'8px 10px' }}>
-                <div style={{ fontSize:10, color:'#6b7280', textTransform:'uppercase', letterSpacing:0.8 }}>Rent Upside</div>
-                <div style={{ fontSize:16, fontWeight:700, fontFamily:'monospace', color:upside>0?'#3B6D11':'#B91C1C' }}>{upside>0?'+':''}{fmt(upside)}</div>
-              </div>
-            )}
-            {form.purchase_price && (
-              <div style={{ background:margin>=0?'#f0fdf4':'#fef2f2', borderRadius:6, padding:'8px 10px' }}>
-                <div style={{ fontSize:10, color:'#6b7280', textTransform:'uppercase', letterSpacing:0.8 }}>Flip Margin</div>
-                <div style={{ fontSize:16, fontWeight:700, fontFamily:'monospace', color:margin>=0?'#3B6D11':'#B91C1C' }}>{margin>=0?'+':''}{fmt(margin)}</div>
-              </div>
-            )}
+        {(form.purchase_price || form.arv) && (
+          <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:8 }}>
+            {grossYield && <div style={{ background:'#f0fdf4', borderRadius:6, padding:'8px 10px' }}>
+              <div style={{ fontSize:10, color:'#6b7280', textTransform:'uppercase', letterSpacing:0.8 }}>Gross Yield</div>
+              <div style={{ fontSize:16, fontWeight:700, fontFamily:'monospace', color:'#3B6D11' }}>{grossYield}%</div>
+            </div>}
+            {form.current_rent && form.market_rent && <div style={{ background:rentUpside>0?'#f0fdf4':'#fef2f2', borderRadius:6, padding:'8px 10px' }}>
+              <div style={{ fontSize:10, color:'#6b7280', textTransform:'uppercase', letterSpacing:0.8 }}>Rent Upside</div>
+              <div style={{ fontSize:16, fontWeight:700, fontFamily:'monospace', color:rentUpside>0?'#3B6D11':'#B91C1C' }}>{rentUpside>0?'+':''}{fmt(rentUpside)}</div>
+            </div>}
+            {profitOnSale!==null && <div style={{ background:profitOnSale>=0?'#f0fdf4':'#fef2f2', borderRadius:6, padding:'8px 10px' }}>
+              <div style={{ fontSize:10, color:'#6b7280', textTransform:'uppercase', letterSpacing:0.8 }}>Profit on Sale</div>
+              <div style={{ fontSize:16, fontWeight:700, fontFamily:'monospace', color:profitOnSale>=0?'#3B6D11':'#B91C1C' }}>{profitOnSale>=0?'+':''}{fmt(profitOnSale)}</div>
+            </div>}
           </div>
         )}
 
         <Field label="Notes"><input style={inp} value={form.notes||''} onChange={set('notes')} placeholder="Condition notes, tenant status, any issues..." /></Field>
 
         {!isNew && (
-          <label style={{ display:'flex', alignItems:'center', gap:8, fontSize:13, cursor:'pointer' }}>
-            <input type="checkbox" checked={!!form.excluded} onChange={e=>setForm(f=>({...f,excluded:e.target.checked}))} />
-            <span>Exclude from package calculation</span>
-          </label>
+          <div style={{ display:'flex', flexDirection:'column', gap:8, padding:'10px 12px', background:'#FAFAF8', borderRadius:6, border:'1px solid #F0EDE6' }}>
+            <label style={{ display:'flex', alignItems:'center', gap:8, fontSize:13, cursor:'pointer' }}>
+              <input type="checkbox" checked={!!form.excluded} onChange={e=>setForm(f=>({...f,excluded:e.target.checked}))} />
+              <span>Exclude from package calculation</span>
+            </label>
+            <label style={{ display:'flex', alignItems:'center', gap:8, fontSize:13, cursor:'pointer' }}>
+              <input type="checkbox" checked={!!form.purchased} onChange={e=>setForm(f=>({...f,purchased:e.target.checked}))} />
+              <span>Mark as purchased</span>
+            </label>
+            {form.purchased && (
+              <Field label="Purchase Date"><input style={inp} type="date" value={form.purchased_date||''} onChange={set('purchased_date')} /></Field>
+            )}
+          </div>
         )}
 
         <div style={{ display:'flex', justifyContent:'space-between', marginTop:8 }}>
