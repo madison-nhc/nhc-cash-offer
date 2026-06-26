@@ -7,25 +7,19 @@ import AddressInput from '../components/AddressInput.jsx'
 const STATUS_LABELS = { active_listing:'Active', pending:'Pending', closed:'Closed' }
 const STATUS_COLORS = { active_listing:'#2D6FAF', pending:'#D97825', closed:'#3B6D11' }
 const EMPTY_MAILING = { campaign_name:'', drop_date:'', list_size:'', piece_type:'Postcard', mailer_cost:'', calls_total:'', calls_answered:'', calls_missed:'', listings_sourced:'', purchased:'', wholesaled:'', notes:'' }
-const EMPTY_DEAL = { address:'', deal_type:'listing', status:'active_listing', sale_price:'', commission_pct:'', commission_earned:'', notes:'', mailing_id:'' }
 
 export default function MailingTracker() {
   const [mailings, setMailings] = useState([])
-  const [deals, setDeals] = useState([])
   const [loading, setLoading] = useState(true)
-  const [tab, setTab] = useState('campaigns')
   const [campaignDrawer, setCampaignDrawer] = useState(null)
-  const [dealDrawer, setDealDrawer] = useState(null)
 
   useEffect(() => { load() }, [])
   async function load() {
     setLoading(true)
     const [{ data:m }, { data:d }] = await Promise.all([
-      supabase.from('mailings').select('*').order('drop_date',{ascending:true}),
-      supabase.from('mailing_deals').select('*').order('created_at',{ascending:false}),
+      supabase.from('mailings').select('*').order('drop_date',{ascending:true})
     ])
     setMailings(m||[])
-    setDeals(d||[])
     setLoading(false)
   }
 
@@ -49,7 +43,6 @@ export default function MailingTracker() {
         </div>
         <div style={{ display:'flex', gap:8 }}>
           <Btn variant="outline" onClick={()=>setCampaignDrawer({...EMPTY_MAILING})}>+ Campaign</Btn>
-          <Btn onClick={()=>setDealDrawer({...EMPTY_DEAL})}>+ Deal</Btn>
         </div>
       </div>
 
@@ -63,13 +56,7 @@ export default function MailingTracker() {
         <StatCard label="Purchased" value={totalPurchased} sub={totalWholesaled>0?`${totalWholesaled} wholesaled`:''} topColor="#6b21a8" />
       </div>
 
-      <div style={{ display:'flex', gap:2, marginBottom:16 }}>
-        {['campaigns','deals'].map(t=>(
-          <button key={t} onClick={()=>setTab(t)} style={{ padding:'6px 16px', border:'none', borderRadius:4, cursor:'pointer', background:tab===t?'#2C2C2C':'#F0EDE6', color:tab===t?'#fff':'#6b7280', fontSize:12, fontWeight:tab===t?700:400, fontFamily:'inherit', textTransform:'capitalize' }}>{t}</button>
-        ))}
-      </div>
-
-      {tab==='campaigns' && (
+      {true && (
         <>
           <SectionBar>Mailing Campaigns ({mailings.length})</SectionBar>
           {mailings.length===0 ? <EmptyState icon="✉" text="No campaigns yet." /> : (
@@ -165,7 +152,6 @@ export default function MailingTracker() {
       )}
 
       <CampaignDrawer campaign={campaignDrawer} open={!!campaignDrawer} onClose={()=>setCampaignDrawer(null)} onSave={()=>{setCampaignDrawer(null);load()}} />
-      <DealDrawer deal={dealDrawer} mailings={mailings} open={!!dealDrawer} onClose={()=>setDealDrawer(null)} onSave={()=>{setDealDrawer(null);load()}} />
     </PageWrap>
   )
 }

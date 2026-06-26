@@ -30,6 +30,7 @@ export default function Analyzer() {
   const [mailings, setMailings] = useState([])
   const [loading, setLoading] = useState(true)
   const [drawer, setDrawer] = useState(null)
+  const [proposal, setProposal] = useState(null)
   const [filter, setFilter] = useState('all')
   const [search, setSearch] = useState('')
 
@@ -112,7 +113,7 @@ export default function Analyzer() {
             <table style={{ width:'100%', borderCollapse:'collapse' }}>
               <thead>
                 <tr style={{ background:'#F0EDE6' }}>
-                  {['Address','Status','ARV','Cash Offer','Repairs','NHC Comm','BPV Type','Updated'].map(h=>(
+                  {['Address','Status','ARV','Cash Offer','Repairs','NHC Comm','BPV Type','Updated',''].map(h=>(
                     <th key={h} style={{ padding:'8px 14px', textAlign:'left', fontSize:11, fontWeight:600, letterSpacing:0.8, color:'#6b7280', textTransform:'uppercase' }}>{h}</th>
                   ))}
                 </tr>
@@ -142,6 +143,9 @@ export default function Analyzer() {
                         {p.investment_type && <Badge color={p.investment_type==='flip'?'#D97825':'#2D6FAF'}>{p.investment_type}</Badge>}
                       </td>
                       <td style={{ padding:'10px 14px', fontSize:11, color:'#9ca3af' }}>{new Date(p.updated_at).toLocaleDateString()}</td>
+                      <td style={{ padding:'10px 10px' }} onClick={e=>e.stopPropagation()}>
+                        {p.arv && <button onClick={()=>setProposal(p)} style={{ background:'#2D6FAF', color:'#fff', border:'none', borderRadius:4, padding:'4px 10px', fontSize:11, fontWeight:600, cursor:'pointer', fontFamily:'inherit', whiteSpace:'nowrap' }}>View Offer</button>}
+                      </td>
                     </tr>
                   )
                 })}
@@ -158,6 +162,7 @@ export default function Analyzer() {
         onSave={()=>{ load() }}
         mailings={mailings}
       />
+      {proposal && <ProposalModal property={proposal} onClose={()=>setProposal(null)} />}
     </PageWrap>
   )
 }

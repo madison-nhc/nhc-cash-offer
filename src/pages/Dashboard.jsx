@@ -95,7 +95,7 @@ export default function Dashboard({ onNavigate }) {
         label: p.address,
         sub: p.status,
         ts: p.updated_at,
-        dest: p.investment_type ? 'investments' : 'analyzer'
+        dest: p.investment_type==='flip'?'flips':p.investment_type==='hold'?'holds':p.investment_type?'purchases':'analyzer'
       })),
       ...(mailingDeals||[]).filter(d => d.address).map(d => ({
         type: 'mailing deal',
@@ -143,10 +143,10 @@ export default function Dashboard({ onNavigate }) {
       {/* Investments */}
       <SectionBar>Investments</SectionBar>
       <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:12, marginTop:12, marginBottom:20 }}>
-        <ClickCard label="Active Flips" value={stats?.flips ?? '—'} topColor="#D97825" onClick={()=>onNavigate('investments')} />
-        <ClickCard label="Completed Flips" value={stats?.soldFlips ?? '—'} topColor="#3B6D11" onClick={()=>onNavigate('investments')} />
-        <ClickCard label="Active Holds" value={stats?.holds ?? '—'} topColor="#2D6FAF" onClick={()=>onNavigate('investments')} />
-        <ClickCard label="Hold Net Income" value={fmtK(stats?.netHold)} sub="all time" topColor={stats?.netHold >= 0 ? '#3B6D11' : '#B91C1C'} onClick={()=>onNavigate('investments')} />
+        <ClickCard label="Active Flips" value={stats?.flips ?? '—'} topColor="#D97825" onClick={()=>onNavigate('flips')} />
+        <ClickCard label="Completed Flips" value={stats?.soldFlips ?? '—'} topColor="#3B6D11" onClick={()=>onNavigate('flips')} />
+        <ClickCard label="Active Holds" value={stats?.holds ?? '—'} topColor="#2D6FAF" onClick={()=>onNavigate('holds')} />
+        <ClickCard label="Hold Net Income" value={fmtK(stats?.netHold)} sub="all time" topColor={stats?.netHold >= 0 ? '#3B6D11' : '#B91C1C'} onClick={()=>onNavigate('holds')} />
       </div>
 
       {/* Mailing */}
