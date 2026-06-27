@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import { supabase } from '../lib/supabase.js'
 import { Field, FieldRow, inp, monoInp, Btn, fmt, fmtK } from './ui.jsx'
 import Drawer from './Drawer.jsx'
+import ProposalModal from './ProposalModal.jsx'
 import AddressInput from './AddressInput.jsx'
 
 const DISP_OPTIONS = [
