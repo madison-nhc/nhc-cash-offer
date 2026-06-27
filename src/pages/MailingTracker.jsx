@@ -117,30 +117,6 @@ export default function MailingTracker() {
           )}
         </>
       )}
-                  </tr>
-                </thead>
-                <tbody>
-                  {deals.map((d,i)=>{
-                    const src = mailings.find(m=>m.id===d.mailing_id)
-                    return (
-                      <tr key={d.id} onClick={()=>setDealDrawer({...d})} style={{ background:i%2===0?'#fff':'#FAFAF8', borderTop:'0.5px solid #F0EDE6', cursor:'pointer' }}
-                        onMouseEnter={e=>e.currentTarget.style.background='#fef9f0'}
-                        onMouseLeave={e=>e.currentTarget.style.background=i%2===0?'#fff':'#FAFAF8'}>
-                        <td style={{ padding:'10px 16px', fontSize:13, fontWeight:600 }}>{d.address}</td>
-                        <td style={{ padding:'10px 16px' }}><Badge color={d.deal_type==='listing'?'#3B6D11':'#D97825'}>{d.deal_type}</Badge></td>
-                        <td style={{ padding:'10px 16px' }}><Badge color={STATUS_COLORS[d.status]}>{STATUS_LABELS[d.status]}</Badge></td>
-                        <td style={{ padding:'10px 16px', fontSize:13, fontFamily:'monospace' }}>{fmt(d.sale_price)}</td>
-                        <td style={{ padding:'10px 16px', fontSize:13, fontFamily:'monospace' }}>{fmt(d.commission_earned)}</td>
-                        <td style={{ padding:'10px 16px', fontSize:12, color:'#2D6FAF' }}>{src?.campaign_name?.replace(/^Campaign \d+ — /,'')||'—'}</td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
-            </Card>
-          )}
-        </>
-      )}
 
       <CampaignDrawer campaign={campaignDrawer} open={!!campaignDrawer} onClose={()=>setCampaignDrawer(null)} onSave={()=>{setCampaignDrawer(null);load()}} />
     </PageWrap>
@@ -209,4 +185,5 @@ function CampaignDrawer({ campaign, open, onClose, onSave }) {
     </Drawer>
   )
 }
+
 
