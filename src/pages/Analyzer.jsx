@@ -163,7 +163,6 @@ export default function Analyzer() {
                         <div>{p.address}</div>
                         {(p.beds||p.baths) && <div style={{ fontSize:11, color:'#9ca3af', marginTop:1 }}>{[p.beds&&`${p.beds}bd`,p.baths&&`${p.baths}ba`,p.sqft&&`${parseInt(p.sqft).toLocaleString()}sf`].filter(Boolean).join(' · ')}</div>}
                       </td>
-                      <td style={{ padding:'10px 14px' }}><StatusPill status={p.status} /></td>
                       <td style={{ padding:'10px 14px', fontSize:13, fontFamily:'monospace', fontWeight:700 }}>{fmt(p.arv)}</td>
                       <td style={{ padding:'10px 14px', fontSize:13, fontFamily:'monospace', color:'#3B6D11', fontWeight:600 }}>{cashOffer?fmt(cashOffer):'—'}</td>
                       <td style={{ padding:'10px 14px', fontSize:13, fontFamily:'monospace', color:'#6b7280' }}>{reno>0?fmt(reno):'—'}</td>
