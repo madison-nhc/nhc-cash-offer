@@ -1,263 +1,277 @@
 import { fmt } from './ui.jsx'
 
+// ── Calculations ────────────────────────────────────────────────────────────
 function calcOffers(p) {
-  const arv = parseFloat(p.arv)||0
-  const reno = (p.repair_items||[]).reduce((s,r)=>s+(parseFloat(r.cost)||0),0)
+  const arv         = parseFloat(p.arv)||0
+  const reno        = (p.repair_items||[]).reduce((s,r)=>s+(parseFloat(r.cost)||0),0)
   const commCashPct = (parseFloat(p.comm_cash_pct)||9)/100
   const commListPct = (parseFloat(p.comm_list_pct)||6)/100
-  const profitPct = (parseFloat(p.profit_margin)||15)/100
-  const profit = p.profit_override ? parseFloat(p.profit_override) : arv*profitPct
-  const asisDisc = (parseFloat(p.asis_pct)||50)/100
-  const asisValue = p.asis_override ? parseFloat(p.asis_override) : arv-(asisDisc*reno)
+  const profit      = p.profit_override ? parseFloat(p.profit_override) : arv*((parseFloat(p.profit_margin)||15)/100)
+  const asisValue   = p.asis_override   ? parseFloat(p.asis_override)   : arv-((parseFloat(p.asis_pct)||50)/100*reno)
+  const holdCashMo  = parseFloat(p.hold_cash_months)||6
   const holdCashPct = (parseFloat(p.hold_cash_pct)||0.75)/100
-  const holdCashMo = parseFloat(p.hold_cash_months)||6
-  const cashOffer = p.cash_offer_override ? parseFloat(p.cash_offer_override) : arv-reno-(commCashPct*arv)-(holdCashPct*holdCashMo*arv)-profit
+  const cashOffer   = p.cash_offer_override ? parseFloat(p.cash_offer_override) : arv-reno-(commCashPct*arv)-(holdCashPct*holdCashMo*arv)-profit
+  const holdOpt2Mo  = parseFloat(p.hold_opt2_months)||3
   const holdOpt2Pct = (parseFloat(p.hold_opt2_pct)||0.5)/100
-  const holdOpt2Mo = parseFloat(p.hold_opt2_months)||3
-  const opt2Comm = commListPct*asisValue
-  const opt2Holding = holdOpt2Pct*holdOpt2Mo*arv
-  const opt2Net = asisValue-opt2Comm-opt2Holding
+  const opt2Comm    = commListPct*asisValue
+  const opt2Hold    = holdOpt2Pct*holdOpt2Mo*arv
+  const opt2Net     = asisValue-opt2Comm-opt2Hold
+  const holdOpt3Mo  = parseFloat(p.hold_opt3_months)||6
   const holdOpt3Pct = (parseFloat(p.hold_opt3_pct)||0.5)/100
-  const holdOpt3Mo = parseFloat(p.hold_opt3_months)||6
-  const opt3Comm = commListPct*arv
-  const opt3Holding = holdOpt3Pct*holdOpt3Mo*arv
-  const opt3Net = arv-reno-opt3Comm-opt3Holding
-  return { arv, reno, cashOffer, asisValue, opt2Comm, opt2Holding, opt2Net, opt3Comm, opt3Holding, opt3Net, commListPct, holdOpt2Mo, holdOpt3Mo }
+  const opt3Comm    = commListPct*arv
+  const opt3Hold    = holdOpt3Pct*holdOpt3Mo*arv
+  const opt3Net     = arv-reno-opt3Comm-opt3Hold
+  return { arv, reno, cashOffer, asisValue, opt2Comm, opt2Hold, opt2Net, opt3Comm, opt3Hold, opt3Net, commListPct, holdOpt2Mo, holdOpt3Mo }
 }
 
-function fmtNeg(n) {
-  return '−$' + Math.round(Math.abs(n)).toLocaleString('en-US')
-}
+function d$(n)  { return '$'+Math.round(Math.abs(n)).toLocaleString('en-US') }
+function dn$(n) { return '−$'+Math.round(Math.abs(n)).toLocaleString('en-US') }
 
-function pageHeader(address) {
-  return `
-    <div class="pg-header">
-      <img src="/nhc-logo.svg" alt="NHC Logo" />
-      <div class="pg-brand">
-        <h2>NEW HOME COLLECTIVE</h2>
-        <p>Real Estate Solutions · Fast, Fair, Honest</p>
+// ── Shared header snippet ───────────────────────────────────────────────────
+function hdr(addr) { return `
+  <div class="hdr">
+    <div class="hdr-left">
+      <img src="/nhc-logo.svg"/>
+      <div>
+        <div class="brand-name">NEW HOME COLLECTIVE</div>
+        <div class="brand-sub">Real Estate Solutions · Fast, Fair, Honest</div>
       </div>
-      ${address ? `<div class="pg-header-address">New Home Collective · ${address}</div>` : ''}
     </div>
-    <div class="pg-stripe">
-      <span class="s1"></span><span class="s2"></span><span class="s3"></span><span class="s4"></span><span class="s5"></span>
-    </div>
-  `
-}
+    ${addr?`<div class="hdr-addr">${addr}</div>`:''}
+  </div>
+  <div class="stripe"><span class="s1"></span><span class="s2"></span><span class="s3"></span><span class="s4"></span><span class="s5"></span></div>
+`}
 
+// ── Styles — pixel-based, not inches ────────────────────────────────────────
+// PW = page width in px. We'll render at 816px (8.5in @ 96dpi) but
+// scale the OVERLAY container up to fill the screen nicely.
 const CSS = `
-  :root {
-    --blue:   #2D6FAF;
-    --green:  #3B6D11;
-    --gold:   #B8892A;
-    --orange: #D97825;
-    --red:    #c0392b;
+  :root{ --blue:#2D6FAF;--green:#3B6D11;--gold:#B8892A;--orange:#D97825;--red:#c0392b; }
+
+  /* ── OVERLAY SHELL ── */
+  #prop-overlay {
+    position:fixed;inset:0;z-index:500;
+    background:rgba(0,0,0,0.6);
+    display:flex;flex-direction:column;
+    font-family:'Helvetica Neue',Arial,sans-serif;
   }
 
-  #proposal-root * { box-sizing: border-box; margin: 0; padding: 0; }
-  #proposal-root {
-    font-family: 'Helvetica Neue', Arial, sans-serif;
-    background: #e8eaed;
-    padding: 24px 0 48px;
-    min-height: 100%;
-    min-width: 900px;
+  /* top toolbar */
+  #prop-toolbar {
+    flex-shrink:0;
+    background:#1a1f2e;
+    padding:10px 20px;
+    display:flex;align-items:center;gap:10px;
+    border-bottom:2px solid #B8892A;
+  }
+  #prop-toolbar .btn-print {
+    background:#B8892A;border:none;border-radius:5px;
+    padding:9px 22px;color:#fff;font-size:13px;font-weight:700;
+    cursor:pointer;font-family:inherit;
+  }
+  #prop-toolbar .btn-close {
+    background:rgba(255,255,255,0.12);border:1px solid rgba(255,255,255,0.25);
+    border-radius:5px;padding:9px 18px;color:#fff;font-size:13px;
+    cursor:pointer;font-family:inherit;
+  }
+  #prop-toolbar .tip { font-size:11px;color:rgba(255,255,255,0.4);margin-left:4px; }
+  #prop-toolbar .page-info { margin-left:auto;font-size:12px;color:rgba(255,255,255,0.5); }
+
+  /* scrollable canvas area */
+  #prop-canvas {
+    flex:1;overflow-y:auto;overflow-x:auto;
+    background:#525659;
+    padding:24px 0 48px;
+    display:flex;flex-direction:column;align-items:center;
+    gap:20px;
   }
 
-  .proposal-page {
-    background: #fff;
-    color: #111;
-    width: 8.5in;
-    height: 11in;
-    margin: 0 auto 24px;
-    padding: 0.45in 0.55in 0.45in;
-    box-shadow: 0 4px 24px rgba(0,0,0,0.15);
-    position: relative;
-    font-family: 'Helvetica Neue', Arial, sans-serif;
-    overflow: hidden;
+  /* ── EACH PAGE ── */
+  /* Render at 816px wide (8.5in @ 96dpi = true print size).           */
+  /* The canvas centres them; user can zoom browser if they want larger. */
+  .pg {
+    background:#fff;
+    width:816px;
+    height:1056px;        /* 11in @ 96dpi */
+    flex-shrink:0;
+    position:relative;
+    overflow:hidden;
+    box-shadow:0 4px 20px rgba(0,0,0,0.45);
+    padding:38px 48px 38px;
+    box-sizing:border-box;
+    color:#111;
+    font-family:'Helvetica Neue',Arial,sans-serif;
+    font-size:12px;
+    line-height:1.4;
   }
 
   /* ── HEADER ── */
-  .pg-header {
-    border: 1.5px solid var(--blue);
-    border-radius: 6px;
-    padding: 10px 18px;
-    display: flex;
-    align-items: center;
-    gap: 14px;
-    position: relative;
-  }
-  .pg-header img { width: 52px; height: 52px; flex-shrink: 0; object-fit: contain; }
-  .pg-brand h2 { font-size: 17px; font-weight: 700; color: var(--blue); letter-spacing: 0.3px; line-height: 1.1; }
-  .pg-brand p  { font-size: 11px; color: #888; font-style: italic; margin-top: 3px; }
-  .pg-header-address { position: absolute; top: 10px; right: 18px; font-size: 9.5px; color: #888; font-style: italic; }
+  .hdr { display:flex;align-items:center;justify-content:space-between;border:1.5px solid var(--blue);border-radius:5px;padding:10px 16px; }
+  .hdr-left { display:flex;align-items:center;gap:14px; }
+  .hdr img  { width:52px;height:52px;object-fit:contain;flex-shrink:0; }
+  .brand-name { font-size:16px;font-weight:700;color:var(--blue);letter-spacing:.3px; }
+  .brand-sub  { font-size:10.5px;color:#888;font-style:italic;margin-top:2px; }
+  .hdr-addr   { font-size:9.5px;color:#888;font-style:italic;text-align:right;max-width:280px; }
 
-  .pg-stripe { height: 12px; margin: 4px 0 0; display: flex; }
-  .pg-stripe span { display: block; height: 100%; }
-  .pg-stripe .s1 { background: var(--blue);   flex: 25; }
-  .pg-stripe .s2 { background: var(--green);  flex: 24; }
-  .pg-stripe .s3 { background: var(--gold);   flex: 24; }
-  .pg-stripe .s4 { background: var(--orange); flex: 13; }
-  .pg-stripe .s5 { background: var(--red);    flex: 13; }
+  .stripe { display:flex;height:11px;margin:4px 0 0; }
+  .stripe span { display:block;height:100%; }
+  .stripe .s1{background:var(--blue);flex:25}
+  .stripe .s2{background:var(--green);flex:24}
+  .stripe .s3{background:var(--gold);flex:24}
+  .stripe .s4{background:var(--orange);flex:13}
+  .stripe .s5{background:var(--red);flex:13}
 
   /* ── PAGE 1 TITLE ── */
-  .pg-title    { font-size: 34px; font-weight: 800; color: var(--blue); text-align: center; letter-spacing: 0.5px; margin-top: 16px; margin-bottom: 4px; line-height: 1.1; }
-  .pg-address  { text-align: center; font-size: 16px; font-weight: 700; color: #111; margin-bottom: 3px; }
-  .pg-subtitle { text-align: center; font-size: 12px; font-style: italic; color: #555; line-height: 1.5; }
+  .pg-title   { font-size:32px;font-weight:800;color:var(--blue);text-align:center;margin:14px 0 4px;letter-spacing:.4px; }
+  .pg-address { font-size:15px;font-weight:700;text-align:center;margin-bottom:2px; }
+  .pg-sub     { font-size:11px;font-style:italic;color:#555;text-align:center;line-height:1.6; }
 
-  /* ── SECTION HEADINGS ── */
-  .pg-section-title { font-size: 17px; font-weight: 700; color: var(--blue); margin: 16px 0 8px; }
+  /* ── SECTION TITLE ── */
+  .sec-title { font-size:16px;font-weight:700;color:var(--blue);margin:14px 0 7px; }
 
   /* ── VALUATION BOX ── */
-  .pg-valuation { border: 1px solid #d0d7e0; border-radius: 4px; padding: 10px 20px; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-  .pg-val-cell .label { font-size: 11px; color: #888; margin-bottom: 2px; }
-  .pg-val-cell .num   { font-size: 26px; font-weight: 800; color: var(--blue); line-height: 1.1; }
+  .val-box { border:1px solid #d0d7e0;border-radius:4px;padding:10px 18px;display:grid;grid-template-columns:1fr 1fr;gap:10px; }
+  .val-label { font-size:10.5px;color:#888;margin-bottom:2px; }
+  .val-num   { font-size:25px;font-weight:800;color:var(--blue);line-height:1.1; }
 
   /* ── REPAIR TABLE ── */
-  .pg-reno-intro { font-size: 11.5px; font-style: italic; color: #555; margin-bottom: 6px; }
-  .pg-reno-table { width: 100%; border-collapse: collapse; font-size: 11.5px; }
-  .pg-reno-table th { background: var(--blue); color: #fff; padding: 7px 14px; text-align: left; font-weight: 700; }
-  .pg-reno-table th:last-child { text-align: right; }
-  .pg-reno-table td { padding: 5px 14px; border-bottom: 1px solid #eee; }
-  .pg-reno-table td:last-child { text-align: right; font-weight: 600; }
-  .pg-reno-table tr:nth-child(even) td { background: #f9f9f9; }
-  .pg-reno-table .total-row td { background: var(--blue); color: #fff; font-weight: 700; border: none; padding: 8px 14px; }
+  .reno-note { font-size:11px;font-style:italic;color:#555;margin-bottom:5px; }
+  .reno-tbl  { width:100%;border-collapse:collapse;font-size:11px; }
+  .reno-tbl th { background:var(--blue);color:#fff;padding:6px 12px;text-align:left;font-weight:700; }
+  .reno-tbl th:last-child { text-align:right; }
+  .reno-tbl td { padding:4px 12px;border-bottom:1px solid #eee; }
+  .reno-tbl td:last-child { text-align:right;font-weight:600; }
+  .reno-tbl tr:nth-child(even) td { background:#f9f9f9; }
+  .reno-tbl .total td { background:var(--blue);color:#fff;font-weight:700;border:none;padding:7px 12px; }
+
+  /* ── PAGE FOOTER ── */
+  .pg-foot { position:absolute;bottom:22px;left:0;right:0;text-align:center;font-size:9.5px;color:#aaa; }
 
   /* ── OPTION BOXES ── */
-  .pg-intro-text { font-size: 12px; color: #333; line-height: 1.5; margin-bottom: 14px; }
+  .intro-text { font-size:11.5px;color:#333;line-height:1.5;margin-bottom:12px; }
 
-  .pg-option-box { border: 1px solid #d0d7e0; border-radius: 4px; overflow: hidden; margin-bottom: 14px; }
-  .pg-option-header { color: #fff; padding: 9px 16px; }
-  .pg-option-box.green-o  .pg-option-header { background: var(--green); }
-  .pg-option-box.blue-o   .pg-option-header { background: var(--blue); }
-  .pg-option-box.orange-o .pg-option-header { background: var(--orange); }
-  .opt-title { font-size: 13px; font-weight: 700; letter-spacing: 0.3px; }
-  .opt-sub   { font-size: 11px; font-style: italic; opacity: 0.95; margin-top: 2px; }
+  .opt-box { border:1px solid #d0d7e0;border-radius:4px;overflow:hidden;margin-bottom:12px; }
+  .opt-hdr { color:#fff;padding:8px 16px; }
+  .opt-box.green  .opt-hdr { background:var(--green); }
+  .opt-box.blue   .opt-hdr { background:var(--blue); }
+  .opt-box.orange .opt-hdr { background:var(--orange); }
+  .opt-title { font-size:12.5px;font-weight:700;letter-spacing:.3px; }
+  .opt-sub   { font-size:10.5px;font-style:italic;opacity:.95;margin-top:2px; }
 
-  .pg-option-body { padding: 12px 16px; display: grid; grid-template-columns: 1fr 1fr; gap: 24px; background: #fff; }
+  .opt-body  { display:grid;grid-template-columns:1fr 1fr;padding:11px 16px;gap:0; }
+  .opt-left  { padding-right:20px;border-right:1px solid #eee; }
+  .opt-right { padding-left:20px; }
 
-  .pg-option-left { font-size: 11.5px; line-height: 1.55; }
-  .price-label { font-size: 11px; color: #666; margin-bottom: 1px; }
-  .price-num   { font-size: 22px; font-weight: 800; color: var(--blue); line-height: 1.1; margin-bottom: 6px; }
-  .less-title  { font-weight: 700; margin-bottom: 3px; color: #333; font-size: 11.5px; }
-  .less-line   { display: flex; justify-content: space-between; margin-bottom: 2px; color: var(--red); font-size: 11.5px; }
-  .net-line    { margin-top: 6px; padding-top: 5px; border-top: 1px solid #ddd; font-weight: 700; color: var(--blue); display: flex; justify-content: space-between; font-size: 12px; }
+  .price-lbl { font-size:10.5px;color:#666;margin-bottom:1px; }
+  .price-num { font-size:21px;font-weight:800;color:var(--blue);line-height:1.1;margin-bottom:5px; }
+  .less-ttl  { font-size:11px;font-weight:700;color:#333;margin-bottom:2px; }
+  .less-row  { display:flex;justify-content:space-between;font-size:11px;color:var(--red);margin-bottom:2px; }
+  .net-row   { display:flex;justify-content:space-between;font-size:11.5px;font-weight:700;color:var(--blue);margin-top:5px;padding-top:5px;border-top:1px solid #ddd; }
 
-  .pg-option-right { font-size: 11.5px; border-left: 1px solid #eee; padding-left: 20px; }
-  .right-title { font-weight: 700; color: var(--blue); margin-bottom: 6px; font-size: 12px; }
-  .pg-option-right ul { list-style: none; padding: 0; }
-  .pg-option-right li { padding-left: 12px; position: relative; margin-bottom: 4px; line-height: 1.4; color: #333; }
-  .pg-option-right li::before { content: '•'; position: absolute; left: 0; color: #555; }
+  .bul-ttl { font-size:11px;font-weight:700;color:var(--blue);margin-bottom:5px; }
+  .bul-list{ list-style:none;padding:0; }
+  .bul-list li { font-size:11px;color:#333;padding-left:11px;position:relative;margin-bottom:3px;line-height:1.4; }
+  .bul-list li::before { content:'•';position:absolute;left:0;color:#555; }
 
   /* ── COMPARISON TABLE ── */
-  .pg-comp-table { width: 100%; border-collapse: collapse; font-size: 12.5px; margin-top: 4px; }
-  .pg-comp-table th { background: var(--blue); color: #fff; padding: 11px 16px; text-align: left; font-weight: 700; }
-  .pg-comp-table td { padding: 12px 16px; border-bottom: 1px solid #eee; }
-  .pg-comp-table td:first-child { font-weight: 700; }
-  .pg-comp-table tr:nth-child(even) td { background: #f9f9f9; }
+  .cmp-tbl { width:100%;border-collapse:collapse;font-size:12px;margin-top:4px; }
+  .cmp-tbl th { background:var(--blue);color:#fff;padding:11px 16px;text-align:left;font-weight:700; }
+  .cmp-tbl td { padding:12px 16px;border-bottom:1px solid #eee; }
+  .cmp-tbl td:first-child { font-weight:700; }
+  .cmp-tbl tr:nth-child(even) td { background:#f9f9f9; }
 
   /* ── CTA ── */
-  .pg-cta { text-align: center; margin-top: 36px; padding-top: 24px; border-top: 1px solid #ddd; }
-  .pg-cta h3 { font-size: 18px; font-weight: 700; color: var(--blue); margin-bottom: 6px; }
-  .pg-cta p  { font-size: 12px; font-style: italic; color: #555; }
+  .cta { text-align:center;margin-top:32px;padding-top:22px;border-top:1px solid #ddd; }
+  .cta h3 { font-size:17px;font-weight:700;color:var(--blue);margin-bottom:5px; }
+  .cta p  { font-size:11.5px;font-style:italic;color:#555; }
 
   /* ── FOOTER BOX ── */
-  .pg-footer-box { border: 1.5px solid var(--blue); border-radius: 4px; padding: 12px 18px; display: flex; align-items: center; gap: 14px; margin-top: 20px; }
-  .pg-footer-box img { width: 44px; height: 44px; flex-shrink: 0; object-fit: contain; }
-  .pg-footer-box h2  { font-size: 14px; font-weight: 700; color: var(--blue); }
-  .pg-footer-box p   { font-size: 11px; color: #888; font-style: italic; margin-top: 2px; }
-
-  /* ── PAGE NUMBER ── */
-  .pg-page-num { position: absolute; bottom: 0.28in; left: 0; right: 0; text-align: center; font-size: 10px; color: #aaa; }
+  .ftr-box { border:1.5px solid var(--blue);border-radius:4px;padding:11px 16px;display:flex;align-items:center;gap:12px;margin-top:18px; }
+  .ftr-box img { width:42px;height:42px;object-fit:contain;flex-shrink:0; }
+  .ftr-box .fn { font-size:13px;font-weight:700;color:var(--blue); }
+  .ftr-box .fs { font-size:10.5px;color:#888;font-style:italic;margin-top:2px; }
 
   /* ── PRINT ── */
   @media print {
-    @page { margin: 0; size: letter; }
-    body * { visibility: hidden; }
-    #proposal-print-wrap, #proposal-print-wrap * { visibility: visible; }
-    #proposal-print-wrap { position: fixed; top: 0; left: 0; width: 100%; }
-    .no-print { display: none !important; }
-    #proposal-root { background: white; padding: 0; }
-    .proposal-page {
-      box-shadow: none; margin: 0;
-      width: 100%; height: 100vh;
-      overflow: hidden;
-      page-break-after: always;
+    @page { margin:0; size:letter; }
+    body > *:not(#prop-overlay) { display:none!important; }
+    #prop-overlay { position:static!important;background:none!important; }
+    #prop-toolbar { display:none!important; }
+    #prop-canvas  {
+      background:none!important;
+      padding:0!important;gap:0!important;
+      overflow:visible!important;
+      display:block!important;
     }
-    .proposal-page:last-child { page-break-after: auto; }
+    .pg {
+      box-shadow:none!important;
+      page-break-after:always;
+      margin:0!important;
+      width:100%!important;
+      height:100vh!important;
+    }
+    .pg:last-child { page-break-after:auto; }
   }
 `
 
 export default function ProposalModal({ property, onClose }) {
   if (!property) return null
-  const d = calcOffers(property)
-  const address = property.address || '— Address Not Entered —'
-  const repairs = (property.repair_items||[]).filter(r => (r.name || r.cost) && parseFloat(r.cost) > 0)
-
-  const bedsBaths = [property.beds && `${property.beds} Bed`, property.baths && `${property.baths} Bath`].filter(Boolean).join(' · ')
+  const d    = calcOffers(property)
+  const addr = property.address || '—'
+  const repairs = (property.repair_items||[]).filter(r=>r.name&&parseFloat(r.cost)>0)
+  const bedsBaths = [property.beds&&`${property.beds} Bed`, property.baths&&`${property.baths} Bath`].filter(Boolean).join(' · ')
   const sqft = property.sqft ? `${parseInt(property.sqft).toLocaleString('en-US')} sq ft` : ''
   const commPct = (d.commListPct*100).toFixed(1).replace(/\.0$/,'')
 
-  const repairRows = repairs.map(r =>
-    `<tr><td>${r.name}</td><td>$${Math.round(parseFloat(r.cost)||0).toLocaleString('en-US')}</td></tr>`
-  ).join('')
+  const repairRows = repairs.map(r=>`
+    <tr><td>${r.name}</td><td>${d$(parseFloat(r.cost))}</td></tr>
+  `).join('')
 
-  const html = `
-    <!-- ══ PAGE 1: Cover + Valuation + Repairs ══ -->
-    <div class="proposal-page">
-      ${pageHeader('')}
+  const pages = `
+    <!-- ══ PAGE 1 ══ -->
+    <div class="pg">
+      ${hdr('')}
+      <div class="pg-title">CASH OFFER PROPOSAL</div>
+      <div class="pg-address">${addr}</div>
+      ${bedsBaths?`<div class="pg-sub">${bedsBaths}</div>`:''}
+      ${sqft?`<div class="pg-sub">${sqft}</div>`:''}
 
-      <h1 class="pg-title">CASH OFFER PROPOSAL</h1>
-      <div class="pg-address">${address}</div>
-      ${bedsBaths ? `<div class="pg-subtitle">${bedsBaths}</div>` : ''}
-      ${sqft      ? `<div class="pg-subtitle">${sqft}</div>` : ''}
-
-      <div class="pg-section-title">Property Valuation</div>
-      <div class="pg-valuation">
-        <div class="pg-val-cell">
-          <div class="label">After Renovation Value</div>
-          <div class="num">$${Math.round(d.arv).toLocaleString('en-US')}</div>
-        </div>
-        <div class="pg-val-cell">
-          <div class="label">As-Is Market Value</div>
-          <div class="num">$${Math.round(d.asisValue).toLocaleString('en-US')}</div>
-        </div>
+      <div class="sec-title">Property Valuation</div>
+      <div class="val-box">
+        <div><div class="val-label">After Renovation Value</div><div class="val-num">${d$(d.arv)}</div></div>
+        <div><div class="val-label">As-Is Market Value</div><div class="val-num">${d$(d.asisValue)}</div></div>
       </div>
 
-      ${repairs.length > 0 ? `
-      <div class="pg-section-title">Renovation Breakdown</div>
-      <div class="pg-reno-intro">Estimated repairs required to bring the property to retail condition:</div>
-      <table class="pg-reno-table">
-        <thead><tr><th>Item</th><th>Cost</th></tr></thead>
-        <tbody>${repairRows}</tbody>
-        <tfoot><tr class="total-row"><td>TOTAL ESTIMATED REPAIRS</td><td>$${Math.round(d.reno).toLocaleString('en-US')}</td></tr></tfoot>
-      </table>
-      ` : ''}
+      ${repairs.length>0?`
+        <div class="sec-title">Renovation Breakdown</div>
+        <div class="reno-note">Estimated repairs required to bring the property to retail condition:</div>
+        <table class="reno-tbl">
+          <thead><tr><th>Item</th><th>Cost</th></tr></thead>
+          <tbody>${repairRows}</tbody>
+          <tfoot><tr class="total"><td>TOTAL ESTIMATED REPAIRS</td><td>${d$(d.reno)}</td></tr></tfoot>
+        </table>
+      `:''}
 
-      <div class="pg-page-num">New Home Collective · Page 1 of 3</div>
+      <div class="pg-foot">New Home Collective · Page 1 of 3</div>
     </div>
 
-    <!-- ══ PAGE 2: Three-Option Offer ══ -->
-    <div class="proposal-page">
-      ${pageHeader(address)}
+    <!-- ══ PAGE 2 ══ -->
+    <div class="pg">
+      ${hdr(addr)}
+      <div class="sec-title" style="margin-top:12px;">Three-Option Offer</div>
+      <p class="intro-text">We're offering you three paths forward. Each one fits a different priority — speed, net amount, or maximum upside. Here's how they compare side by side.</p>
 
-      <div class="pg-section-title" style="margin-top:14px;">Three-Option Offer</div>
-      <p class="pg-intro-text">We're offering you three paths forward. Each one fits a different priority — speed, net amount, or maximum upside. Here's how they compare side by side.</p>
-
-      <!-- Option 1: Cash Offer -->
-      <div class="pg-option-box green-o">
-        <div class="pg-option-header">
-          <div class="opt-title">OPTION 1 — CASH OFFER</div>
-          <div class="opt-sub">Fast, As-Is, No Hassle</div>
-        </div>
-        <div class="pg-option-body">
-          <div class="pg-option-left">
-            <div class="price-label">Purchase Price</div>
-            <div class="price-num" style="color:var(--green);">$${Math.round(d.cashOffer).toLocaleString('en-US')}</div>
-            <div class="net-line" style="color:var(--green);"><span>Net to Seller:</span><span>$${Math.round(d.cashOffer).toLocaleString('en-US')}</span></div>
+      <div class="opt-box green">
+        <div class="opt-hdr"><div class="opt-title">OPTION 1 — CASH OFFER</div><div class="opt-sub">Fast, As-Is, No Hassle</div></div>
+        <div class="opt-body">
+          <div class="opt-left">
+            <div class="price-lbl">Purchase Price</div>
+            <div class="price-num" style="color:var(--green)">${d$(d.cashOffer)}</div>
+            <div class="net-row" style="color:var(--green)"><span>Net to Seller:</span><span>${d$(d.cashOffer)}</span></div>
           </div>
-          <div class="pg-option-right">
-            <div class="right-title">Highlights</div>
-            <ul>
+          <div class="opt-right">
+            <div class="bul-ttl">Highlights</div>
+            <ul class="bul-list">
               <li>Close in 2–3 weeks</li>
               <li>No repairs required</li>
               <li>No commissions, no fees</li>
@@ -267,24 +281,20 @@ export default function ProposalModal({ property, onClose }) {
         </div>
       </div>
 
-      <!-- Option 2: As-Is Listing -->
-      <div class="pg-option-box blue-o">
-        <div class="pg-option-header">
-          <div class="opt-title">OPTION 2 — AS-IS LISTING</div>
-          <div class="opt-sub">Sell on the Open Market</div>
-        </div>
-        <div class="pg-option-body">
-          <div class="pg-option-left">
-            <div class="price-label">List Price</div>
-            <div class="price-num">$${Math.round(d.asisValue).toLocaleString('en-US')}</div>
-            <div class="less-title">Less Costs:</div>
-            <div class="less-line"><span>Commission (${commPct}%):</span><span>${fmtNeg(d.opt2Comm)}</span></div>
-            <div class="less-line"><span>Holding (${d.holdOpt2Mo} mo):</span><span>${fmtNeg(d.opt2Holding)}</span></div>
-            <div class="net-line"><span>Net to Seller:</span><span>~$${Math.round(d.opt2Net).toLocaleString('en-US')}</span></div>
+      <div class="opt-box blue">
+        <div class="opt-hdr"><div class="opt-title">OPTION 2 — AS-IS LISTING</div><div class="opt-sub">Sell on the Open Market</div></div>
+        <div class="opt-body">
+          <div class="opt-left">
+            <div class="price-lbl">List Price</div>
+            <div class="price-num">${d$(d.asisValue)}</div>
+            <div class="less-ttl">Less Costs:</div>
+            <div class="less-row"><span>Commission (${commPct}%):</span><span>${dn$(d.opt2Comm)}</span></div>
+            <div class="less-row"><span>Holding (${d.holdOpt2Mo} mo):</span><span>${dn$(d.opt2Hold)}</span></div>
+            <div class="net-row"><span>Net to Seller:</span><span>~${d$(d.opt2Net)}</span></div>
           </div>
-          <div class="pg-option-right">
-            <div class="right-title">Considerations</div>
-            <ul>
+          <div class="opt-right">
+            <div class="bul-ttl">Considerations</div>
+            <ul class="bul-list">
               <li>2–3 month timeline</li>
               <li>Showings &amp; negotiation required</li>
               <li>Inspection / financing risk</li>
@@ -294,25 +304,21 @@ export default function ProposalModal({ property, onClose }) {
         </div>
       </div>
 
-      <!-- Option 3: Full Retail -->
-      <div class="pg-option-box orange-o">
-        <div class="pg-option-header">
-          <div class="opt-title">OPTION 3 — FULL RETAIL (After Renovation)</div>
-          <div class="opt-sub">Renovate First, Then List at Top of Market</div>
-        </div>
-        <div class="pg-option-body">
-          <div class="pg-option-left">
-            <div class="price-label">Projected Sale Price</div>
-            <div class="price-num">$${Math.round(d.arv).toLocaleString('en-US')}</div>
-            <div class="less-title">Less Costs:</div>
-            <div class="less-line"><span>Repairs:</span><span>${fmtNeg(d.reno)}</span></div>
-            <div class="less-line"><span>Commission (${commPct}%):</span><span>${fmtNeg(d.opt3Comm)}</span></div>
-            <div class="less-line"><span>Holding (${d.holdOpt3Mo} mo):</span><span>${fmtNeg(d.opt3Holding)}</span></div>
-            <div class="net-line"><span>Net to Seller:</span><span>~$${Math.round(d.opt3Net).toLocaleString('en-US')}</span></div>
+      <div class="opt-box orange">
+        <div class="opt-hdr"><div class="opt-title">OPTION 3 — FULL RETAIL (After Renovation)</div><div class="opt-sub">Renovate First, Then List at Top of Market</div></div>
+        <div class="opt-body">
+          <div class="opt-left">
+            <div class="price-lbl">Projected Sale Price</div>
+            <div class="price-num">${d$(d.arv)}</div>
+            <div class="less-ttl">Less Costs:</div>
+            <div class="less-row"><span>Repairs:</span><span>${dn$(d.reno)}</span></div>
+            <div class="less-row"><span>Commission (${commPct}%):</span><span>${dn$(d.opt3Comm)}</span></div>
+            <div class="less-row"><span>Holding (${d.holdOpt3Mo} mo):</span><span>${dn$(d.opt3Hold)}</span></div>
+            <div class="net-row"><span>Net to Seller:</span><span>~${d$(d.opt3Net)}</span></div>
           </div>
-          <div class="pg-option-right">
-            <div class="right-title">Considerations</div>
-            <ul>
+          <div class="opt-right">
+            <div class="bul-ttl">Considerations</div>
+            <ul class="bul-list">
               <li>4–6 month timeline</li>
               <li>Full renovation required</li>
               <li>Project management &amp; coordination</li>
@@ -322,59 +328,50 @@ export default function ProposalModal({ property, onClose }) {
         </div>
       </div>
 
-      <div class="pg-page-num">New Home Collective · Page 2 of 3</div>
+      <div class="pg-foot">New Home Collective · Page 2 of 3</div>
     </div>
 
-    <!-- ══ PAGE 3: Comparison + CTA ══ -->
-    <div class="proposal-page">
-      ${pageHeader(address)}
+    <!-- ══ PAGE 3 ══ -->
+    <div class="pg">
+      ${hdr(addr)}
+      <div class="sec-title" style="margin-top:12px;">Seller Comparison</div>
+      <p class="intro-text"><em>At a glance — what each option puts in your pocket and what it asks of you.</em></p>
 
-      <div class="pg-section-title" style="margin-top:14px;">Seller Comparison</div>
-      <p class="pg-intro-text"><em>At a glance — what each option puts in your pocket and what it asks of you.</em></p>
-
-      <table class="pg-comp-table">
-        <thead>
-          <tr><th>Option</th><th>Net to Seller</th><th>Timeline</th><th>Effort</th></tr>
-        </thead>
+      <table class="cmp-tbl">
+        <thead><tr><th>Option</th><th>Net to Seller</th><th>Timeline</th><th>Effort</th></tr></thead>
         <tbody>
-          <tr><td>Cash Offer (Option 1)</td><td>$${Math.round(d.cashOffer).toLocaleString('en-US')}</td><td>2–3 weeks</td><td>Very Low</td></tr>
-          <tr><td>As-Is Listing (Option 2)</td><td>~$${Math.round(d.opt2Net).toLocaleString('en-US')}</td><td>2–3 months</td><td>Low</td></tr>
-          <tr><td>Full Retail (Option 3)</td><td>~$${Math.round(d.opt3Net).toLocaleString('en-US')}</td><td>4–6 months</td><td>High</td></tr>
+          <tr><td>Cash Offer (Option 1)</td><td>${d$(d.cashOffer)}</td><td>2–3 weeks</td><td>Very Low</td></tr>
+          <tr><td>As-Is Listing (Option 2)</td><td>~${d$(d.opt2Net)}</td><td>2–3 months</td><td>Low</td></tr>
+          <tr><td>Full Retail (Option 3)</td><td>~${d$(d.opt3Net)}</td><td>4–6 months</td><td>High</td></tr>
         </tbody>
       </table>
 
-      <div class="pg-cta">
+      <div class="cta">
         <h3>Ready to move forward? Let's talk.</h3>
         <p>Reach out anytime to accept this offer or ask any questions.</p>
       </div>
 
-      <div class="pg-footer-box">
-        <img src="/nhc-logo.svg" alt="NHC" />
-        <div>
-          <h2>NEW HOME COLLECTIVE</h2>
-          <p>Real Estate Solutions · Lexington, KY</p>
-        </div>
+      <div class="ftr-box">
+        <img src="/nhc-logo.svg" alt="NHC"/>
+        <div><div class="fn">NEW HOME COLLECTIVE</div><div class="fs">Real Estate Solutions · Lexington, KY</div></div>
       </div>
 
-      <div class="pg-page-num">New Home Collective · Page 3 of 3</div>
+      <div class="pg-foot">New Home Collective · Page 3 of 3</div>
     </div>
   `
 
   return (
-    <div id="proposal-print-wrap" style={{ position:'fixed', inset:0, zIndex:300, overflowY:'auto', overflowX:'auto', WebkitOverflowScrolling:'touch' }}>
+    <>
       <style>{CSS}</style>
-
-      <div className="no-print" style={{ position:'sticky', top:0, zIndex:10, background:'rgba(15,20,40,0.93)', backdropFilter:'blur(8px)', padding:'12px 20px', display:'flex', gap:10, alignItems:'center' }}>
-        <button onClick={()=>window.print()} style={{ background:'#B8892A', border:'none', borderRadius:6, padding:'10px 22px', color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer', fontFamily:'inherit' }}>
-          Print / Save PDF
-        </button>
-        <button onClick={onClose} style={{ background:'rgba(255,255,255,0.15)', border:'1px solid rgba(255,255,255,0.25)', borderRadius:6, padding:'10px 18px', color:'#fff', fontSize:13, cursor:'pointer', fontFamily:'inherit' }}>
-          Close
-        </button>
-        <span style={{ fontSize:12, color:'rgba(255,255,255,0.45)', marginLeft:6 }}>Print → Save as PDF · set margins to None</span>
+      <div id="prop-overlay">
+        <div id="prop-toolbar">
+          <button className="btn-print" onClick={()=>window.print()}>⬇ Print / Save PDF</button>
+          <button className="btn-close" onClick={onClose}>✕ Close</button>
+          <span className="tip">File → Print → Save as PDF · Margins: None · Paper: Letter</span>
+          <span className="page-info">3 pages</span>
+        </div>
+        <div id="prop-canvas" dangerouslySetInnerHTML={{ __html: pages }} />
       </div>
-
-      <div id="proposal-root" dangerouslySetInnerHTML={{ __html: html }} />
-    </div>
+    </>
   )
 }
