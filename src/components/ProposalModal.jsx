@@ -59,8 +59,9 @@ const CSS = `
   #proposal-root {
     font-family: 'DM Sans', 'Helvetica Neue', Arial, sans-serif;
     background: #e8eaed;
-    padding: 24px 12px 48px;
+    padding: 24px 0 48px;
     min-height: 100%;
+    min-width: 900px;
   }
 
   .proposal-page {
@@ -68,7 +69,6 @@ const CSS = `
     color: #111;
     width: 8.5in;
     height: 11in;
-    max-width: 100%;
     margin: 0 auto 24px;
     padding: 0.4in 0.55in 0.5in;
     box-shadow: 0 4px 24px rgba(0,0,0,0.15);
@@ -349,7 +349,7 @@ export default function ProposalModal({ property, onClose }) {
   `
 
   return (
-    <div id="proposal-print-wrap" style={{ position:'fixed', inset:0, zIndex:300, overflowY:'auto', WebkitOverflowScrolling:'touch' }}>
+    <div id="proposal-print-wrap" style={{ position:'fixed', inset:0, zIndex:300, overflowY:'auto', overflowX:'auto', WebkitOverflowScrolling:'touch' }}>
       <style>{CSS}</style>
       <style>{`@media print { .no-print { display:none!important } }`}</style>
 
