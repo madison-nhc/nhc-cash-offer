@@ -142,12 +142,12 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
   const isMounted = useRef(false)
   useEffect(() => {
     if (!isMounted.current) { isMounted.current = true; return }
-    if (!form.id || !form.address) return
+    if (!form.id || !form.address || showProposal) return
     if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current)
     autoSaveTimer.current = setTimeout(save, 1500)
     return () => clearTimeout(autoSaveTimer.current)
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [form.address, form.arv, form.beds, form.baths, form.sqft, form.asis_pct, form.asis_override, form.profit_margin, form.cash_offer_override, form.disposition, form.sale_price, form.commission_earned, form.commission_pct, form.purchase_price, form.closing_costs, form.rehab_cost, form.lost_reason, form.nhc_notes, form.bpv_notes, repairs])
+  }, [form.address, form.arv, form.beds, form.baths, form.sqft, form.asis_pct, form.asis_override, form.profit_margin, form.cash_offer_override, form.disposition, form.sale_price, form.commission_earned, form.commission_pct, form.purchase_price, form.closing_costs, form.rehab_cost, form.lost_reason, form.nhc_notes, form.bpv_notes, repairs, showProposal])
 
   async function del() {
     if (!confirm('Delete this property?')) return
