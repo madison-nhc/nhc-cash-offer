@@ -137,6 +137,11 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
 
   // Auto-save removed — save on close instead
 
+  async function handleClose() {
+    if (form.id && form.address) await save()
+    onClose()
+  }
+
   async function del() {
     if (!confirm('Delete this property?')) return
     await supabase.from('properties').delete().eq('id',form.id)
@@ -160,7 +165,7 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
   if (!property) return null
 
   return (
-    <Drawer open={open} onClose={onClose} width={580}
+    <Drawer open={open} onClose={handleClose} width={580}
       title={form.address||'New Property'}
       subtitle={
         <div style={{ display:'flex', alignItems:'center', gap:8, marginTop:4 }}>
@@ -471,7 +476,7 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
 
       <div style={{ display:'flex', justifyContent:'space-between', marginTop:20, paddingTop:16, borderTop:'1px solid #F0EDE6' }}>
         {!isNew && <Btn variant="danger" onClick={del}>Delete</Btn>}
-        <Btn variant="outline" onClick={async()=>{if(form.id&&form.address)await save();onClose();}} style={{ marginLeft:'auto' }}>Close</Btn>
+        <Btn variant="outline" onClick={handleClose} style={{ marginLeft:'auto' }}>Close</Btn>
       </div>
     </Drawer>
   )
