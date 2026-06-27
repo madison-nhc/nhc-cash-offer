@@ -182,7 +182,7 @@ export default function Analyzer() {
         )}
       </>)}
 
-      <PropertyDrawer property={drawer} open={!!drawer} onClose={()=>setDrawer(null)} onSave={()=>{ load() }} mailings={mailings} />
+      <PropertyDrawer property={drawer} open={!!drawer} onClose={()=>setDrawer(null)} onSave={()=>{ load() }} mailings={mailings} onViewOffer={(p)=>setProposal(p)} />
       {proposal && <ProposalModal property={proposal} onClose={()=>setProposal(null)} />}
     </PageWrap>
   )
