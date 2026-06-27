@@ -56,22 +56,26 @@ const CSS = `
   }
 
   #proposal-root * { box-sizing: border-box; margin: 0; padding: 0; }
-  #proposal-root { font-family: 'DM Sans', 'Helvetica Neue', Arial, sans-serif; background: #e8eaed; padding: 24px 12px 48px; }
+  #proposal-root {
+    font-family: 'DM Sans', 'Helvetica Neue', Arial, sans-serif;
+    background: #e8eaed;
+    padding: 24px 12px 48px;
+    min-height: 100%;
+  }
 
   .proposal-page {
     background: #fff;
     color: #111;
     width: 8.5in;
-    min-height: 11in;
+    height: 11in;
     max-width: 100%;
-    margin: 0 auto 20px;
-    padding: 0.4in 0.55in 0.7in;
-    box-shadow: 0 4px 24px rgba(0,0,0,0.1);
+    margin: 0 auto 24px;
+    padding: 0.4in 0.55in 0.5in;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.15);
     position: relative;
     font-family: 'DM Sans', 'Helvetica Neue', Arial, sans-serif;
-    page-break-after: always;
+    overflow: hidden;
   }
-  .proposal-page:last-child { page-break-after: auto; }
 
   .pg-header {
     border: 1.5px solid var(--doc-blue);
@@ -96,38 +100,38 @@ const CSS = `
 
   .pg-note { position: absolute; top: 0.18in; right: 0.55in; font-size: 9.5px; color: #888; font-style: italic; }
 
-  .pg-title { font-size: 36px; font-weight: 800; color: var(--doc-blue); text-align: center; letter-spacing: 0.5px; margin-top: 18px; margin-bottom: 6px; line-height: 1.1; }
-  .pg-address { text-align: center; font-size: 17px; font-weight: 700; color: #111; margin-bottom: 4px; }
+  .pg-title { font-size: 34px; font-weight: 800; color: var(--doc-blue); text-align: center; letter-spacing: 0.5px; margin-top: 14px; margin-bottom: 4px; line-height: 1.1; }
+  .pg-address { text-align: center; font-size: 17px; font-weight: 700; color: #111; margin-bottom: 3px; }
   .pg-subtitle { text-align: center; font-size: 12px; font-style: italic; color: #555; line-height: 1.4; }
 
-  .pg-section-title { font-size: 18px; font-weight: 700; color: var(--doc-blue); margin: 18px 0 8px; }
+  .pg-section-title { font-size: 17px; font-weight: 700; color: var(--doc-blue); margin: 14px 0 6px; }
 
-  .pg-valuation { border: 1px solid #d0d7e0; border-radius: 4px; padding: 12px 22px; display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .pg-valuation { border: 1px solid #d0d7e0; border-radius: 4px; padding: 10px 22px; display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
   .pg-val-cell .label { font-size: 11px; color: #888; margin-bottom: 2px; }
-  .pg-val-cell .num { font-size: 28px; font-weight: 800; color: var(--doc-blue); line-height: 1.1; }
+  .pg-val-cell .num { font-size: 26px; font-weight: 800; color: var(--doc-blue); line-height: 1.1; }
 
-  .pg-reno-intro { font-size: 12px; font-style: italic; color: #555; margin-bottom: 8px; }
+  .pg-reno-intro { font-size: 12px; font-style: italic; color: #555; margin-bottom: 6px; }
   .pg-reno-table { width: 100%; border-collapse: collapse; font-size: 11.5px; }
-  .pg-reno-table th { background: var(--doc-blue); color: white; padding: 8px 14px; text-align: left; font-weight: 700; }
+  .pg-reno-table th { background: var(--doc-blue); color: white; padding: 7px 14px; text-align: left; font-weight: 700; }
   .pg-reno-table th:last-child { text-align: right; }
-  .pg-reno-table td { padding: 5px 14px; border-bottom: 1px solid #eee; }
+  .pg-reno-table td { padding: 4px 14px; border-bottom: 1px solid #eee; }
   .pg-reno-table td:last-child { text-align: right; font-weight: 700; }
   .pg-reno-table tr:nth-child(even) td { background: #f9f9f9; }
-  .pg-reno-table .total-row td { background: var(--doc-blue); color: white; font-weight: 700; border: none; padding: 9px 14px; }
+  .pg-reno-table .total-row td { background: var(--doc-blue); color: white; font-weight: 700; border: none; padding: 8px 14px; }
 
-  .pg-intro-text { font-size: 12px; color: #333; line-height: 1.45; margin-bottom: 14px; }
+  .pg-intro-text { font-size: 12px; color: #333; line-height: 1.45; margin-bottom: 12px; }
 
-  .pg-option-box { border: 1px solid #d0d7e0; border-radius: 4px; overflow: hidden; margin-bottom: 14px; }
-  .pg-option-header { color: white; padding: 10px 18px; }
+  .pg-option-box { border: 1px solid #d0d7e0; border-radius: 4px; overflow: hidden; margin-bottom: 12px; }
+  .pg-option-header { color: white; padding: 9px 18px; }
   .pg-option-box.green-o .pg-option-header { background: var(--green); }
   .pg-option-box.blue-o .pg-option-header { background: var(--doc-blue); }
   .pg-option-box.orange-o .pg-option-header { background: var(--orange); }
   .pg-option-header .opt-title { font-size: 13px; font-weight: 700; letter-spacing: 0.3px; }
-  .pg-option-header .opt-sub { font-size: 11.5px; font-style: italic; opacity: 0.95; margin-top: 1px; }
-  .pg-option-body { padding: 12px 18px; display: grid; grid-template-columns: 1.3fr 1fr; gap: 32px; background: white; }
-  .pg-option-left { font-size: 11.5px; line-height: 1.55; }
+  .pg-option-header .opt-sub { font-size: 11px; font-style: italic; opacity: 0.95; margin-top: 1px; }
+  .pg-option-body { padding: 10px 18px; display: grid; grid-template-columns: 1.3fr 1fr; gap: 32px; background: white; }
+  .pg-option-left { font-size: 11.5px; line-height: 1.5; }
   .pg-option-left .price-label { font-size: 11px; color: #666; margin-bottom: 1px; }
-  .pg-option-left .price-num { font-size: 22px; font-weight: 800; color: var(--doc-blue); margin-bottom: 4px; line-height: 1.1; }
+  .pg-option-left .price-num { font-size: 21px; font-weight: 800; color: var(--doc-blue); margin-bottom: 3px; line-height: 1.1; }
   .pg-option-left .less-title { font-weight: 700; margin-top: 2px; margin-bottom: 2px; color: #333; }
   .pg-option-left .less-line { display: flex; justify-content: space-between; margin-bottom: 1px; color: var(--red); }
   .pg-option-left .net-line { margin-top: 4px; padding-top: 4px; border-top: 1px solid #ddd; font-weight: 700; color: var(--doc-blue); display: flex; justify-content: space-between; }
@@ -143,7 +147,7 @@ const CSS = `
   .pg-comp-table td:first-child { font-weight: 700; }
   .pg-comp-table tr:nth-child(even) td { background: #f9f9f9; }
 
-  .pg-cta { text-align: center; margin: 36px 0 20px; padding-top: 22px; border-top: 1px solid #ddd; }
+  .pg-cta { text-align: center; margin: 28px 0 16px; padding-top: 20px; border-top: 1px solid #ddd; }
   .pg-cta h3 { font-size: 17px; font-weight: 700; color: var(--doc-blue); margin-bottom: 6px; }
   .pg-cta p { font-size: 12px; font-style: italic; color: #555; }
 
@@ -152,7 +156,7 @@ const CSS = `
   .pg-footer-box h2 { font-size: 14px; font-weight: 700; color: var(--doc-blue); }
   .pg-footer-box p { font-size: 11px; color: #888; font-style: italic; margin-top: 2px; }
 
-  .pg-page-num { position: absolute; bottom: 0.3in; left: 0; right: 0; text-align: center; font-size: 10px; color: #999; }
+  .pg-page-num { position: absolute; bottom: 0.25in; left: 0; right: 0; text-align: center; font-size: 10px; color: #999; }
 
   @media print {
     @page { margin: 0; size: letter; }
@@ -161,7 +165,15 @@ const CSS = `
     #proposal-print-wrap { position: fixed; top: 0; left: 0; width: 100%; }
     .no-print { display: none !important; }
     #proposal-root { background: white; padding: 0; }
-    .proposal-page { box-shadow: none; margin: 0; width: 100%; min-height: 100vh; }
+    .proposal-page {
+      box-shadow: none;
+      margin: 0;
+      width: 100%;
+      height: 100vh;
+      overflow: hidden;
+      page-break-after: always;
+    }
+    .proposal-page:last-child { page-break-after: auto; }
   }
 `
 
@@ -211,13 +223,7 @@ export default function ProposalModal({ property, onClose }) {
       </table>
       ` : ''}
 
-      <div class="pg-page-num">New Home Collective · Page 1 of 3</div>
-    </div>
-
-    <!-- PAGE 2 -->
-    <div class="proposal-page">
-      ${pageHeader(address)}
-      <div class="pg-section-title">Three-Option Offer</div>
+      <div class="pg-section-title" style="margin-top: ${repairs.length > 0 ? '18px' : '22px'};">Three-Option Offer</div>
       <p class="pg-intro-text">We're offering you three paths forward. Each one fits a different priority — speed, net amount, or maximum upside. Here's how they compare side by side.</p>
 
       <div class="pg-option-box green-o">
@@ -242,6 +248,15 @@ export default function ProposalModal({ property, onClose }) {
           </div>
         </div>
       </div>
+
+      <div class="pg-page-num">New Home Collective · Page 1 of 3</div>
+    </div>
+
+    <!-- PAGE 2 -->
+    <div class="proposal-page">
+      ${pageHeader(address)}
+      <div class="pg-section-title" style="margin-top: 14px;">Options Continued</div>
+      <p class="pg-intro-text"><em>Comparing all three paths side by side.</em></p>
 
       <div class="pg-option-box blue-o">
         <div class="pg-option-header">
@@ -302,7 +317,7 @@ export default function ProposalModal({ property, onClose }) {
     <!-- PAGE 3 -->
     <div class="proposal-page">
       ${pageHeader(address)}
-      <div class="pg-section-title">Seller Comparison</div>
+      <div class="pg-section-title" style="margin-top: 14px;">Seller Comparison</div>
       <p class="pg-intro-text"><em>At a glance — what each option puts in your pocket and what it asks of you.</em></p>
 
       <table class="pg-comp-table">
