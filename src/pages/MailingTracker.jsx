@@ -117,18 +117,6 @@ export default function MailingTracker() {
           )}
         </>
       )}
-
-      {tab==='deals' && (
-        <>
-          <SectionBar>Deals Sourced ({deals.length})</SectionBar>
-          {deals.length===0 ? <EmptyState icon="○" text="No deals yet." /> : (
-            <Card style={{ padding:0 }}>
-              <table style={{ width:'100%', borderCollapse:'collapse', minWidth: mobile ? 0 : 600 }}>
-                <thead>
-                  <tr style={{ background:'#F0EDE6' }}>
-                    {['Address','Type','Status','Sale Price','Commission','Source Campaign'].map(h=>(
-                      <th key={h} style={{ padding:'8px 16px', textAlign:'left', fontSize:11, fontWeight:600, letterSpacing:0.8, color:'#6b7280', textTransform:'uppercase' }}>{h}</th>
-                    ))}
                   </tr>
                 </thead>
                 <tbody>
@@ -215,74 +203,6 @@ function CampaignDrawer({ campaign, open, onClose, onSave }) {
           <div style={{ display:'flex', gap:8, marginLeft:'auto' }}>
             <Btn variant="outline" onClick={onClose}>Cancel</Btn>
             <Btn onClick={save}>Save Campaign</Btn>
-          </div>
-        </div>
-      </div>
-    </Drawer>
-  )
-}
-
-function DealDrawer({ deal, mailings, open, onClose, onSave }) {
-  const [form, setForm] = useState({})
-  useEffect(()=>{ if(deal) setForm({...deal}) },[deal])
-  if (!deal) return null
-  const isNew = !form.id
-  const set = k => e => setForm(f=>({...f,[k]:e.target.value}))
-
-  function handlePrice(val) { setForm(f=>({...f,sale_price:val,commission_earned:f.commission_pct&&val?(parseFloat(val)*parseFloat(f.commission_pct)/100).toFixed(2):f.commission_earned})) }
-  function handlePct(val)   { setForm(f=>({...f,commission_pct:val,commission_earned:f.sale_price&&val?(parseFloat(f.sale_price)*parseFloat(val)/100).toFixed(2):f.commission_earned})) }
-
-  async function save() {
-    if (!form.address) return
-    const payload = { address:form.address, deal_type:form.deal_type, status:form.status, sale_price:form.sale_price||null, commission_pct:form.commission_pct||null, commission_earned:form.commission_earned||null, notes:form.notes, mailing_id:form.mailing_id||null, entity:'NHC' }
-    if (isNew) await supabase.from('mailing_deals').insert(payload)
-    else await supabase.from('mailing_deals').update(payload).eq('id',form.id)
-    onSave()
-  }
-  async function del() {
-    if (!confirm('Delete this deal?')) return
-    await supabase.from('mailing_deals').delete().eq('id',form.id)
-    onSave()
-  }
-
-  const typeBtn = (val,color) => ({ flex:1, padding:'7px', border:'none', borderRadius:6, cursor:'pointer', fontWeight:600, fontSize:12, fontFamily:'inherit', background:form.deal_type===val?color:'#F0EDE6', color:form.deal_type===val?'#fff':'#6b7280' })
-
-  return (
-    <Drawer open={open} onClose={onClose} title={form.address||'New Deal'} subtitle={form.status ? STATUS_LABELS[form.status] : ''}>
-      <div style={{ display:'flex', flexDirection:'column', gap:14, paddingTop:12 }}>
-        <Field label="Property Address"><AddressInput value={form.address||''} onChange={v=>setForm(f=>({...f,address:v}))} /></Field>
-        <div>
-          <label style={{ display:'block', fontSize:11, fontWeight:600, color:'#6b7280', textTransform:'uppercase', letterSpacing:0.8, marginBottom:6 }}>Type</label>
-          <div style={{ display:'flex', gap:8 }}>
-            <button style={typeBtn('listing','#3B6D11')} onClick={()=>setForm(f=>({...f,deal_type:'listing'}))}>Listing</button>
-            <button style={typeBtn('cash_purchase','#D97825')} onClick={()=>setForm(f=>({...f,deal_type:'cash_purchase'}))}>Cash Purchase</button>
-            <button style={typeBtn('wholesale','#6b21a8')} onClick={()=>setForm(f=>({...f,deal_type:'wholesale'}))}>Wholesale</button>
-          </div>
-        </div>
-        <Field label="Status">
-          <select style={inp} value={form.status||'active_listing'} onChange={set('status')}>
-            <option value="active_listing">Active</option>
-            <option value="pending">Pending</option>
-            <option value="closed">Closed</option>
-          </select>
-        </Field>
-        <FieldRow>
-          <Field label="Sale Price ($)"><input style={monoInp} type="number" value={form.sale_price||''} onChange={e=>handlePrice(e.target.value)} /></Field>
-          <Field label="Commission %"><input style={monoInp} type="number" value={form.commission_pct||''} onChange={e=>handlePct(e.target.value)} /></Field>
-        </FieldRow>
-        <Field label="Commission Earned ($)"><input style={monoInp} type="number" value={form.commission_earned||''} onChange={set('commission_earned')} /></Field>
-        <Field label="Source Campaign">
-          <select style={inp} value={form.mailing_id||''} onChange={set('mailing_id')}>
-            <option value="">No specific campaign</option>
-            {mailings.map(m=><option key={m.id} value={m.id}>{m.campaign_name?.replace(/^Campaign \d+ — /,'')} {m.drop_date?`(${m.drop_date})`:''}</option>)}
-          </select>
-        </Field>
-        <Field label="Notes"><textarea style={{ ...inp, minHeight:60, resize:'vertical' }} value={form.notes||''} onChange={set('notes')} /></Field>
-        <div style={{ display:'flex', justifyContent:'space-between', marginTop:8 }}>
-          {!isNew && <Btn variant="danger" onClick={del}>Delete</Btn>}
-          <div style={{ display:'flex', gap:8, marginLeft:'auto' }}>
-            <Btn variant="outline" onClick={onClose}>Cancel</Btn>
-            <Btn onClick={save}>Save Deal</Btn>
           </div>
         </div>
       </div>
