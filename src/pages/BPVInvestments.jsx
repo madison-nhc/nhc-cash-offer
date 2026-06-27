@@ -8,6 +8,7 @@ export default function BPVInvestments() {
   const mobile = useIsMobile()
   const [properties, setProperties] = useState([])
   const [income, setIncome] = useState([])
+  const [packages, setPackages] = useState([])
   const [mailings, setMailings] = useState([])
   const [loading, setLoading] = useState(true)
   const [drawer, setDrawer] = useState(null)
@@ -17,14 +18,16 @@ export default function BPVInvestments() {
 
   async function load() {
     setLoading(true)
-    const [{ data:p }, { data:inc }, { data:m }] = await Promise.all([
+    const [{ data:p }, { data:inc }, { data:m }, { data:pkgs }] = await Promise.all([
       supabase.from('properties').select('*').in('disposition',['flip','hold','wholesale']).order('purchase_date',{ascending:false}),
       supabase.from('property_income').select('*'),
+      supabase.from('package_deals').select('id,deal_name'),
       supabase.from('mailings').select('id,campaign_name,drop_date'),
     ])
     setProperties(p||[])
     setIncome(inc||[])
     setMailings(m||[])
+    setPackages(pkgs||[])
     setLoading(false)
   }
 
@@ -99,7 +102,10 @@ export default function BPVInvestments() {
                   <tr key={p.id} onClick={()=>setDrawer(p)} style={{ background:i%2===0?'#fff':'#FAFAF8', borderTop:'0.5px solid #F0EDE6', cursor:'pointer' }}
                     onMouseEnter={e=>e.currentTarget.style.background='#fef9f0'}
                     onMouseLeave={e=>e.currentTarget.style.background=i%2===0?'#fff':'#FAFAF8'}>
-                    <td style={{ padding:'10px 12px', fontSize:13, fontWeight:600 }}>{p.address}</td>
+                    <td style={{ padding:'10px 12px', fontSize:13, fontWeight:600 }}>
+                      {p.address}
+                      {p.package_id && (() => { const pkg = packages.find(pk=>pk.id===p.package_id); return pkg ? <div style={{ fontSize:10, color:'#6b21a8', marginTop:2 }}>◫ {pkg.deal_name}</div> : null; })()}
+                    </td>
                     <td style={{ padding:'10px 12px' }}>
                       <span style={{ background:typeColor+'20', color:typeColor, border:`1px solid ${typeColor}40`, borderRadius:4, padding:'2px 7px', fontSize:10, fontWeight:700, textTransform:'uppercase', letterSpacing:0.8 }}>
                         {isFlip?'Flip':isWholesale?'Wholesale':'Hold'}
