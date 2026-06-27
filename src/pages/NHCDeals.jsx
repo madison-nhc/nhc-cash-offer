@@ -11,6 +11,7 @@ export default function NHCDeals() {
   const mobile = useIsMobile()
   const [properties, setProperties] = useState([])
   const [mailings, setMailings] = useState([])
+  const [packages, setPackages] = useState([])
   const [loading, setLoading] = useState(true)
   const [drawer, setDrawer] = useState(null)
   const [filter, setFilter] = useState('all')
@@ -19,12 +20,14 @@ export default function NHCDeals() {
 
   async function load() {
     setLoading(true)
-    const [{ data:p }, { data:m }] = await Promise.all([
+    const [{ data:p }, { data:m }, { data:pkgs }] = await Promise.all([
       supabase.from('properties').select('*').in('disposition',['listing','wholesale','flip']).order('updated_at',{ascending:false}),
       supabase.from('mailings').select('id,campaign_name,drop_date').order('drop_date',{ascending:false}),
+      supabase.from('package_deals').select('id,deal_name'),
     ])
     setProperties(p||[])
     setMailings(m||[])
+    setPackages(pkgs||[])
     setLoading(false)
   }
 
@@ -79,7 +82,10 @@ export default function NHCDeals() {
                   <tr key={p.id} onClick={()=>setDrawer(p)} style={{ background:i%2===0?'#fff':'#FAFAF8', borderTop:'0.5px solid #F0EDE6', cursor:'pointer' }}
                     onMouseEnter={e=>e.currentTarget.style.background='#fef9f0'}
                     onMouseLeave={e=>e.currentTarget.style.background=i%2===0?'#fff':'#FAFAF8'}>
-                    <td style={{ padding:'10px 14px', fontSize:13, fontWeight:600 }}>{p.address}</td>
+                    <td style={{ padding:'10px 14px', fontSize:13, fontWeight:600 }}>
+                      {p.address}
+                      {p.package_id && (() => { const pkg = packages.find(pk=>pk.id===p.package_id); return pkg ? <div style={{ fontSize:10, color:'#6b21a8', marginTop:2 }}>◫ {pkg.deal_name}</div> : null; })()}
+                    </td>
                     <td style={{ padding:'10px 14px' }}>
                       <span style={{ background:c+'20', color:c, border:`1px solid ${c}40`, borderRadius:4, padding:'2px 7px', fontSize:10, fontWeight:700, textTransform:'uppercase', letterSpacing:0.8, whiteSpace:'nowrap' }}>
                         {DISP_LABELS[p.disposition]||p.disposition}
