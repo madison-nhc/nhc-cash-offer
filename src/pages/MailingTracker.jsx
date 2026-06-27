@@ -18,7 +18,7 @@ export default function MailingTracker() {
   useEffect(() => { load() }, [])
   async function load() {
     setLoading(true)
-    const [{ data:m }, { data:d }] = await Promise.all([
+    const [{ data:m }] = await Promise.all([
       supabase.from('mailings').select('*').order('drop_date',{ascending:true})
     ])
     setMailings(m||[])
@@ -289,3 +289,4 @@ function DealDrawer({ deal, mailings, open, onClose, onSave }) {
     </Drawer>
   )
 }
+
