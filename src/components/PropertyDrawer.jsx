@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import { supabase } from '../lib/supabase.js'
 import { Field, FieldRow, inp, monoInp, Btn, fmt, fmtK } from './ui.jsx'
 import Drawer from './Drawer.jsx'
@@ -50,9 +51,8 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
   const [repairs, setRepairs] = useState([])
   const [income, setIncome] = useState([])
   const [tab, setTab] = useState('analyzer')
-  const [saving, setSaving] = useState(false)
   const [showProposal, setShowProposal] = useState(false)
-  const [saved, setSaved] = useState(false)
+  const autoSaveTimer = useRef(null)
   const [incomeForm, setIncomeForm] = useState({ income_month:'', rent_received:'', expenses:'', notes:'' })
 
   // Top-level disposition selection: listing | wholesale | purchase | lost
@@ -96,9 +96,8 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
     if (val==='hold') loadIncome(form.id)
   }
 
-  async function save() {
+  const save = useCallback(async () => {
     if (!form.address) return
-    setSaving(true)
     const payload = {
       address:form.address, beds:form.beds||null, baths:form.baths||null, sqft:form.sqft||null,
       arv:form.arv||null, asis_pct:form.asis_pct||50, asis_override:form.asis_override||null,
@@ -135,10 +134,16 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
     }
     if (isNew) await supabase.from('properties').insert(payload)
     else await supabase.from('properties').update(payload).eq('id',form.id)
-    setSaving(false); setSaved(true)
-    setTimeout(()=>setSaved(false),2000)
     onSave()
-  }
+  }, [form, repairs, income])
+
+  // Auto-save: fires 1.2s after any form change (for existing records)
+  useEffect(() => {
+    if (!form.id || !form.address) return
+    if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current)
+    autoSaveTimer.current = setTimeout(() => save(), 1200)
+    return () => clearTimeout(autoSaveTimer.current)
+  }, [form, repairs])
 
   async function del() {
     if (!confirm('Delete this property?')) return
@@ -161,8 +166,6 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
   const dispLabel = form.disposition==='listing'?'Listing':form.disposition==='wholesale'?'Wholesale':form.disposition==='flip'?'Flip':form.disposition==='hold'?'Hold':form.disposition==='lost'?'Lost':null
 
   if (!property) return null
-
-  if (showProposal) return <ProposalModal property={form} onClose={()=>setShowProposal(false)} />
 
   return (
     <Drawer open={open} onClose={onClose} width={580}
@@ -476,13 +479,12 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
 
       <div style={{ display:'flex', justifyContent:'space-between', marginTop:20, paddingTop:16, borderTop:'1px solid #F0EDE6' }}>
         {!isNew && <Btn variant="danger" onClick={del}>Delete</Btn>}
-        <div style={{ display:'flex', gap:8, marginLeft:'auto' }}>
-          <Btn variant="outline" onClick={onClose}>Cancel</Btn>
-          <Btn onClick={save} disabled={saving||!form.address} style={{ minWidth:80 }}>
-            {saving?'Saving…':saved?'✓ Saved':'Save'}
-          </Btn>
-        </div>
+        <Btn variant="outline" onClick={onClose} style={{ marginLeft:'auto' }}>Close</Btn>
       </div>
     </Drawer>
+    {showProposal && createPortal(
+      <ProposalModal property={form} onClose={()=>setShowProposal(false)} />,
+      document.body
+    )}
   )
 }
