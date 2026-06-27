@@ -135,16 +135,7 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
     onSave()
   }
 
-  // Auto-save: debounced, only fires after first mount
-  const isMounted = useRef(false)
-  useEffect(() => {
-    if (!isMounted.current) { isMounted.current = true; return }
-    if (!form.id || !form.address) return
-    if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current)
-    autoSaveTimer.current = setTimeout(save, 1500)
-    return () => clearTimeout(autoSaveTimer.current)
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [form.address, form.arv, form.beds, form.baths, form.sqft, form.asis_pct, form.asis_override, form.profit_margin, form.cash_offer_override, form.disposition, form.sale_price, form.commission_earned, form.commission_pct, form.purchase_price, form.closing_costs, form.rehab_cost, form.lost_reason, form.nhc_notes, form.bpv_notes, repairs])
+  // Auto-save removed — save on close instead
 
   async function del() {
     if (!confirm('Delete this property?')) return
@@ -246,7 +237,7 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
           <button onClick={addRepair} style={{ background:'transparent', border:'1px dashed #D6D2CA', borderRadius:6, padding:'6px', color:'#9ca3af', fontSize:12, cursor:'pointer', fontFamily:'inherit', width:'100%' }}>+ Add Line Item</button>
 
           {form.arv && (
-            <button onClick={()=>onViewOffer&&onViewOffer(form)} style={{ background:'#2D6FAF', color:'#fff', border:'none', borderRadius:6, padding:'10px 16px', cursor:'pointer', fontSize:13, fontWeight:700, fontFamily:'inherit', width:'100%', marginTop:4 }}>
+            <button onClick={()=>onViewOffer&&onViewOffer(property)} style={{ background:'#2D6FAF', color:'#fff', border:'none', borderRadius:6, padding:'10px 16px', cursor:'pointer', fontSize:13, fontWeight:700, fontFamily:'inherit', width:'100%', marginTop:4 }}>
               View Offer PDF
             </button>
           )}
@@ -480,7 +471,7 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
 
       <div style={{ display:'flex', justifyContent:'space-between', marginTop:20, paddingTop:16, borderTop:'1px solid #F0EDE6' }}>
         {!isNew && <Btn variant="danger" onClick={del}>Delete</Btn>}
-        <Btn variant="outline" onClick={onClose} style={{ marginLeft:'auto' }}>Close</Btn>
+        <Btn variant="outline" onClick={async()=>{if(form.id&&form.address)await save();onClose();}} style={{ marginLeft:'auto' }}>Close</Btn>
       </div>
     </Drawer>
   )
