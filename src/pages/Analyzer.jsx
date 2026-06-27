@@ -146,7 +146,7 @@ export default function Analyzer() {
             <table style={{ width:'100%', borderCollapse:'collapse' }}>
               <thead>
                 <tr style={{ background:'#F0EDE6' }}>
-                  {['Address','Status','ARV','Cash Offer','Repairs','NHC Comm','BPV Type','Updated',''].map(h=>(
+                  {['Address','ARV','Cash Offer','Repairs','NHC Comm','BPV Type','Updated',''].map(h=>(
                     <th key={h} style={{ padding:'8px 14px', textAlign:'left', fontSize:11, fontWeight:600, letterSpacing:0.8, color:'#6b7280', textTransform:'uppercase' }}>{h}</th>
                   ))}
                 </tr>
