@@ -1,9 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
-import { createPortal } from 'react-dom'
 import { supabase } from '../lib/supabase.js'
 import { Field, FieldRow, inp, monoInp, Btn, fmt, fmtK } from './ui.jsx'
 import Drawer from './Drawer.jsx'
-import ProposalModal from './ProposalModal.jsx'
 import AddressInput from './AddressInput.jsx'
 
 const DISP_OPTIONS = [
@@ -47,12 +45,11 @@ function calcOffers(p, repairs) {
   return { arv, reno, cashOffer, asisVal, opt2Net, opt3Net, profit }
 }
 
-export default function PropertyDrawer({ property, open, onClose, onSave, mailings=[] }) {
+export default function PropertyDrawer({ property, open, onClose, onSave, mailings=[], onViewOffer }) {
   const [form, setForm] = useState({})
   const [repairs, setRepairs] = useState([])
   const [income, setIncome] = useState([])
   const [tab, setTab] = useState('analyzer')
-  const [showProposal, setShowProposal] = useState(false)
   const autoSaveTimer = useRef(null)
   const [incomeForm, setIncomeForm] = useState({ income_month:'', rent_received:'', expenses:'', notes:'' })
 
@@ -142,12 +139,12 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
   const isMounted = useRef(false)
   useEffect(() => {
     if (!isMounted.current) { isMounted.current = true; return }
-    if (!form.id || !form.address || showProposal) return
+    if (!form.id || !form.address) return
     if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current)
     autoSaveTimer.current = setTimeout(save, 1500)
     return () => clearTimeout(autoSaveTimer.current)
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [form.address, form.arv, form.beds, form.baths, form.sqft, form.asis_pct, form.asis_override, form.profit_margin, form.cash_offer_override, form.disposition, form.sale_price, form.commission_earned, form.commission_pct, form.purchase_price, form.closing_costs, form.rehab_cost, form.lost_reason, form.nhc_notes, form.bpv_notes, repairs, showProposal])
+  }, [form.address, form.arv, form.beds, form.baths, form.sqft, form.asis_pct, form.asis_override, form.profit_margin, form.cash_offer_override, form.disposition, form.sale_price, form.commission_earned, form.commission_pct, form.purchase_price, form.closing_costs, form.rehab_cost, form.lost_reason, form.nhc_notes, form.bpv_notes, repairs])
 
   async function del() {
     if (!confirm('Delete this property?')) return
@@ -249,7 +246,7 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
           <button onClick={addRepair} style={{ background:'transparent', border:'1px dashed #D6D2CA', borderRadius:6, padding:'6px', color:'#9ca3af', fontSize:12, cursor:'pointer', fontFamily:'inherit', width:'100%' }}>+ Add Line Item</button>
 
           {form.arv && (
-            <button onClick={()=>setShowProposal(true)} style={{ background:'#2D6FAF', color:'#fff', border:'none', borderRadius:6, padding:'10px 16px', cursor:'pointer', fontSize:13, fontWeight:700, fontFamily:'inherit', width:'100%', marginTop:4 }}>
+            <button onClick={()=>onViewOffer&&onViewOffer(form)} style={{ background:'#2D6FAF', color:'#fff', border:'none', borderRadius:6, padding:'10px 16px', cursor:'pointer', fontSize:13, fontWeight:700, fontFamily:'inherit', width:'100%', marginTop:4 }}>
               View Offer PDF
             </button>
           )}
@@ -486,9 +483,5 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
         <Btn variant="outline" onClick={onClose} style={{ marginLeft:'auto' }}>Close</Btn>
       </div>
     </Drawer>
-    {showProposal && createPortal(
-      <ProposalModal property={form} onClose={()=>setShowProposal(false)} />,
-      document.body
-    )}
   )
 }
