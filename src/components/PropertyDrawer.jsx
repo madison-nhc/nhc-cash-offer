@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { supabase } from '../lib/supabase.js'
 import { Field, FieldRow, inp, monoInp, Btn, fmt, fmtK } from './ui.jsx'
@@ -97,7 +97,7 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
     if (val==='hold') loadIncome(form.id)
   }
 
-  const save = useCallback(async () => {
+  async function save() {
     if (!form.address) return
     const payload = {
       address:form.address, beds:form.beds||null, baths:form.baths||null, sqft:form.sqft||null,
@@ -136,15 +136,18 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
     if (isNew) await supabase.from('properties').insert(payload)
     else await supabase.from('properties').update(payload).eq('id',form.id)
     onSave()
-  }, [form, repairs, income])
+  }
 
-  // Auto-save: fires 1.2s after any form change (for existing records)
+  // Auto-save: debounced, only fires after first mount
+  const isMounted = useRef(false)
   useEffect(() => {
+    if (!isMounted.current) { isMounted.current = true; return }
     if (!form.id || !form.address) return
     if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current)
-    autoSaveTimer.current = setTimeout(() => save(), 1200)
+    autoSaveTimer.current = setTimeout(save, 1500)
     return () => clearTimeout(autoSaveTimer.current)
-  }, [form, repairs])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form.address, form.arv, form.beds, form.baths, form.sqft, form.asis_pct, form.asis_override, form.profit_margin, form.cash_offer_override, form.disposition, form.sale_price, form.commission_earned, form.commission_pct, form.purchase_price, form.closing_costs, form.rehab_cost, form.lost_reason, form.nhc_notes, form.bpv_notes, repairs])
 
   async function del() {
     if (!confirm('Delete this property?')) return
