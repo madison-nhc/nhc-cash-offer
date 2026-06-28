@@ -204,7 +204,7 @@ export default function PackageDeals() {
                   <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                     <thead>
                       <tr style={{ background: '#F0EDE6' }}>
-                        {['Address', 'Type', 'ARV', 'Purchase', 'Rehab', 'Disposition', 'NHC Comm', 'Updated'].map(h => (
+                        {['Address', 'ARV', 'Purchase', 'Rehab', 'Disposition', 'NHC Comm', 'Updated'].map(h => (
                           <th key={h} style={{ padding: '7px 14px', textAlign: 'left', fontSize: 10, fontWeight: 600, letterSpacing: 0.8, color: '#6b7280', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>{h}</th>
                         ))}
                       </tr>
@@ -224,13 +224,6 @@ export default function PackageDeals() {
                             <td style={{ padding: '9px 14px', fontSize: 13, fontWeight: 600 }}>
                               {p.address}
                               {p.unit_count > 1 && <span style={{ fontSize: 10, color: '#9ca3af', marginLeft: 6 }}>{p.unit_count} units</span>}
-                            </td>
-                            <td style={{ padding: '9px 14px' }}>
-                              {p.investment_type && (
-                                <span style={{ background: (p.investment_type === 'flip' ? '#D97825' : '#2D6FAF') + '20', color: p.investment_type === 'flip' ? '#D97825' : '#2D6FAF', border: `1px solid ${p.investment_type === 'flip' ? '#D97825' : '#2D6FAF'}40`, borderRadius: 4, padding: '2px 7px', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.8 }}>
-                                  {p.investment_type}
-                                </span>
-                              )}
                             </td>
                             <td style={{ padding: '9px 14px', fontSize: 12, fontFamily: 'monospace' }}>{fmt(p.arv)}</td>
                             <td style={{ padding: '9px 14px', fontSize: 12, fontFamily: 'monospace' }}>{fmt(p.purchase_price)}</td>
