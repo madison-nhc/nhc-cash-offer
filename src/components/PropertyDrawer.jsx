@@ -258,7 +258,7 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
           <div className="drawer-section">What happened with this property?</div>
           <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8 }}>
             {TOP_LEVEL.map(opt=>(
-              <button key={opt.value} onClick={()=>setTopDisp(opt.value)} style={{
+              <button key={opt.value} onClick={()=>topDisp===opt.value ? setForm(f=>({...f,disposition:null})) : setTopDisp(opt.value)} style={{
                 padding:'12px', border:`2px solid ${topDisp===opt.value?opt.color:'#D6D2CA'}`,
                 borderRadius:8, cursor:'pointer', background:topDisp===opt.value?opt.color+'12':'#fff',
                 textAlign:'left', fontFamily:'inherit'
@@ -339,7 +339,7 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
               <div className="drawer-section">Investment Type</div>
               <div style={{ display:'flex', gap:8 }}>
                 {[['flip','Flip','#D97825'],['hold','Hold','#2D6FAF']].map(([val,label,color])=>(
-                  <button key={val} onClick={()=>setPurchaseType(val)} style={{
+                  <button key={val} onClick={()=>purchaseType===val ? null : setPurchaseType(val)} style={{
                     flex:1, padding:'10px', border:'none', borderRadius:6, cursor:'pointer',
                     fontWeight:purchaseType===val?700:400, fontSize:13, fontFamily:'inherit',
                     background:purchaseType===val?color:'#F0EDE6',
