@@ -131,7 +131,7 @@ export default function Analyzer() {
                     <div><CardLabel>ARV</CardLabel><br/><CardValue mono>{fmt(p.arv)}</CardValue></div>
                     <div><CardLabel>Cash Offer</CardLabel><br/><CardValue mono color="#3B6D11">{cashOffer?fmt(cashOffer):'—'}</CardValue></div>
                     {reno>0 && <div><CardLabel>Repairs</CardLabel><br/><CardValue mono color="#6b7280">{fmt(reno)}</CardValue></div>}
-                    {p.investment_type && <div><CardLabel>Type</CardLabel><br/><Badge color={p.investment_type==='flip'?'#D97825':'#2D6FAF'}>{p.investment_type}</Badge></div>}
+                    {p.disposition && <div><CardLabel>Disposition</CardLabel><br/><Badge color={p.disposition==='listing'?'#3B6D11':p.disposition==='wholesale'?'#6b21a8':p.disposition==='flip'?'#D97825':p.disposition==='hold'?'#2D6FAF':'#9ca3af'}>{p.disposition==='listing'?'Listing':p.disposition==='wholesale'?'Wholesale':p.disposition==='flip'?'Flip':p.disposition==='hold'?'Hold':'Lost'}</Badge></div>}
                   </CardRow>
                   {p.arv && (
                     <button onClick={e=>{e.stopPropagation();setProposal(p)}} style={{ marginTop:6, background:'#2D6FAF', color:'#fff', border:'none', borderRadius:4, padding:'6px 12px', fontSize:11, fontWeight:600, cursor:'pointer', fontFamily:'inherit', alignSelf:'flex-start' }}>View Offer Sheet</button>
@@ -167,7 +167,11 @@ export default function Analyzer() {
                       <td style={{ padding:'10px 14px', fontSize:13, fontFamily:'monospace', color:'#3B6D11', fontWeight:600 }}>{cashOffer?fmt(cashOffer):'—'}</td>
                       <td style={{ padding:'10px 14px', fontSize:13, fontFamily:'monospace', color:'#6b7280' }}>{reno>0?fmt(reno):'—'}</td>
                       <td style={{ padding:'10px 14px', fontSize:13, fontFamily:'monospace' }}>{fmt(p.commission_earned)}</td>
-                      <td style={{ padding:'10px 14px' }}>{p.investment_type&&<Badge color={p.investment_type==='flip'?'#D97825':'#2D6FAF'}>{p.investment_type}</Badge>}</td>
+                      <td style={{ padding:'10px 14px' }}>{p.disposition
+                          ? <Badge color={p.disposition==='listing'?'#3B6D11':p.disposition==='wholesale'?'#6b21a8':p.disposition==='flip'?'#D97825':p.disposition==='hold'?'#2D6FAF':'#9ca3af'}>
+                              {p.disposition==='listing'?'Listing':p.disposition==='wholesale'?'Wholesale':p.disposition==='flip'?'Flip':p.disposition==='hold'?'Hold':'Lost'}
+                            </Badge>
+                          : <span style={{color:'#d1d5db'}}>—</span>}</td>
                       <td style={{ padding:'10px 14px', fontSize:11, color:'#9ca3af' }}>{new Date(p.updated_at).toLocaleDateString()}</td>
                       <td style={{ padding:'10px 10px' }} onClick={e=>e.stopPropagation()}>
                         {p.arv&&<button onClick={()=>setProposal(p)} style={{ background:'#2D6FAF', color:'#fff', border:'none', borderRadius:4, padding:'4px 10px', fontSize:11, fontWeight:600, cursor:'pointer', fontFamily:'inherit', whiteSpace:'nowrap' }}>View Offer</button>}
