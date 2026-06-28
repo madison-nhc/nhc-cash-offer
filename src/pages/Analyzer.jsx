@@ -40,6 +40,7 @@ export default function Analyzer() {
   const [drawer, setDrawer] = useState(null)
   const [proposal, setProposal] = useState(null)
   const [filter, setFilter] = useState('all')
+  const [hideDispositioned, setHideDispositioned] = useState(true)
   const [search, setSearch] = useState('')
   const mobile = useIsMobile()
 
@@ -48,7 +49,7 @@ export default function Analyzer() {
   async function load() {
     setLoading(true)
     const [{ data:p }, { data:m }] = await Promise.all([
-      supabase.from('properties').select('*').order('updated_at',{ascending:false}),
+      supabase.from('properties').select('*').is('package_id',null).order('updated_at',{ascending:false}),
       supabase.from('mailings').select('id,campaign_name,drop_date').order('drop_date',{ascending:false}),
     ])
     setProperties(p||[])
@@ -103,6 +104,9 @@ export default function Analyzer() {
         {/* Filters */}
         <div style={{ display:'flex', gap:6, marginBottom:12, flexWrap:'wrap', alignItems:'center' }}>
           <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search address..." style={{ padding:'6px 12px', border:'1px solid #D6D2CA', borderRadius:6, fontSize:13, fontFamily:'inherit', outline:'none', flex:1, minWidth:140 }} />
+          <button onClick={()=>setHideDispositioned(h=>!h)} style={{ padding:'6px 14px', border:'1px solid #D6D2CA', borderRadius:6, fontSize:12, fontFamily:'inherit', cursor:'pointer', background:hideDispositioned?'#2C2C2C':'#fff', color:hideDispositioned?'#fff':'#6b7280', fontWeight:hideDispositioned?600:400, whiteSpace:'nowrap', flexShrink:0 }}>
+            {hideDispositioned ? 'Analyzing Only' : 'Show All'}
+          </button>
           <div style={{ display:'flex', gap:4, flexWrap:'wrap' }}>
             {['all','analyzing','purchased','active','sold'].map(s=>(
               <button key={s} onClick={()=>setFilter(s)} style={{ padding:'5px 10px', border:'none', borderRadius:4, cursor:'pointer', background:filter===s?'#2C2C2C':'#F0EDE6', color:filter===s?'#fff':'#6b7280', fontSize:11, fontWeight:filter===s?700:400, fontFamily:'inherit' }}>
