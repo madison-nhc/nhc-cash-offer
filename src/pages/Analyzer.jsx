@@ -62,7 +62,8 @@ export default function Analyzer() {
   const filtered = properties.filter(p=>{
     const matchStatus = filter==='all'||p.status===filter
     const matchSearch = !search||p.address?.toLowerCase().includes(search.toLowerCase())
-    return matchStatus && matchSearch
+    const matchDisp = !hideDispositioned || !p.disposition
+    return matchStatus && matchSearch && matchDisp
   })
 
   const totalComm = properties.reduce((s,p)=>s+(parseFloat(p.commission_earned)||0),0)
