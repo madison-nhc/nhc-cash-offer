@@ -18,10 +18,21 @@ function MiniStat({ label, value, sub, color='#2C2C2C' }) {
   )
 }
 
-function StatGroup({ title, color, children }) {
+function StatGroup({ title, color, filterKey, activeFilter, onFilter, children }) {
+  const active = activeFilter === filterKey
   return (
-    <div style={{ background:'#fff', border:'0.5px solid #D6D2CA', borderRadius:8, borderTop:`3px solid ${color}`, padding:'12px 16px' }}>
-      <GroupLabel>{title}</GroupLabel>
+    <div
+      onClick={() => onFilter(active ? 'all' : filterKey)}
+      style={{
+        background:'#fff', border: active ? `1.5px solid ${color}` : '0.5px solid #D6D2CA',
+        borderRadius:8, borderTop:`3px solid ${color}`, padding:'12px 16px',
+        cursor:'pointer', transition:'box-shadow 0.15s',
+        boxShadow: active ? `0 0 0 3px ${color}22` : 'none',
+      }}
+      onMouseEnter={e=>{ if(!active) e.currentTarget.style.boxShadow=`0 2px 8px rgba(0,0,0,0.08)` }}
+      onMouseLeave={e=>{ if(!active) e.currentTarget.style.boxShadow='none' }}
+    >
+      <GroupLabel>{title}{active ? ' ✓' : ''}</GroupLabel>
       <div style={{ display:'flex', gap:24, flexWrap:'wrap' }}>{children}</div>
     </div>
   )
@@ -88,18 +99,18 @@ export default function BPVInvestments() {
 
       {/* Grouped stat cards */}
       <div style={{ display:'grid', gridTemplateColumns:mobile?'1fr':'1fr 1fr 1fr', gap:12, marginBottom:24 }}>
-        <StatGroup title="Flips" color="#D97825">
+        <StatGroup title="Flips" color="#D97825" filterKey="flip" activeFilter={filter} onFilter={setFilter}>
           <MiniStat label="Active" value={activeFlips.length} color="#D97825" />
           <MiniStat label="Completed" value={completedFlips.length} />
           <MiniStat label="Profit" value={completedFlips.length>0?fmtK(totalFlipProfit):'—'} color={totalFlipProfit>=0?'#3B6D11':'#B91C1C'} />
         </StatGroup>
-        <StatGroup title="Holds" color="#B8892A">
+        <StatGroup title="Holds" color="#B8892A" filterKey="hold" activeFilter={filter} onFilter={setFilter}>
           <MiniStat label="Active" value={activeHolds.length} color="#B8892A" />
           <MiniStat label="Equity" value={totalEquity>0?fmtK(totalEquity):'—'} color="#B8892A" />
           <MiniStat label="Net Income" value={fmtK(holdNet)} color={holdNet>=0?'#3B6D11':'#B91C1C'} sub="rent − expenses" />
           {soldHolds.length>0 && <MiniStat label="Sold" value={soldHolds.length} color="#9ca3af" />}
         </StatGroup>
-        <StatGroup title="Wholesale" color="#6b21a8">
+        <StatGroup title="Wholesale" color="#6b21a8" filterKey="wholesale" activeFilter={filter} onFilter={setFilter}>
           <MiniStat label="Deals" value={wholesales.length} color="#6b21a8" />
           <MiniStat label="Total Fees" value={totalWholesaleFee>0?fmtK(totalWholesaleFee):'—'} color="#6b21a8" />
         </StatGroup>
