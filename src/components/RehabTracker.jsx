@@ -6,13 +6,12 @@ const STATUS_OPTIONS = ['Scheduled', 'In Progress', 'Completed']
 const STATUS_COLORS  = { 'Scheduled':'#9ca3af', 'In Progress':'#D97825', 'Completed':'#3B6D11' }
 
 export default function RehabTracker({ property, repairItems = [], onChange }) {
-  const [items, setItems]     = useState([])
-  const [budget, setBudget]   = useState('')
-  const [vendors, setVendors] = useState([])
+  const [items, setItems]         = useState([])
+  const [budget, setBudget]       = useState('')
+  const [vendors, setVendors]     = useState([])
   const [activeVendorId, setActiveVendorId] = useState(null)
   const vendorRefs = useRef({})
 
-  // Load rehab items + budget when property changes
   useEffect(() => {
     if (!property?.id) return
     setBudget(property.rehab_estimated_cost || '')
@@ -39,10 +38,9 @@ export default function RehabTracker({ property, repairItems = [], onChange }) {
     setVendors(unique)
   }
 
-  // Copy repair items from Analyzer into rehab_items
   async function copyFromAnalyzer() {
     if (!property?.id || !repairItems.length) return
-    if (!confirm(`Copy ${repairItems.length} repair item(s) from the Analyzer? This will add them to your current rehab list.`)) return
+    if (!confirm(`Copy ${repairItems.filter(r=>r.name).length} repair item(s) from the Analyzer? This will add them to your current rehab list.`)) return
     const toInsert = repairItems
       .filter(r => r.name)
       .map((r, i) => ({
@@ -50,7 +48,7 @@ export default function RehabTracker({ property, repairItems = [], onChange }) {
         name: r.name,
         estimated_cost: parseFloat(r.cost) || 0,
         status: 'Scheduled',
-        sort_order: (items.length + i),
+        sort_order: items.length + i,
       }))
     if (!toInsert.length) return
     await supabase.from('rehab_items').insert(toInsert)
@@ -72,10 +70,7 @@ export default function RehabTracker({ property, repairItems = [], onChange }) {
   async function updateItem(id, field, value) {
     setItems(prev => prev.map(it => it.id === id ? { ...it, [field]: value } : it))
     await supabase.from('rehab_items').update({ [field]: value }).eq('id', id)
-    // If actual_cost changed, notify parent so rehab_cost updates on save
-    if (field === 'actual_cost' || field === 'estimated_cost') {
-      notifyParent()
-    }
+    if (field === 'actual_cost' || field === 'estimated_cost') notifyParent()
   }
 
   async function removeItem(id) {
@@ -91,7 +86,6 @@ export default function RehabTracker({ property, repairItems = [], onChange }) {
   }
 
   function notifyParent() {
-    // Give Supabase a tick to commit, then recalculate totals for BPV
     setTimeout(async () => {
       const { data } = await supabase
         .from('rehab_items')
@@ -109,14 +103,14 @@ export default function RehabTracker({ property, repairItems = [], onChange }) {
   }
 
   // Derived stats
-  const budgetNum    = parseFloat(budget) || 0
-  const actualTotal  = items.reduce((s, r) => {
+  const budgetNum   = parseFloat(budget) || 0
+  const estTotal    = items.reduce((s, r) => s + (parseFloat(r.estimated_cost) || 0), 0)
+  const actualTotal = items.reduce((s, r) => {
     const val = r.actual_cost !== null && r.actual_cost !== undefined
       ? parseFloat(r.actual_cost) || 0
       : parseFloat(r.estimated_cost) || 0
     return s + val
   }, 0)
-  const estTotal     = items.reduce((s, r) => s + (parseFloat(r.estimated_cost) || 0), 0)
   const completedCost = items
     .filter(r => r.status === 'Completed')
     .reduce((s, r) => {
@@ -126,7 +120,8 @@ export default function RehabTracker({ property, repairItems = [], onChange }) {
       return s + val
     }, 0)
   const pct = budgetNum > 0 ? Math.min(100, Math.round((completedCost / budgetNum) * 100)) : 0
-  const remaining = budgetNum - actualTotal
+  const actualOverEst = actualTotal > estTotal
+  const actualColor   = actualOverEst ? '#B91C1C' : '#3B6D11'
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -158,23 +153,21 @@ export default function RehabTracker({ property, repairItems = [], onChange }) {
             transition: 'width 0.4s ease'
           }} />
         </div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: '#6b7280' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: '#6b7280', marginBottom: 12 }}>
           <span style={{ fontWeight: 700, color: pct >= 100 ? '#3B6D11' : '#B8892A' }}>{pct}% Complete</span>
           <span>{items.filter(r => r.status === 'Completed').length} of {items.length} items done</span>
         </div>
 
-        {/* Cost summary cards */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginTop: 12 }}>
-          {[
-            ['Est. Total', fmt(estTotal), '#2C2C2C'],
-            ['Actual / Est.', fmt(actualTotal), actualTotal > budgetNum && budgetNum > 0 ? '#B91C1C' : '#3B6D11'],
-            ['Remaining', fmt(remaining), remaining < 0 ? '#B91C1C' : '#6b7280'],
-          ].map(([label, val, color]) => (
-            <div key={label} style={{ background: '#fff', borderRadius: 6, padding: '8px 10px', border: '0.5px solid #D6D2CA', textAlign: 'center' }}>
-              <div style={{ fontSize: 10, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: 0.7, marginBottom: 2 }}>{label}</div>
-              <div style={{ fontSize: 14, fontWeight: 700, fontFamily: 'monospace', color }}>{val}</div>
-            </div>
-          ))}
+        {/* Two stat cards: Est Total and Actual */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+          <div style={{ background: '#fff', borderRadius: 6, padding: '8px 12px', border: '0.5px solid #D6D2CA', textAlign: 'center' }}>
+            <div style={{ fontSize: 10, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: 0.7, marginBottom: 2 }}>Est. Total</div>
+            <div style={{ fontSize: 15, fontWeight: 700, fontFamily: 'monospace', color: '#2C2C2C' }}>{fmt(estTotal)}</div>
+          </div>
+          <div style={{ background: actualOverEst ? '#fef2f2' : '#f0fdf4', borderRadius: 6, padding: '8px 12px', border: `0.5px solid ${actualColor}40`, textAlign: 'center' }}>
+            <div style={{ fontSize: 10, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: 0.7, marginBottom: 2 }}>Actual</div>
+            <div style={{ fontSize: 15, fontWeight: 700, fontFamily: 'monospace', color: actualColor }}>{fmt(actualTotal)}</div>
+          </div>
         </div>
       </div>
 
@@ -186,14 +179,15 @@ export default function RehabTracker({ property, repairItems = [], onChange }) {
           style={{
             background: repairItems.filter(r => r.name).length ? '#2C2C2C' : '#F0EDE6',
             color: repairItems.filter(r => r.name).length ? '#fff' : '#9ca3af',
-            border: 'none', borderRadius: 6, padding: '8px 14px', cursor: repairItems.filter(r => r.name).length ? 'pointer' : 'default',
+            border: 'none', borderRadius: 6, padding: '8px 14px',
+            cursor: repairItems.filter(r => r.name).length ? 'pointer' : 'default',
             fontSize: 12, fontWeight: 600, fontFamily: 'inherit',
           }}
         >
           Copy from Analyzer
         </button>
         <span style={{ fontSize: 11, color: '#9ca3af' }}>
-          {repairItems.filter(r => r.name).length} repair item{repairItems.filter(r => r.name).length !== 1 ? 's' : ''} in Analyzer
+          {repairItems.filter(r => r.name).length} item{repairItems.filter(r => r.name).length !== 1 ? 's' : ''} in Analyzer
         </span>
       </div>
 
@@ -201,14 +195,14 @@ export default function RehabTracker({ property, repairItems = [], onChange }) {
       {items.length > 0 && (
         <div style={{ border: '0.5px solid #D6D2CA', borderRadius: 8, overflow: 'hidden' }}>
           {/* Header */}
-          <div style={{ display: 'grid', gridTemplateColumns: '2fr 130px 1fr 1fr 1fr 28px', gap: 0, background: '#F0EDE6', padding: '6px 10px' }}>
-            {['Item', 'Status', 'Vendor', 'Est. Cost', 'Actual', ''].map(h => (
+          <div style={{ display: 'grid', gridTemplateColumns: '2fr 130px 1fr 90px 28px', gap: 0, background: '#F0EDE6', padding: '6px 10px' }}>
+            {['Item', 'Status', 'Vendor', 'Actual', ''].map(h => (
               <div key={h} style={{ fontSize: 10, fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: 0.7 }}>{h}</div>
             ))}
           </div>
           {items.map((item, i) => (
             <div key={item.id} style={{
-              display: 'grid', gridTemplateColumns: '2fr 130px 1fr 1fr 1fr 28px',
+              display: 'grid', gridTemplateColumns: '2fr 130px 1fr 90px 28px',
               gap: 0, padding: '6px 10px', alignItems: 'center',
               background: i % 2 === 0 ? '#fff' : '#FAFAF8',
               borderTop: i > 0 ? '0.5px solid #F0EDE6' : 'none'
@@ -239,10 +233,7 @@ export default function RehabTracker({ property, repairItems = [], onChange }) {
                   ref={el => vendorRefs.current[item.id] = el}
                   style={{ ...inp, fontSize: 12, padding: '4px 6px', width: '100%' }}
                   value={item.vendor || ''}
-                  onChange={e => {
-                    updateItem(item.id, 'vendor', e.target.value)
-                    setActiveVendorId(item.id)
-                  }}
+                  onChange={e => { updateItem(item.id, 'vendor', e.target.value); setActiveVendorId(item.id) }}
                   onBlur={() => setTimeout(() => setActiveVendorId(null), 150)}
                   onFocus={() => setActiveVendorId(item.id)}
                   placeholder="Vendor"
@@ -269,14 +260,6 @@ export default function RehabTracker({ property, repairItems = [], onChange }) {
                   </div>
                 )}
               </div>
-              {/* Est cost */}
-              <input
-                style={{ ...monoInp, fontSize: 12, padding: '4px 6px', textAlign: 'right', marginRight: 6 }}
-                type="number"
-                value={item.estimated_cost || ''}
-                onChange={e => updateItem(item.id, 'estimated_cost', parseFloat(e.target.value) || 0)}
-                placeholder="0"
-              />
               {/* Actual cost */}
               <input
                 style={{
@@ -287,7 +270,7 @@ export default function RehabTracker({ property, repairItems = [], onChange }) {
                 type="number"
                 value={item.actual_cost !== null && item.actual_cost !== undefined ? item.actual_cost : ''}
                 onChange={e => updateItem(item.id, 'actual_cost', e.target.value === '' ? null : parseFloat(e.target.value) || 0)}
-                placeholder="Actual"
+                placeholder="$"
               />
               {/* Delete */}
               <button
