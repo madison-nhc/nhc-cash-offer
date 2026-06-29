@@ -194,23 +194,35 @@ const CSS = `
   /* ── PRINT ── */
   @media print {
     @page { margin:0; size:letter; }
-    body > *:not(#prop-overlay) { display:none!important; }
-    #prop-overlay { position:static!important;background:none!important; }
+    /* Hide everything except the proposal overlay */
+    body * { visibility:hidden; }
+    #prop-overlay, #prop-overlay * { visibility:visible; }
+    #prop-overlay {
+      position:fixed!important;
+      inset:0!important;
+      background:none!important;
+      z-index:9999!important;
+    }
     #prop-toolbar { display:none!important; }
     #prop-canvas  {
       background:none!important;
-      padding:0!important;gap:0!important;
+      padding:0!important;
+      gap:0!important;
       overflow:visible!important;
       display:block!important;
+      position:absolute!important;
+      top:0!important;
+      left:0!important;
     }
     .pg {
       box-shadow:none!important;
       page-break-after:always;
+      break-after:page;
       margin:0!important;
-      width:100%!important;
-      height:100vh!important;
+      width:816px!important;
+      height:1056px!important;
     }
-    .pg:last-child { page-break-after:auto; }
+    .pg:last-child { page-break-after:auto; break-after:auto; }
   }
 `
 
@@ -375,3 +387,4 @@ export default function ProposalModal({ property, onClose }) {
     </>
   )
 }
+
