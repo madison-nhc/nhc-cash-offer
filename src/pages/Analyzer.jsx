@@ -123,7 +123,7 @@ export default function Analyzer() {
             <table style={{ width:'100%', borderCollapse:'collapse' }}>
               <thead>
                 <tr style={{ background:'#F0EDE6' }}>
-                  {['Address','ARV','Cash Offer','Disposition','Updated',''].map(h=>(
+                  {['Address','Cash Offer','Rehab','ARV','Disposition','Updated',''].map(h=>(
                     <th key={h} style={{ padding:'8px 14px', textAlign:'left', fontSize:11, fontWeight:600, letterSpacing:0.8, color:'#6b7280', textTransform:'uppercase' }}>{h}</th>
                   ))}
                 </tr>
@@ -138,10 +138,13 @@ export default function Analyzer() {
                       onMouseLeave={e=>e.currentTarget.style.background=i%2===0?'#fff':'#FAFAF8'}>
                       <td style={{ padding:'10px 14px' }}>
                         <div style={{ fontSize:13, fontWeight:600 }}>{p.address}</div>
-                        {(p.beds||p.baths) && <div style={{ fontSize:11, color:'#9ca3af', marginTop:1 }}>{[p.beds&&`${p.beds}bd`,p.baths&&`${p.baths}ba`,p.sqft&&`${parseInt(p.sqft).toLocaleString()}sf`].filter(Boolean).join(' · ')}</div>}
+                        <div style={{ fontSize:11, color:'#9ca3af', marginTop:1 }}>
+                          {[p.unit_count>1&&`${p.unit_count} units`,p.beds&&`${p.beds}bd`,p.baths&&`${p.baths}ba`,p.sqft&&`${parseInt(p.sqft).toLocaleString()}sf`].filter(Boolean).join(' · ')}
+                        </div>
                       </td>
-                      <td style={{ padding:'10px 14px', fontSize:13, fontFamily:'monospace', fontWeight:700 }}>{fmt(p.arv)||'—'}</td>
                       <td style={{ padding:'10px 14px', fontSize:13, fontFamily:'monospace', color:'#3B6D11', fontWeight:600 }}>{cashOffer?fmt(cashOffer):'—'}</td>
+                      <td style={{ padding:'10px 14px', fontSize:13, fontFamily:'monospace', color:'#6b7280' }}>{(p.repair_items||[]).reduce((s,r)=>s+(parseFloat(r.cost)||0),0)>0?fmt((p.repair_items||[]).reduce((s,r)=>s+(parseFloat(r.cost)||0),0)):'—'}</td>
+                      <td style={{ padding:'10px 14px', fontSize:13, fontFamily:'monospace', fontWeight:700 }}>{fmt(p.arv)||'—'}</td>
                       <td style={{ padding:'10px 14px' }}>
                         {p.disposition
                           ? <Badge color={DISP_COLOR[p.disposition]}>{DISP_LABEL[p.disposition]}</Badge>
