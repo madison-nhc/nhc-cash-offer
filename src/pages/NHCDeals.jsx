@@ -1,11 +1,34 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase.js'
 import { useIsMobile } from '../hooks/useIsMobile.js'
-import { PageWrap, SectionBar, Card, EmptyState, LoadingSpinner, StatCard, fmt, fmtK } from '../components/ui.jsx'
+import { PageWrap, SectionBar, Card, Badge, EmptyState, LoadingSpinner, fmt, fmtK } from '../components/ui.jsx'
 import PropertyDrawer from '../components/PropertyDrawer.jsx'
 
 const DISP_COLORS = { listing:'#3B6D11', wholesale:'#6b21a8', flip:'#D97825' }
 const DISP_LABELS = { listing:'Listing', wholesale:'Wholesale', flip:'Flip' }
+
+function GroupLabel({ children }) {
+  return <div style={{ fontSize:10, fontWeight:700, color:'#9ca3af', textTransform:'uppercase', letterSpacing:1, marginBottom:8 }}>{children}</div>
+}
+
+function MiniStat({ label, value, sub, color='#2C2C2C' }) {
+  return (
+    <div style={{ display:'flex', flexDirection:'column', gap:2 }}>
+      <div style={{ fontSize:10, color:'#9ca3af', textTransform:'uppercase', letterSpacing:0.7 }}>{label}</div>
+      <div style={{ fontSize:18, fontWeight:700, fontFamily:'monospace', color }}>{value}</div>
+      {sub && <div style={{ fontSize:10, color:'#9ca3af' }}>{sub}</div>}
+    </div>
+  )
+}
+
+function StatGroup({ title, color, children }) {
+  return (
+    <div style={{ background:'#fff', border:'0.5px solid #D6D2CA', borderRadius:8, borderTop:`3px solid ${color}`, padding:'12px 16px' }}>
+      <GroupLabel>{title}</GroupLabel>
+      <div style={{ display:'flex', gap:24, flexWrap:'wrap' }}>{children}</div>
+    </div>
+  )
+}
 
 export default function NHCDeals() {
   const mobile = useIsMobile()
@@ -31,12 +54,24 @@ export default function NHCDeals() {
     setLoading(false)
   }
 
-  const filtered = filter==='all' ? properties : properties.filter(p=>p.disposition===filter)
-  const totalComm = properties.reduce((s,p)=>s+(parseFloat(p.commission_earned)||0),0)
-  const listings  = properties.filter(p=>p.disposition==='listing')
-  const wholesale = properties.filter(p=>p.disposition==='wholesale')
-  const flips     = properties.filter(p=>p.disposition==='flip')
-  const closedComm = properties.filter(p=>p.disposition_date||p.sale_price)
+  const listings  = properties.filter(p => p.disposition === 'listing')
+  const wholesale = properties.filter(p => p.disposition === 'wholesale')
+  const flips     = properties.filter(p => p.disposition === 'flip')
+
+  const activeListings   = listings.filter(p => !p.disposition_date)
+  const closedListings   = listings.filter(p => p.disposition_date)
+  const listingComm      = listings.reduce((s,p) => s+(parseFloat(p.commission_earned)||0), 0)
+
+  const wholesaleComm    = wholesale.reduce((s,p) => s+(parseFloat(p.commission_earned)||0), 0)
+  const wholesaleFees    = wholesale.reduce((s,p) => s+(parseFloat(p.wholesale_fee)||0), 0)
+
+  const activeFlips      = flips.filter(p => !p.sale_date)
+  const closedFlips      = flips.filter(p => p.sale_date)
+  const flipComm         = flips.reduce((s,p) => s+(parseFloat(p.commission_earned)||0), 0)
+
+  const totalComm = listingComm + wholesaleComm + flipComm
+
+  const filtered = filter === 'all' ? properties : properties.filter(p => p.disposition === filter)
 
   if (loading) return <LoadingSpinner />
 
@@ -49,68 +84,86 @@ export default function NHCDeals() {
         </div>
       </div>
 
-      <div style={{ display:'grid', gridTemplateColumns: mobile?'repeat(2,1fr)':'repeat(4,1fr)', gap:12, marginBottom:20 }}>
-        <StatCard label="Total Deals" value={properties.length} topColor="#B8892A" />
-        <StatCard label="Listings" value={listings.length} topColor="#3B6D11" />
-        <StatCard label="Wholesale" value={wholesale.length} topColor="#6b21a8" />
-        <StatCard label="NHC Commission" value={fmtK(totalComm)} sub="all time" topColor="#3B6D11" />
+      {/* Grouped stat cards */}
+      <div style={{ display:'grid', gridTemplateColumns:mobile?'1fr':'1fr 1fr 1fr', gap:12, marginBottom:24 }}>
+        <StatGroup title="Listings" color="#3B6D11">
+          <MiniStat label="Active" value={activeListings.length} color="#3B6D11" />
+          <MiniStat label="Closed" value={closedListings.length} />
+          <MiniStat label="Commission" value={listingComm>0?fmtK(listingComm):'—'} color="#3B6D11" />
+        </StatGroup>
+        <StatGroup title="Wholesale" color="#6b21a8">
+          <MiniStat label="Deals" value={wholesale.length} color="#6b21a8" />
+          <MiniStat label="NHC Comm" value={wholesaleComm>0?fmtK(wholesaleComm):'—'} color="#6b21a8" />
+          {wholesaleFees > 0 && <MiniStat label="BPV Fees" value={fmtK(wholesaleFees)} color="#9ca3af" />}
+        </StatGroup>
+        <StatGroup title="Flips" color="#D97825">
+          <MiniStat label="Active" value={activeFlips.length} color="#D97825" />
+          <MiniStat label="Sold" value={closedFlips.length} />
+          <MiniStat label="NHC Comm" value={flipComm>0?fmtK(flipComm):'—'} color="#D97825" />
+        </StatGroup>
       </div>
 
+      {/* Filter pills */}
       <div style={{ display:'flex', gap:4, marginBottom:14, flexWrap:'wrap' }}>
-        {[['all',`All (${properties.length})`],['listing',`Listings (${listings.length})`],['wholesale',`Wholesale (${wholesale.length})`],['flip',`Flips (${flips.length})`]].map(([f,l])=>(
+        {[
+          ['all',  `All (${properties.length})`],
+          ['listing',   `Listings (${listings.length})`],
+          ['wholesale', `Wholesale (${wholesale.length})`],
+          ['flip',      `Flips (${flips.length})`],
+        ].map(([f,l])=>(
           <button key={f} onClick={()=>setFilter(f)} style={{ padding:'5px 14px', border:'none', borderRadius:4, cursor:'pointer', background:filter===f?'#2C2C2C':'#F0EDE6', color:filter===f?'#fff':'#6b7280', fontSize:11, fontWeight:filter===f?700:400, fontFamily:'inherit' }}>{l}</button>
         ))}
       </div>
 
       <SectionBar>Deals ({filtered.length})</SectionBar>
 
-      {filtered.length===0 ? (
+      {filtered.length === 0 ? (
         <EmptyState icon="○" text="No NHC deals yet. Add a property in the Analyzer and set the disposition to Listing, Wholesale, or Flip." />
       ) : (
         <Card style={{ padding:0 }}>
           <table style={{ width:'100%', borderCollapse:'collapse' }}>
             <thead><tr style={{ background:'#F0EDE6' }}>
-              {['Address','Type','Sale Price','Commission','Source Campaign','Close Date'].map(h=>(
+              {['Address','Type','Sale Price','Commission','Source','Close Date'].map(h=>(
                 <th key={h} style={{ padding:'8px 14px', textAlign:'left', fontSize:11, fontWeight:600, letterSpacing:0.8, color:'#6b7280', textTransform:'uppercase', whiteSpace:'nowrap' }}>{h}</th>
               ))}
             </tr></thead>
             <tbody>
-              {filtered.map((p,i)=>{
-                const src = mailings.find(m=>m.id===p.mailing_id)
-                const c = DISP_COLORS[p.disposition]||'#B8892A'
+              {filtered.map((p,i) => {
+                const src = mailings.find(m => m.id === p.mailing_id)
+                const c = DISP_COLORS[p.disposition] || '#B8892A'
+                const closeDate = p.disposition_date || p.sale_date
                 return (
-                  <tr key={p.id} onClick={()=>setDrawer(p)} style={{ background:i%2===0?'#fff':'#FAFAF8', borderTop:'0.5px solid #F0EDE6', cursor:'pointer' }}
+                  <tr key={p.id} onClick={()=>setDrawer(p)}
+                    style={{ background:i%2===0?'#fff':'#FAFAF8', borderTop:'0.5px solid #F0EDE6', cursor:'pointer' }}
                     onMouseEnter={e=>e.currentTarget.style.background='#fef9f0'}
                     onMouseLeave={e=>e.currentTarget.style.background=i%2===0?'#fff':'#FAFAF8'}>
                     <td style={{ padding:'10px 14px', fontSize:13, fontWeight:600 }}>
-                      {p.address}
-                      {p.package_id && (() => { const pkg = packages.find(pk=>pk.id===p.package_id); return pkg ? <div style={{ fontSize:10, color:'#6b21a8', marginTop:2 }}>◫ {pkg.deal_name}</div> : null; })()}
+                      <div>{p.address}</div>
+                      {p.package_id && (()=>{ const pkg=packages.find(pk=>pk.id===p.package_id); return pkg?<div style={{ fontSize:10, color:'#6b21a8', marginTop:2 }}>◫ {pkg.deal_name}</div>:null })()}
                     </td>
                     <td style={{ padding:'10px 14px' }}>
-                      <span style={{ background:c+'20', color:c, border:`1px solid ${c}40`, borderRadius:4, padding:'2px 7px', fontSize:10, fontWeight:700, textTransform:'uppercase', letterSpacing:0.8, whiteSpace:'nowrap' }}>
-                        {DISP_LABELS[p.disposition]||p.disposition}
-                      </span>
+                      <Badge color={c}>{DISP_LABELS[p.disposition]||p.disposition}</Badge>
                     </td>
-                    <td style={{ padding:'10px 14px', fontSize:13, fontFamily:'monospace' }}>{fmt(p.sale_price)}</td>
-                    <td style={{ padding:'10px 14px', fontSize:13, fontFamily:'monospace', fontWeight:700, color:'#3B6D11' }}>{fmt(p.commission_earned)}</td>
+                    <td style={{ padding:'10px 14px', fontSize:13, fontFamily:'monospace' }}>{fmt(p.sale_price)||'—'}</td>
+                    <td style={{ padding:'10px 14px', fontSize:13, fontFamily:'monospace', fontWeight:700, color:'#3B6D11' }}>{fmt(p.commission_earned)||'—'}</td>
                     <td style={{ padding:'10px 14px', fontSize:12, color:'#2D6FAF' }}>{src?.campaign_name?.replace(/^Campaign \d+ — /,'')||'—'}</td>
-                    <td style={{ padding:'10px 14px', fontSize:12, color:'#6b7280' }}>{p.disposition_date?new Date(p.disposition_date+'T12:00:00').toLocaleDateString():p.sale_date?new Date(p.sale_date+'T12:00:00').toLocaleDateString():'—'}</td>
+                    <td style={{ padding:'10px 14px', fontSize:12, color:'#6b7280' }}>{closeDate?new Date(closeDate+'T12:00:00').toLocaleDateString():'—'}</td>
                   </tr>
                 )
               })}
             </tbody>
-            {properties.length>0 && (
+            {properties.length > 0 && (
               <tfoot><tr style={{ borderTop:'2px solid #D6D2CA', background:'#F0EDE6' }}>
                 <td colSpan={3} style={{ padding:'8px 14px', fontSize:11, fontWeight:700, textTransform:'uppercase', letterSpacing:0.8 }}>Total Commission</td>
                 <td style={{ padding:'8px 14px', fontSize:14, fontFamily:'monospace', fontWeight:700, color:'#3B6D11' }}>{fmtK(totalComm)}</td>
-                <td colSpan={2}></td>
+                <td colSpan={2} />
               </tr></tfoot>
             )}
           </table>
         </Card>
       )}
 
-      <PropertyDrawer property={drawer} open={!!drawer} onClose={()=>setDrawer(null)} onSave={()=>{ load() }} mailings={mailings} />
+      <PropertyDrawer property={drawer} open={!!drawer} onClose={()=>setDrawer(null)} onSave={()=>load()} mailings={mailings} />
     </PageWrap>
   )
 }
