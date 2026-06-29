@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase.js'
 import { useIsMobile } from '../hooks/useIsMobile.js'
-import { PageWrap, SectionBar, Card, Field, FieldRow, inp, monoInp, Btn, Badge, EmptyState, LoadingSpinner, StatCard, fmt, fmtK } from '../components/ui.jsx'
+import { PageWrap, SectionBar, Card, Field, FieldRow, inp, monoInp, Btn, Badge, EmptyState, LoadingSpinner, fmt, fmtK } from '../components/ui.jsx'
 import Drawer from '../components/Drawer.jsx'
 import PropertyDrawer from '../components/PropertyDrawer.jsx'
 import AddressInput from '../components/AddressInput.jsx'
@@ -150,12 +150,6 @@ export default function PackageDeals() {
           <p style={{ fontSize: 12, color: '#6b7280', marginTop: 2 }}>Multi-property seller packages</p>
         </div>
         <Btn onClick={() => setPkgDrawer({})}>+ New Package</Btn>
-      </div>
-
-      <div style={{ display: 'grid', gridTemplateColumns: mobile ? 'repeat(2,1fr)' : 'repeat(3,1fr)', gap: 12, marginBottom: 24 }}>
-        <StatCard label="Active Packages" value={totalPackages} topColor="#6b21a8" />
-        <StatCard label="Properties Tracked" value={totalProps} sub="across all packages" topColor="#B8892A" />
-        <StatCard label="Purchased" value={totalPurchased} sub="with disposition set" topColor="#3B6D11" />
       </div>
 
       {packages.length === 0 ? (
