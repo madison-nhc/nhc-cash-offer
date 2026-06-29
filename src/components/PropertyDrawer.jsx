@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase.js'
 import { Field, FieldRow, inp, monoInp, Btn, fmt, fmtK } from './ui.jsx'
 import Drawer from './Drawer.jsx'
 import AddressInput from './AddressInput.jsx'
+import RehabTracker from './RehabTracker.jsx'
 
 const DISP_OPTIONS = [
   { value:'listing',  label:'Listing',       color:'#3B6D11',  desc:'NHC listed this property' },
@@ -12,7 +13,6 @@ const DISP_OPTIONS = [
   { value:'lost',     label:'Lost / Passed', color:'#9ca3af',  desc:'Did not move forward' },
 ]
 
-// Unique top-level options (flip and hold share "Cash Purchase")
 const TOP_LEVEL = [
   { value:'listing',  label:'Listing',       color:'#3B6D11' },
   { value:'wholesale',label:'Wholesale',     color:'#6b21a8' },
@@ -50,18 +50,19 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
   const [repairs, setRepairs] = useState([])
   const [income, setIncome] = useState([])
   const [tab, setTab] = useState('analyzer')
+  const [rehabCost, setRehabCost] = useState(null)
   const autoSaveTimer = useRef(null)
   const [incomeForm, setIncomeForm] = useState({ income_month:'', rent_received:'', expenses:'', notes:'' })
 
-  // Top-level disposition selection: listing | wholesale | purchase | lost
-  // purchase sub-type: flip | hold
   const topDisp = form.disposition==='flip'||form.disposition==='hold' ? 'purchase' : (form.disposition||null)
   const purchaseType = (form.disposition==='flip'||form.disposition==='hold') ? form.disposition : 'flip'
+  const isFlipOrHold = form.disposition==='flip' || form.disposition==='hold'
 
   useEffect(() => {
     if (property) {
       setForm({ ...property })
       setRepairs(property.repair_items?.length ? property.repair_items.map((r,i)=>({...r,id:i})) : DEFAULT_REPAIRS.map((r,i)=>({...r,id:i})))
+      setRehabCost(null)
       setTab('analyzer')
       if (property.id && (property.disposition==='hold')) loadIncome(property.id)
     }
@@ -96,6 +97,8 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
 
   async function save() {
     if (!form.address) return
+    // Use live rehabCost from tracker if available, else fall back to form value
+    const rehab = rehabCost !== null ? rehabCost : (form.rehab_cost || null)
     const payload = {
       address:form.address, beds:form.beds||null, baths:form.baths||null, sqft:form.sqft||null,
       arv:form.arv||null, asis_pct:form.asis_pct||50, asis_override:form.asis_override||null,
@@ -110,7 +113,8 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
       commission_pct:form.commission_pct||null, commission_earned:form.commission_earned||null, commission_min:form.commission_min||5000,
       nhc_notes:form.nhc_notes||null,
       purchase_price:form.purchase_price||null, closing_costs:form.closing_costs||null,
-      rehab_cost:form.rehab_cost||null, sale_price:form.sale_price||null,
+      rehab_cost: rehab,
+      sale_price:form.sale_price||null,
       sale_date:form.sale_date||null, days_on_market:form.days_on_market||null,
       mortgage_amount:form.mortgage_amount||null, monthly_payment:form.monthly_payment||null,
       bpv_notes:form.bpv_notes||null,
@@ -122,7 +126,6 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
       lost_reason:form.lost_reason||null,
       list_date:form.list_date||null,
       entity:'NHC',
-      // derive status from disposition for backward compat
       status: form.disposition==='lost' ? 'passed'
             : form.disposition==='listing' ? 'active'
             : form.disposition==='wholesale' ? 'sold'
@@ -134,8 +137,6 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
     else await supabase.from('properties').update(payload).eq('id',form.id)
     onSave()
   }
-
-  // Auto-save removed — save on close instead
 
   async function handleClose() {
     if (form.id && form.address) await save()
@@ -162,6 +163,13 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
   const dispColor = form.disposition==='listing'?'#3B6D11':form.disposition==='wholesale'?'#6b21a8':(form.disposition==='flip'||form.disposition==='hold')?'#2D6FAF':form.disposition==='lost'?'#9ca3af':'#B8892A'
   const dispLabel = form.disposition==='listing'?'Listing':form.disposition==='wholesale'?'Wholesale':form.disposition==='flip'?'Flip':form.disposition==='hold'?'Hold':form.disposition==='lost'?'Lost':null
 
+  // Tab list — only show Rehab tab when Flip or Hold
+  const tabs = [
+    { key:'analyzer', label:'Analyzer' },
+    { key:'disposition', label:'Disposition' },
+    ...(isFlipOrHold ? [{ key:'rehab', label:'Rehab' }] : []),
+  ]
+
   if (!property) return null
 
   return (
@@ -180,14 +188,14 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
 
       {/* Tab switcher */}
       <div style={{ display:'flex', gap:0, borderBottom:'2px solid #F0EDE6', marginBottom:16, marginTop:8 }}>
-        {['analyzer','disposition'].map(t=>(
-          <button key={t} onClick={()=>setTab(t)} style={{
+        {tabs.map(t=>(
+          <button key={t.key} onClick={()=>setTab(t.key)} style={{
             padding:'8px 18px', border:'none', background:'none', cursor:'pointer',
-            fontSize:12, fontWeight:tab===t?700:400, fontFamily:'inherit',
-            color:tab===t?'#B8892A':'#6b7280', textTransform:'capitalize',
-            borderBottom:tab===t?'2px solid #B8892A':'2px solid transparent',
+            fontSize:12, fontWeight:tab===t.key?700:400, fontFamily:'inherit',
+            color:tab===t.key?'#B8892A':'#6b7280',
+            borderBottom:tab===t.key?'2px solid #B8892A':'2px solid transparent',
             marginBottom:-2, letterSpacing:0.5
-          }}>{t}</button>
+          }}>{t.label}</button>
         ))}
       </div>
 
@@ -254,7 +262,6 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
       {tab==='disposition' && (
         <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
 
-          {/* Top-level selector */}
           <div className="drawer-section">What happened with this property?</div>
           <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8 }}>
             {TOP_LEVEL.map(opt=>(
@@ -335,7 +342,6 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
           {/* ── CASH PURCHASE fields ── */}
           {topDisp==='purchase' && (
             <>
-              {/* Hold / Flip toggle */}
               <div className="drawer-section">Investment Type</div>
               <div style={{ display:'flex', gap:8 }}>
                 {[['flip','Flip','#D97825'],['hold','Hold','#2D6FAF']].map(([val,label,color])=>(
@@ -355,7 +361,15 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
               </FieldRow>
               <FieldRow>
                 <Field label="Closing Costs ($)"><input style={monoInp} type="number" value={form.closing_costs||''} onChange={set('closing_costs')} placeholder="2500" /></Field>
-                <Field label="Rehab Cost ($)"><input style={monoInp} type="number" value={form.rehab_cost||''} onChange={set('rehab_cost')} placeholder="0" /></Field>
+                <Field label="Rehab Cost ($)">
+                  <input
+                    style={{ ...monoInp, color: rehabCost !== null ? '#B8892A' : undefined }}
+                    type="number"
+                    value={rehabCost !== null ? rehabCost : (form.rehab_cost||'')}
+                    onChange={e=>setForm(f=>({...f,rehab_cost:e.target.value}))}
+                    placeholder="Auto from Rehab tab"
+                  />
+                </Field>
               </FieldRow>
 
               <div className="drawer-section">NHC Commission on Purchase</div>
@@ -373,7 +387,7 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
               </FieldRow>
               <Field label="Commission Earned ($)"><input style={monoInp} type="number" value={form.commission_earned||''} onChange={set('commission_earned')} placeholder="Auto — greater of % or minimum" /></Field>
 
-              {/* Flip-specific: sale details */}
+              {/* Flip-specific */}
               {purchaseType==='flip' && (
                 <>
                   <div className="drawer-section">Sale</div>
@@ -384,7 +398,8 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
                   <Field label="Days on Market"><input style={monoInp} type="number" value={form.days_on_market||''} onChange={set('days_on_market')} placeholder="24" /></Field>
 
                   {form.purchase_price && form.sale_price && (()=>{
-                    const cost=(parseFloat(form.purchase_price)||0)+(parseFloat(form.closing_costs)||0)+(parseFloat(form.rehab_cost)||0)
+                    const rc = rehabCost !== null ? rehabCost : (parseFloat(form.rehab_cost)||0)
+                    const cost=(parseFloat(form.purchase_price)||0)+(parseFloat(form.closing_costs)||0)+rc
                     const profit=(parseFloat(form.sale_price)||0)-cost
                     const roi=cost>0?((profit/cost)*100).toFixed(1):null
                     const comm=parseFloat(form.commission_earned)||0
@@ -399,7 +414,7 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
                 </>
               )}
 
-              {/* Hold-specific: mortgage + income */}
+              {/* Hold-specific */}
               {purchaseType==='hold' && (
                 <>
                   <div className="drawer-section">Mortgage</div>
@@ -459,7 +474,6 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
             </>
           )}
 
-          {/* Mailing source — always visible on disposition tab */}
           {mailings.length>0 && (
             <>
               <div className="drawer-section">Source</div>
@@ -472,6 +486,15 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
             </>
           )}
         </div>
+      )}
+
+      {/* ── REHAB TAB ── */}
+      {tab==='rehab' && isFlipOrHold && (
+        <RehabTracker
+          property={form}
+          repairItems={repairs}
+          onChange={total => setRehabCost(total)}
+        />
       )}
 
       <div style={{ display:'flex', justifyContent:'space-between', marginTop:20, paddingTop:16, borderTop:'1px solid #F0EDE6' }}>
