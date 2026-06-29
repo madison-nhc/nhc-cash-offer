@@ -100,7 +100,7 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
     // Use live rehabCost from tracker if available, else fall back to form value
     const rehab = rehabCost !== null ? rehabCost : (form.rehab_cost || null)
     const payload = {
-      address:form.address, beds:form.beds||null, baths:form.baths||null, sqft:form.sqft||null,
+      address:form.address, beds:form.beds||null, baths:form.baths||null, sqft:form.sqft||null, unit_count:parseInt(form.unit_count)||null,
       arv:form.arv||null, asis_pct:form.asis_pct||50, asis_override:form.asis_override||null,
       profit_margin:form.profit_margin||15, profit_override:form.profit_override||null,
       cash_offer_override:form.cash_offer_override||null,
@@ -210,6 +210,7 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
             <Field label="Beds"><input style={monoInp} type="number" value={form.beds||''} onChange={set('beds')} placeholder="3" /></Field>
             <Field label="Baths"><input style={monoInp} type="number" value={form.baths||''} onChange={set('baths')} placeholder="2" /></Field>
             <Field label="Sq Ft"><input style={monoInp} type="number" value={form.sqft||''} onChange={set('sqft')} placeholder="1850" /></Field>
+            <Field label="Units"><input style={monoInp} type="number" value={form.unit_count||''} onChange={set('unit_count')} placeholder="1" /></Field>
           </FieldRow>
 
           <div className="drawer-section">Valuation</div>
