@@ -131,7 +131,7 @@ export default function BPVInvestments() {
         <Card style={{ padding:0 }}>
           <table style={{ width:'100%', borderCollapse:'collapse' }}>
             <thead><tr style={{ background:'#F0EDE6' }}>
-              {['Address','Type','Purchase','Rehab','Sale / Equity','P&L','Date'].map(h=>(
+              {['Address','Type','Purchase','Rehab Cost','Sale / Equity','P&L','Date'].map(h=>(
                 <th key={h} style={{ padding:'8px 12px', textAlign:'left', fontSize:11, fontWeight:600, letterSpacing:0.8, color:'#6b7280', textTransform:'uppercase', whiteSpace:'nowrap' }}>{h}</th>
               ))}
             </tr></thead>
