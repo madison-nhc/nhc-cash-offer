@@ -21,10 +21,21 @@ function MiniStat({ label, value, sub, color='#2C2C2C' }) {
   )
 }
 
-function StatGroup({ title, color, children }) {
+function StatGroup({ title, color, filterKey, activeFilter, onFilter, children }) {
+  const active = activeFilter === filterKey
   return (
-    <div style={{ background:'#fff', border:'0.5px solid #D6D2CA', borderRadius:8, borderTop:`3px solid ${color}`, padding:'12px 16px' }}>
-      <GroupLabel>{title}</GroupLabel>
+    <div
+      onClick={() => onFilter(active ? 'all' : filterKey)}
+      style={{
+        background:'#fff', border: active ? `1.5px solid ${color}` : '0.5px solid #D6D2CA',
+        borderRadius:8, borderTop:`3px solid ${color}`, padding:'12px 16px',
+        cursor:'pointer', transition:'box-shadow 0.15s',
+        boxShadow: active ? `0 0 0 3px ${color}22` : 'none',
+      }}
+      onMouseEnter={e=>{ if(!active) e.currentTarget.style.boxShadow=`0 2px 8px rgba(0,0,0,0.08)` }}
+      onMouseLeave={e=>{ if(!active) e.currentTarget.style.boxShadow='none' }}
+    >
+      <GroupLabel>{title}{active ? ' ✓' : ''}</GroupLabel>
       <div style={{ display:'flex', gap:24, flexWrap:'wrap' }}>{children}</div>
     </div>
   )
@@ -86,17 +97,17 @@ export default function NHCDeals() {
 
       {/* Grouped stat cards */}
       <div style={{ display:'grid', gridTemplateColumns:mobile?'1fr':'1fr 1fr 1fr', gap:12, marginBottom:24 }}>
-        <StatGroup title="Listings" color="#3B6D11">
+        <StatGroup title="Listings" color="#3B6D11" filterKey="listing" activeFilter={filter} onFilter={setFilter}>
           <MiniStat label="Active" value={activeListings.length} color="#3B6D11" />
           <MiniStat label="Closed" value={closedListings.length} />
           <MiniStat label="Commission" value={listingComm>0?fmtK(listingComm):'—'} color="#3B6D11" />
         </StatGroup>
-        <StatGroup title="Wholesale" color="#6b21a8">
+        <StatGroup title="Wholesale" color="#6b21a8" filterKey="wholesale" activeFilter={filter} onFilter={setFilter}>
           <MiniStat label="Deals" value={wholesale.length} color="#6b21a8" />
           <MiniStat label="NHC Comm" value={wholesaleComm>0?fmtK(wholesaleComm):'—'} color="#6b21a8" />
           {wholesaleFees > 0 && <MiniStat label="BPV Fees" value={fmtK(wholesaleFees)} color="#9ca3af" />}
         </StatGroup>
-        <StatGroup title="Flips" color="#D97825">
+        <StatGroup title="Flips" color="#D97825" filterKey="flip" activeFilter={filter} onFilter={setFilter}>
           <MiniStat label="Active" value={activeFlips.length} color="#D97825" />
           <MiniStat label="Sold" value={closedFlips.length} />
           <MiniStat label="NHC Comm" value={flipComm>0?fmtK(flipComm):'—'} color="#D97825" />
