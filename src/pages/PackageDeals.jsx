@@ -4,6 +4,7 @@ import { useIsMobile } from '../hooks/useIsMobile.js'
 import { PageWrap, SectionBar, Card, Field, FieldRow, inp, monoInp, Btn, Badge, EmptyState, LoadingSpinner, fmt, fmtK } from '../components/ui.jsx'
 import Drawer from '../components/Drawer.jsx'
 import PropertyDrawer from '../components/PropertyDrawer.jsx'
+import ProposalModal from '../components/ProposalModal.jsx'
 import AddressInput from '../components/AddressInput.jsx'
 
 const DISP_COLORS = { listing:'#3B6D11', wholesale:'#6b21a8', flip:'#D97825', hold:'#2D6FAF', lost:'#9ca3af' }
@@ -108,6 +109,7 @@ export default function PackageDeals() {
   const [pkgDrawer, setPkgDrawer] = useState(null)          // edit package metadata
   const [propDrawer, setPropDrawer] = useState(null)        // edit individual property
   const [addPropPkg, setAddPropPkg] = useState(null)        // add property to package
+  const [proposal, setProposal] = useState(null)
 
   useEffect(() => { load() }, [])
 
@@ -198,7 +200,7 @@ export default function PackageDeals() {
                   <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                     <thead>
                       <tr style={{ background: '#F0EDE6' }}>
-                        {['Address', 'ARV', 'Purchase', 'Rehab', 'Disposition', 'NHC Comm', 'Updated'].map(h => (
+                        {['Address', 'Cash Offer', 'Rehab', 'ARV', 'Disposition', 'Updated', 'Offer PDF'].map(h => (
                           <th key={h} style={{ padding: '7px 14px', textAlign: 'left', fontSize: 10, fontWeight: 600, letterSpacing: 0.8, color: '#6b7280', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>{h}</th>
                         ))}
                       </tr>
@@ -216,12 +218,12 @@ export default function PackageDeals() {
                             onMouseLeave={e => e.currentTarget.style.background = i % 2 === 0 ? '#fff' : '#FAFAF8'}
                           >
                             <td style={{ padding: '9px 14px', fontSize: 13, fontWeight: 600 }}>
-                              {p.address}
-                              {p.unit_count > 1 && <span style={{ fontSize: 10, color: '#9ca3af', marginLeft: 6 }}>{p.unit_count} units</span>}
+                              <div>{p.address}</div>
+                              {p.unit_count > 1 && <div style={{ fontSize: 10, color: '#9ca3af', marginTop: 2 }}>{p.unit_count} units</div>}
                             </td>
-                            <td style={{ padding: '9px 14px', fontSize: 12, fontFamily: 'monospace' }}>{fmt(p.arv)}</td>
-                            <td style={{ padding: '9px 14px', fontSize: 12, fontFamily: 'monospace' }}>{fmt(p.purchase_price)}</td>
-                            <td style={{ padding: '9px 14px', fontSize: 12, fontFamily: 'monospace', color: '#6b7280' }}>{fmt(p.rehab_cost)}</td>
+                            <td style={{ padding: '9px 14px', fontSize: 12, fontFamily: 'monospace', color: '#3B6D11', fontWeight: 600 }}>{(() => { const co = (() => { const arv=parseFloat(p.arv)||0; if(!arv) return null; const reno=(p.repair_items||[]).reduce((s,r)=>s+(parseFloat(r.cost)||0),0); const commCash=(parseFloat(p.comm_cash_pct)||9)/100; const profitPct=(parseFloat(p.profit_margin)||15)/100; const profit=p.profit_override?parseFloat(p.profit_override):arv*profitPct; const cashHold=(parseFloat(p.hold_cash_pct)||0.75)/100*(parseFloat(p.hold_cash_months)||6)*arv; return p.cash_offer_override?parseFloat(p.cash_offer_override):arv-reno-(commCash*arv)-cashHold-profit; })(); return co ? fmt(co) : '—'; })()}</td>
+                            <td style={{ padding: '9px 14px', fontSize: 12, fontFamily: 'monospace', color: '#6b7280' }}>{fmt(p.rehab_cost)||'—'}</td>
+                            <td style={{ padding: '9px 14px', fontSize: 12, fontFamily: 'monospace', fontWeight: 700 }}>{fmt(p.arv)||'—'}</td>
                             <td style={{ padding: '9px 14px' }}>
                               {dispLabel ? (
                                 <span style={{ background: dispColor + '20', color: dispColor, border: `1px solid ${dispColor}40`, borderRadius: 4, padding: '2px 7px', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.8 }}>
@@ -231,8 +233,10 @@ export default function PackageDeals() {
                                 <span style={{ fontSize: 11, color: '#9ca3af' }}>Analyzing</span>
                               )}
                             </td>
-                            <td style={{ padding: '9px 14px', fontSize: 12, fontFamily: 'monospace', color: '#3B6D11' }}>{fmt(p.commission_earned)}</td>
                             <td style={{ padding: '9px 14px', fontSize: 11, color: '#9ca3af' }}>{new Date(p.updated_at).toLocaleDateString()}</td>
+                            <td style={{ padding: '9px 10px' }} onClick={e => e.stopPropagation()}>
+                              {p.arv && <button onClick={e => { e.stopPropagation(); setProposal(p) }} style={{ background:'#2D6FAF', color:'#fff', border:'none', borderRadius:4, padding:'4px 10px', fontSize:11, fontWeight:600, cursor:'pointer', fontFamily:'inherit', whiteSpace:'nowrap' }}>Offer PDF</button>}
+                            </td>
                           </tr>
                         )
                       })}
@@ -243,10 +247,9 @@ export default function PackageDeals() {
                     {pkgProps.length > 0 && (
                       <tfoot>
                         <tr style={{ borderTop: '2px solid #D6D2CA', background: '#F0EDE6' }}>
-                          <td style={{ padding: '8px 14px', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.8 }}>Totals</td>
-                          <td /><td />
-                          <td style={{ padding: '8px 14px', fontSize: 13, fontFamily: 'monospace', fontWeight: 700 }}>{fmtK(stats.totalPurchase)}</td>
+                          <td colSpan={3} style={{ padding: '8px 14px', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.8 }}>Totals</td>
                           <td style={{ padding: '8px 14px', fontSize: 13, fontFamily: 'monospace', fontWeight: 700, color: '#6b7280' }}>{fmtK(stats.totalRehab)}</td>
+                          <td style={{ padding: '8px 14px', fontSize: 13, fontFamily: 'monospace', fontWeight: 700 }}>{fmtK(stats.totalArv)}</td>
                           <td /><td /><td />
                         </tr>
                       </tfoot>
@@ -282,7 +285,9 @@ export default function PackageDeals() {
         onClose={() => setPropDrawer(null)}
         onSave={() => load()}
         mailings={[]}
+        onViewOffer={p => setProposal(p)}
       />
+      {proposal && <ProposalModal property={proposal} onClose={() => setProposal(null)} />}
     </PageWrap>
   )
 }
