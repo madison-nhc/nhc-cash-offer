@@ -202,8 +202,32 @@ const CSS = `
     #prop-overlay, #prop-overlay * { visibility:visible; }
     #prop-toolbar { display:none!important; }
 
-    html, body {
+    /* The app's layout uses minHeight:100vh / height:100% on several
+       ancestors (App's flex wrapper, #root, etc). visibility:hidden keeps
+       those elements in the layout flow, so they still reserve a full
+       viewport's worth of blank space before our content prints. Since
+       ProposalModal can be nested at any depth depending on which page
+       it's rendered from, collapse height/min-height universally rather
+       than targeting specific ancestor selectors. */
+    body * {
       height:auto!important;
+      min-height:0!important;
+      max-height:none!important;
+    }
+
+    /* Force backgrounds/colors to print — browsers strip background-color
+       by default in print mode to save ink unless explicitly told not to. */
+    * {
+      -webkit-print-color-adjust:exact!important;
+      print-color-adjust:exact!important;
+      color-adjust:exact!important;
+    }
+
+    html, body {
+      margin:0!important;
+      padding:0!important;
+      height:auto!important;
+      min-height:0!important;
       overflow:visible!important;
     }
 
@@ -212,19 +236,23 @@ const CSS = `
       inset:auto!important;
       background:none!important;
       display:block!important;
+      margin:0!important;
+      padding:0!important;
       height:auto!important;
+      min-height:0!important;
       overflow:visible!important;
     }
 
     #prop-canvas {
       background:none!important;
       padding:0!important;
-      gap:0!important;
       margin:0!important;
+      gap:0!important;
       overflow:visible!important;
       display:block!important;
       position:static!important;
       height:auto!important;
+      min-height:0!important;
       align-items:initial!important;
     }
 
@@ -234,13 +262,14 @@ const CSS = `
       break-after:page;
       page-break-inside:avoid;
       break-inside:avoid;
-      margin:0 auto!important;
+      margin:0!important;
       width:816px!important;
       height:1056px!important;
       overflow:hidden!important;
       position:relative!important;
     }
-    .pg:last-child { page-break-after:auto; break-after:auto; }
+    .pg:first-child { page-break-before:avoid!important; break-before:avoid!important; }
+    .pg:last-child { page-break-after:auto!important; break-after:auto!important; }
   }
 `
 
