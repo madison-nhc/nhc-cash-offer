@@ -29,9 +29,9 @@ export default function Dashboard({ onNavigate }) {
     // disposition is the single source of truth for routing/reporting —
     // investment_type and status are legacy columns, not used here.
     const [{ data: properties }, { data: income }, { data: mailings }] = await Promise.all([
-      supabase.from('properties').select('*'),
-      supabase.from('property_income').select('rent_received, expenses'),
-      supabase.from('mailings').select('id, list_size, mailer_cost'),
+      supabase.from('cashoffer_properties').select('*'),
+      supabase.from('cashoffer_property_income').select('rent_received, expenses'),
+      supabase.from('cashoffer_mailings').select('id, list_size, mailer_cost'),
     ])
 
     const props = properties || []
