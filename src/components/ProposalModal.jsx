@@ -260,13 +260,13 @@ const CSS = `
       box-shadow:none!important;
       page-break-after:always;
       break-after:page;
-      page-break-inside:avoid;
-      break-inside:avoid;
       margin:0!important;
       width:816px!important;
       height:1056px!important;
+      max-height:1056px!important;
       overflow:hidden!important;
       position:relative!important;
+      display:block!important;
     }
     .pg:first-child { page-break-before:avoid!important; break-before:avoid!important; }
     .pg:last-child { page-break-after:auto!important; break-after:auto!important; }
@@ -419,12 +419,25 @@ export default function ProposalModal({ property, onClose }) {
     </div>
   `
 
+  const printFilename = `Cash Offer - ${addr.split(',')[0].trim() || 'Property'}`
+
+  function handlePrint() {
+    const originalTitle = document.title
+    document.title = printFilename
+    const restore = () => {
+      document.title = originalTitle
+      window.removeEventListener('afterprint', restore)
+    }
+    window.addEventListener('afterprint', restore)
+    window.print()
+  }
+
   return (
     <>
       <style>{CSS}</style>
       <div id="prop-overlay">
         <div id="prop-toolbar">
-          <button className="btn-print" onClick={()=>window.print()}>⬇ Print / Save PDF</button>
+          <button className="btn-print" onClick={handlePrint}>⬇ Print / Save PDF</button>
           <button className="btn-close" onClick={onClose}>✕ Close</button>
           <span className="tip">File → Print → Save as PDF · Margins: None · Paper: Letter</span>
           <span className="page-info">3 pages</span>
