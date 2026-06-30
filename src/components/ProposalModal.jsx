@@ -194,33 +194,51 @@ const CSS = `
   /* ── PRINT ── */
   @media print {
     @page { margin:0; size:letter; }
-    /* Hide everything except the proposal overlay */
+    /* visibility (not display:none) is depth-agnostic: it hides everything
+       in the document regardless of how deeply #prop-overlay is nested
+       in the page's component tree, without needing to know the exact
+       DOM structure of the host page. */
     body * { visibility:hidden; }
     #prop-overlay, #prop-overlay * { visibility:visible; }
-    #prop-overlay {
-      position:fixed!important;
-      inset:0!important;
-      background:none!important;
-      z-index:9999!important;
-    }
     #prop-toolbar { display:none!important; }
-    #prop-canvas  {
+
+    html, body {
+      height:auto!important;
+      overflow:visible!important;
+    }
+
+    #prop-overlay {
+      position:static!important;
+      inset:auto!important;
+      background:none!important;
+      display:block!important;
+      height:auto!important;
+      overflow:visible!important;
+    }
+
+    #prop-canvas {
       background:none!important;
       padding:0!important;
       gap:0!important;
+      margin:0!important;
       overflow:visible!important;
       display:block!important;
-      position:absolute!important;
-      top:0!important;
-      left:0!important;
+      position:static!important;
+      height:auto!important;
+      align-items:initial!important;
     }
+
     .pg {
       box-shadow:none!important;
       page-break-after:always;
       break-after:page;
-      margin:0!important;
+      page-break-inside:avoid;
+      break-inside:avoid;
+      margin:0 auto!important;
       width:816px!important;
       height:1056px!important;
+      overflow:hidden!important;
+      position:relative!important;
     }
     .pg:last-child { page-break-after:auto; break-after:auto; }
   }
