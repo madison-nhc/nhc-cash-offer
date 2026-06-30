@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase.js'
 import { useIsMobile } from '../hooks/useIsMobile.js'
-import { PageWrap, SectionBar, Card, Field, FieldRow, inp, monoInp, Btn, EmptyState, LoadingSpinner, fmt, fmtK } from '../components/ui.jsx'
+import { PageWrap, SectionBar, Card, Field, FieldRow, inp, monoInp, Btn, EmptyState, LoadingSpinner, fmt, fmtK, useSort, SortTh } from '../components/ui.jsx'
 import Drawer from '../components/Drawer.jsx'
 
 const EMPTY_MAILING = { campaign_name:'', drop_date:'', list_size:'', piece_type:'Postcard', mailer_cost:'', calls_total:'', calls_answered:'', calls_missed:'', notes:'' }
@@ -79,6 +79,13 @@ export default function MailingTracker() {
   const totalWholesaled= allOutcomes.filter(p => p.disposition === 'wholesale').length
   const totalRevenue   = allOutcomes.reduce((s,p) => s+(parseFloat(p.commission_earned)||0)+(parseFloat(p.wholesale_fee)||0), 0)
 
+  const { sorted, sortKey, sortDir, toggleSort } = useSort(mailings, 'drop_date', 'desc', {
+    rate: m => m.list_size && m.calls_total ? (m.calls_total/m.list_size)*1000 : null,
+    listings: m => outcomesFor(m.id).listings,
+    purchased: m => outcomesFor(m.id).purchased,
+    wholesaled: m => outcomesFor(m.id).wholesaled,
+  })
+
   if (loading) return <LoadingSpinner />
 
   return (
@@ -120,13 +127,14 @@ export default function MailingTracker() {
             <table style={{ width:'100%', borderCollapse:'collapse', minWidth:700 }}>
               <thead>
                 <tr style={{ background:'#2C2C2C' }}>
-                  {['#','Date','Pieces','Geography','Calls','Ans.','Rate/1k','Listings','Purchased','Wholesale','Cost'].map(h=>(
-                    <th key={h} style={{ padding:'8px 12px', textAlign:'left', fontSize:10, fontWeight:700, letterSpacing:0.8, color:'#B8892A', textTransform:'uppercase', whiteSpace:'nowrap' }}>{h}</th>
+                  <th style={{ padding:'8px 12px', textAlign:'left', fontSize:10, fontWeight:700, letterSpacing:0.8, color:'#B8892A', textTransform:'uppercase', whiteSpace:'nowrap' }}>#</th>
+                  {[['drop_date','Date'],['list_size','Pieces'],['campaign_name','Geography'],['calls_total','Calls'],['calls_answered','Ans.'],['rate','Rate/1k'],['listings','Listings'],['purchased','Purchased'],['wholesaled','Wholesale'],['mailer_cost','Cost']].map(([key,label])=>(
+                    <SortTh key={key} sortKeyName={key} {...{sortKey,sortDir,toggleSort}} style={{ color:'#B8892A' }}>{label}</SortTh>
                   ))}
                 </tr>
               </thead>
               <tbody>
-                {mailings.map((m, i) => {
+                {sorted.map((m, i) => {
                   const rate = m.list_size && m.calls_total ? ((m.calls_total/m.list_size)*1000).toFixed(1) : null
                   const rc = parseFloat(rate)
                   const rateColor = rc>=6?'#3B6D11':rc>=4?'#B8892A':'#2D6FAF'
