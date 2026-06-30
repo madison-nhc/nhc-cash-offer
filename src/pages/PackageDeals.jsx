@@ -34,8 +34,8 @@ function PackageFormDrawer({ pkg, open, onClose, onSave }) {
     if (!form.deal_name) return
     setSaving(true)
     const payload = { deal_name: form.deal_name, notes: form.notes || null, status: form.status || 'analyzing', entity: 'BPV' }
-    if (isNew) await supabase.from('package_deals').insert(payload)
-    else await supabase.from('package_deals').update(payload).eq('id', form.id)
+    if (isNew) await supabase.from('cashoffer_package_deals').insert(payload)
+    else await supabase.from('cashoffer_package_deals').update(payload).eq('id', form.id)
     setSaving(false)
     onSave()
   }
@@ -43,8 +43,8 @@ function PackageFormDrawer({ pkg, open, onClose, onSave }) {
   async function del() {
     if (!confirm('Delete this package and all its properties? This cannot be undone.')) return
     // Remove package_id from all properties in this package (keeps property records)
-    await supabase.from('properties').update({ package_id: null }).eq('package_id', form.id)
-    await supabase.from('package_deals').delete().eq('id', form.id)
+    await supabase.from('cashoffer_properties').update({ package_id: null }).eq('package_id', form.id)
+    await supabase.from('cashoffer_package_deals').delete().eq('id', form.id)
     onSave(); onClose()
   }
 
@@ -85,7 +85,7 @@ function AddPropertyDrawer({ packageId, open, onClose, onSave }) {
   async function save() {
     if (!address || !packageId) return
     setSaving(true)
-    await supabase.from('properties').insert({
+    await supabase.from('cashoffer_properties').insert({
       address, package_id: packageId,
       status: 'analyzing', entity: 'BPV',
       investment_type: 'hold',
@@ -216,8 +216,8 @@ export default function PackageDeals({ openPropertyId, onOpenedTarget } = {}) {
   async function load() {
     setLoading(true)
     const [{ data: pkgs }, { data: props }] = await Promise.all([
-      supabase.from('package_deals').select('*').order('created_at', { ascending: false }),
-      supabase.from('properties').select('*').not('package_id', 'is', null).order('address'),
+      supabase.from('cashoffer_package_deals').select('*').order('created_at', { ascending: false }),
+      supabase.from('cashoffer_properties').select('*').not('package_id', 'is', null).order('address'),
     ])
     setPackages(pkgs || [])
     setProperties(props || [])
