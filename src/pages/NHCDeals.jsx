@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase.js'
 import { useIsMobile } from '../hooks/useIsMobile.js'
-import { PageWrap, SectionBar, Card, Badge, EmptyState, LoadingSpinner, fmt, fmtK } from '../components/ui.jsx'
+import { PageWrap, SectionBar, Card, Badge, EmptyState, LoadingSpinner, fmt, fmtK, useSort, SortTh } from '../components/ui.jsx'
 import PropertyDrawer from '../components/PropertyDrawer.jsx'
 
 const DISP_COLORS = { listing:'#3B6D11', wholesale:'#6b21a8', flip:'#D97825' }
@@ -84,6 +84,12 @@ export default function NHCDeals() {
 
   const filtered = filter === 'all' ? properties : properties.filter(p => p.disposition === filter)
 
+  const { sorted, sortKey, sortDir, toggleSort } = useSort(filtered, 'close_date', 'desc', {
+    close_date: p => p.disposition_date || p.sale_date,
+    source: p => mailings.find(m => m.id === p.mailing_id)?.campaign_name || '',
+    type: p => DISP_LABELS[p.disposition] || p.disposition,
+  })
+
   if (loading) return <LoadingSpinner />
 
   return (
@@ -134,12 +140,15 @@ export default function NHCDeals() {
         <Card style={{ padding:0 }}>
           <table style={{ width:'100%', borderCollapse:'collapse' }}>
             <thead><tr style={{ background:'#F0EDE6' }}>
-              {['Address','Type','Sale Price','Commission','Source','Close Date'].map(h=>(
-                <th key={h} style={{ padding:'8px 14px', textAlign:'left', fontSize:11, fontWeight:600, letterSpacing:0.8, color:'#6b7280', textTransform:'uppercase', whiteSpace:'nowrap' }}>{h}</th>
-              ))}
+              <SortTh sortKeyName="address" {...{sortKey,sortDir,toggleSort}}>Address</SortTh>
+              <SortTh sortKeyName="type" {...{sortKey,sortDir,toggleSort}}>Type</SortTh>
+              <SortTh sortKeyName="sale_price" {...{sortKey,sortDir,toggleSort}}>Sale Price</SortTh>
+              <SortTh sortKeyName="commission_earned" {...{sortKey,sortDir,toggleSort}}>Commission</SortTh>
+              <SortTh sortKeyName="source" {...{sortKey,sortDir,toggleSort}}>Source</SortTh>
+              <SortTh sortKeyName="close_date" {...{sortKey,sortDir,toggleSort}}>Close Date</SortTh>
             </tr></thead>
             <tbody>
-              {filtered.map((p,i) => {
+              {sorted.map((p,i) => {
                 const src = mailings.find(m => m.id === p.mailing_id)
                 const c = DISP_COLORS[p.disposition] || '#B8892A'
                 const closeDate = p.disposition_date || p.sale_date
