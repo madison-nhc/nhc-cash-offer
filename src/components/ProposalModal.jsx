@@ -208,8 +208,14 @@ const CSS = `
        viewport's worth of blank space before our content prints. Since
        ProposalModal can be nested at any depth depending on which page
        it's rendered from, collapse height/min-height universally rather
-       than targeting specific ancestor selectors. */
-    body * {
+       than targeting specific ancestor selectors.
+       IMPORTANT: ":not(.pg)" excludes the page boxes themselves — "body *"
+       has higher specificity than ".pg" alone (element selector vs class
+       selector), so without this exclusion this rule was silently winning
+       over .pg's fixed height:1056px!important below, collapsing every
+       page to its auto content height and causing unpredictable splits
+       across physical printed pages. */
+    body *:not(.pg) {
       height:auto!important;
       min-height:0!important;
       max-height:none!important;
