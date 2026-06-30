@@ -53,10 +53,10 @@ export default function BPVInvestments() {
   async function load() {
     setLoading(true)
     const [{ data:p }, { data:inc }, { data:m }, { data:pkgs }] = await Promise.all([
-      supabase.from('properties').select('*').in('disposition',['flip','hold','wholesale']).order('purchase_date',{ascending:false}),
-      supabase.from('property_income').select('*'),
-      supabase.from('package_deals').select('id,deal_name'),
-      supabase.from('mailings').select('id,campaign_name,drop_date'),
+      supabase.from('cashoffer_properties').select('*').in('disposition',['flip','hold','wholesale']).order('purchase_date',{ascending:false}),
+      supabase.from('cashoffer_property_income').select('*'),
+      supabase.from('cashoffer_package_deals').select('id,deal_name'),
+      supabase.from('cashoffer_mailings').select('id,campaign_name,drop_date'),
     ])
     setProperties(p||[])
     setIncome(inc||[])
