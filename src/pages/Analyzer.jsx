@@ -35,7 +35,7 @@ function matchesDispFilter(p, key) {
   return p.disposition === key
 }
 
-export default function Analyzer() {
+export default function Analyzer({ openPropertyId, openInPackage, onOpenedTarget } = {}) {
   const [tab, setTab] = useState('properties')
   const [properties, setProperties] = useState([])
   const [mailings, setMailings] = useState([])
@@ -44,9 +44,31 @@ export default function Analyzer() {
   const [proposal, setProposal] = useState(null)
   const [filter, setFilter] = useState('analyzing')
   const [search, setSearch] = useState('')
+  const [packageTargetId, setPackageTargetId] = useState(null)
   const mobile = useIsMobile()
 
   useEffect(() => { load() }, [])
+
+  // A property picked from the global search arrives here as an id. If it's
+  // a standalone property, open its drawer directly. If it's nested inside
+  // a package, this page doesn't normally load package properties at all
+  // (see load() below), so fetch it on its own and hand off to the
+  // Package Deals tab, which owns that property's actual drawer.
+  useEffect(() => {
+    if (!openPropertyId) return
+    if (openInPackage) {
+      setTab('packages')
+      setPackageTargetId(openPropertyId)
+    } else {
+      const match = properties.find(p => p.id === openPropertyId)
+      if (match) setDrawer(match)
+      else {
+        supabase.from('properties').select('*').eq('id', openPropertyId).single()
+          .then(({ data }) => { if (data) setDrawer(data) })
+      }
+    }
+    onOpenedTarget && onOpenedTarget()
+  }, [openPropertyId, openInPackage]) // eslint-disable-line react-hooks/exhaustive-deps
 
   async function load() {
     setLoading(true)
@@ -86,7 +108,7 @@ export default function Analyzer() {
         ))}
       </div>
 
-      {tab==='packages' && <PackageDeals embedded />}
+      {tab==='packages' && <PackageDeals embedded openPropertyId={packageTargetId} onOpenedTarget={()=>setPackageTargetId(null)} />}
 
       {tab==='properties' && (<>
         {/* Filters */}
