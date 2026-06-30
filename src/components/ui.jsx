@@ -1,4 +1,5 @@
 // Shared UI building blocks for NHC Cash Offer Hub
+import { useState, useMemo } from 'react'
 
 export function Card({ children, style = {}, topColor = '#B8892A' }) {
   return (
@@ -179,6 +180,61 @@ export function fmtK(n) {
 export function pct(n) {
   if (!n) return '—'
   return parseFloat(n).toFixed(1) + '%'
+}
+
+// ── Shared table sorting ─────────────────────────────────────────────────────
+// useSort(rows, defaultKey, defaultDir, getValue?) returns { sorted, sortKey,
+// sortDir, toggleSort }. getValue lets a column sort by a computed value
+// (e.g. a calculated cash offer) rather than a raw row field — pass a map of
+// { columnKey: row => value }. Falsy/empty values always sort to the bottom
+// regardless of direction, since an empty "—" cell isn't meaningfully
+// less-than or greater-than a real value.
+export function useSort(rows, defaultKey = null, defaultDir = 'desc', getValue = {}) {
+  const [sortKey, setSortKey] = useState(defaultKey)
+  const [sortDir, setSortDir] = useState(defaultDir)
+
+  function toggleSort(key) {
+    if (sortKey === key) setSortDir(d => d === 'asc' ? 'desc' : 'asc')
+    else { setSortKey(key); setSortDir('desc') }
+  }
+
+  const sorted = useMemo(() => {
+    if (!sortKey) return rows
+    const extract = getValue[sortKey] || (r => r[sortKey])
+    const withVal = rows.map(r => ({ r, v: extract(r) }))
+    const empty = withVal.filter(({v}) => v===null || v===undefined || v==='')
+    const real = withVal.filter(({v}) => !(v===null || v===undefined || v===''))
+    real.sort((a, b) => {
+      const av = a.v, bv = b.v
+      let cmp
+      if (typeof av === 'string' && typeof bv === 'string') cmp = av.localeCompare(bv)
+      else cmp = (parseFloat(av)||0) - (parseFloat(bv)||0)
+      return sortDir === 'asc' ? cmp : -cmp
+    })
+    return [...real, ...empty].map(({r}) => r)
+  }, [rows, sortKey, sortDir, getValue])
+
+  return { sorted, sortKey, sortDir, toggleSort }
+}
+
+// Drop-in replacement for a <th> that's clickable to sort. Pass the same
+// sortKey/sortDir/toggleSort returned by useSort, plus this column's own key.
+export function SortTh({ children, sortKeyName, sortKey, sortDir, toggleSort, style: s = {}, align = 'left' }) {
+  const active = sortKey === sortKeyName
+  return (
+    <th onClick={()=>toggleSort(sortKeyName)} style={{
+      padding:'8px 14px', textAlign:align, fontSize:11, fontWeight:600, letterSpacing:0.8,
+      color: active ? '#2C2C2C' : '#6b7280', textTransform:'uppercase', cursor:'pointer',
+      userSelect:'none', whiteSpace:'nowrap', ...s
+    }}>
+      <span style={{ display:'inline-flex', alignItems:'center', gap:4, justifyContent: align==='right' ? 'flex-end' : 'flex-start' }}>
+        {children}
+        <span style={{ fontSize:9, color: active ? '#B8892A' : '#D6D2CA', lineHeight:1 }}>
+          {active ? (sortDir === 'asc' ? '▲' : '▼') : '▼'}
+        </span>
+      </span>
+    </th>
+  )
 }
 
 export function LoadingSpinner() {
