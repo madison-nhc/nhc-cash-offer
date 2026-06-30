@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase.js'
 import { useIsMobile } from '../hooks/useIsMobile.js'
-import { PageWrap, SectionBar, Card, Badge, EmptyState, LoadingSpinner, fmt, fmtK } from '../components/ui.jsx'
+import { PageWrap, SectionBar, Card, Badge, EmptyState, LoadingSpinner, fmt, fmtK, useSort, SortTh } from '../components/ui.jsx'
 import PropertyDrawer from '../components/PropertyDrawer.jsx'
 
 function GroupLabel({ children }) {
@@ -88,6 +88,31 @@ export default function BPVInvestments() {
 
   const filtered = filter==='all' ? properties : properties.filter(p=>p.disposition===filter)
 
+  // Mirror the per-row computed values used in the table cells, so sorting
+  // by "Sale / Equity" or "P&L" matches what's actually displayed.
+  function saleOrEquity(p) {
+    if (p.disposition==='wholesale') return null
+    const equity = Math.max(0,(parseFloat(p.arv)||0)-(parseFloat(p.mortgage_amount)||0))
+    const isSoldHold = p.disposition==='hold' && p.sale_date
+    return (p.disposition==='flip' || isSoldHold) ? parseFloat(p.sale_price)||null : equity
+  }
+  function plValue(p) {
+    if (p.disposition==='wholesale') return parseFloat(p.wholesale_fee)||null
+    const cost = (parseFloat(p.purchase_price)||0)+(parseFloat(p.closing_costs)||0)+(parseFloat(p.rehab_cost)||0)
+    if ((p.disposition==='flip'||p.disposition==='hold') && p.sale_date) return (parseFloat(p.sale_price)||0)-cost
+    if (p.disposition==='hold') {
+      const propIncome = income.filter(inc=>inc.property_id===p.id)
+      return propIncome.reduce((s,inc)=>(s+(parseFloat(inc.rent_received)||0)-(parseFloat(inc.expenses)||0)),0)
+    }
+    return null
+  }
+
+  const { sorted, sortKey, sortDir, toggleSort } = useSort(filtered, 'purchase_date', 'desc', {
+    type: p => p.disposition,
+    sale_equity: saleOrEquity,
+    pl: plValue,
+  })
+
   if (loading) return <LoadingSpinner />
 
   return (
@@ -131,12 +156,16 @@ export default function BPVInvestments() {
         <Card style={{ padding:0 }}>
           <table style={{ width:'100%', borderCollapse:'collapse' }}>
             <thead><tr style={{ background:'#F0EDE6' }}>
-              {['Address','Type','Purchase','Rehab Cost','Sale / Equity','P&L','Date'].map(h=>(
-                <th key={h} style={{ padding:'8px 12px', textAlign:'left', fontSize:11, fontWeight:600, letterSpacing:0.8, color:'#6b7280', textTransform:'uppercase', whiteSpace:'nowrap' }}>{h}</th>
-              ))}
+              <SortTh sortKeyName="address" {...{sortKey,sortDir,toggleSort}}>Address</SortTh>
+              <SortTh sortKeyName="type" {...{sortKey,sortDir,toggleSort}}>Type</SortTh>
+              <SortTh sortKeyName="purchase_price" {...{sortKey,sortDir,toggleSort}}>Purchase</SortTh>
+              <SortTh sortKeyName="rehab_cost" {...{sortKey,sortDir,toggleSort}}>Rehab Cost</SortTh>
+              <SortTh sortKeyName="sale_equity" {...{sortKey,sortDir,toggleSort}}>Sale / Equity</SortTh>
+              <SortTh sortKeyName="pl" {...{sortKey,sortDir,toggleSort}}>P&L</SortTh>
+              <SortTh sortKeyName="purchase_date" {...{sortKey,sortDir,toggleSort}}>Date</SortTh>
             </tr></thead>
             <tbody>
-              {filtered.map((p,i)=>{
+              {sorted.map((p,i)=>{
                 const isFlip      = p.disposition==='flip'
                 const isHold      = p.disposition==='hold'
                 const isWholesale = p.disposition==='wholesale'
