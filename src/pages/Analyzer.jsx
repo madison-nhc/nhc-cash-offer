@@ -22,6 +22,7 @@ function calcCashOffer(p) {
 }
 
 const DISP_FILTERS = [
+  { key:'all',       label:'All' },
   { key:'analyzing', label:'Analyzing' },
   { key:'listing',   label:'Listings' },
   { key:'flip',      label:'Flips' },
@@ -31,6 +32,7 @@ const DISP_FILTERS = [
 ]
 
 function matchesDispFilter(p, key) {
+  if (key === 'all') return true
   if (key === 'analyzing') return !p.disposition
   return p.disposition === key
 }
