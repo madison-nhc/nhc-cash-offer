@@ -55,9 +55,9 @@ export default function NHCDeals() {
   async function load() {
     setLoading(true)
     const [{ data:p }, { data:m }, { data:pkgs }] = await Promise.all([
-      supabase.from('properties').select('*').in('disposition',['listing','wholesale','flip']).order('updated_at',{ascending:false}),
-      supabase.from('mailings').select('id,campaign_name,drop_date').order('drop_date',{ascending:false}),
-      supabase.from('package_deals').select('id,deal_name'),
+      supabase.from('cashoffer_properties').select('*').in('disposition',['listing','wholesale','flip']).order('updated_at',{ascending:false}),
+      supabase.from('cashoffer_mailings').select('id,campaign_name,drop_date').order('drop_date',{ascending:false}),
+      supabase.from('cashoffer_package_deals').select('id,deal_name'),
     ])
     setProperties(p||[])
     setMailings(m||[])
