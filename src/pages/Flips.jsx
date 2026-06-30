@@ -18,8 +18,8 @@ export default function Flips() {
   async function load() {
     setLoading(true)
     const [{ data:p }, { data:m }] = await Promise.all([
-      supabase.from('properties').select('*').eq('investment_type','flip').order('purchase_date',{ascending:false}),
-      supabase.from('mailings').select('id,campaign_name,drop_date'),
+      supabase.from('cashoffer_properties').select('*').eq('investment_type','flip').order('purchase_date',{ascending:false}),
+      supabase.from('cashoffer_mailings').select('id,campaign_name,drop_date'),
     ])
     setProperties(p||[])
     setMailings(m||[])
