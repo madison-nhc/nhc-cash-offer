@@ -63,7 +63,7 @@ export default function Analyzer({ openPropertyId, openInPackage, onOpenedTarget
       const match = properties.find(p => p.id === openPropertyId)
       if (match) setDrawer(match)
       else {
-        supabase.from('properties').select('*').eq('id', openPropertyId).single()
+        supabase.from('cashoffer_properties').select('*').eq('id', openPropertyId).single()
           .then(({ data }) => { if (data) setDrawer(data) })
       }
     }
@@ -73,8 +73,8 @@ export default function Analyzer({ openPropertyId, openInPackage, onOpenedTarget
   async function load() {
     setLoading(true)
     const [{ data:p }, { data:m }] = await Promise.all([
-      supabase.from('properties').select('*').is('package_id',null).order('updated_at',{ascending:false}),
-      supabase.from('mailings').select('id,campaign_name,drop_date').order('drop_date',{ascending:false}),
+      supabase.from('cashoffer_properties').select('*').is('package_id',null).order('updated_at',{ascending:false}),
+      supabase.from('cashoffer_mailings').select('id,campaign_name,drop_date').order('drop_date',{ascending:false}),
     ])
     setProperties(p||[])
     setMailings(m||[])
