@@ -21,7 +21,7 @@ export default function RehabTracker({ property, repairItems = [], onChange }) {
 
   async function loadItems(propertyId) {
     const { data } = await supabase
-      .from('rehab_items')
+      .from('cashoffer_rehab_items')
       .select('*')
       .eq('property_id', propertyId)
       .order('sort_order', { ascending: true })
@@ -30,7 +30,7 @@ export default function RehabTracker({ property, repairItems = [], onChange }) {
 
   async function loadVendors() {
     const { data } = await supabase
-      .from('rehab_items')
+      .from('cashoffer_rehab_items')
       .select('vendor')
       .not('vendor', 'is', null)
       .neq('vendor', '')
@@ -51,13 +51,13 @@ export default function RehabTracker({ property, repairItems = [], onChange }) {
         sort_order: items.length + i,
       }))
     if (!toInsert.length) return
-    await supabase.from('rehab_items').insert(toInsert)
+    await supabase.from('cashoffer_rehab_items').insert(toInsert)
     loadItems(property.id)
   }
 
   async function addItem() {
     if (!property?.id) return
-    const { data } = await supabase.from('rehab_items').insert({
+    const { data } = await supabase.from('cashoffer_rehab_items').insert({
       property_id: property.id,
       name: '',
       status: 'Scheduled',
@@ -69,12 +69,12 @@ export default function RehabTracker({ property, repairItems = [], onChange }) {
 
   async function updateItem(id, field, value) {
     setItems(prev => prev.map(it => it.id === id ? { ...it, [field]: value } : it))
-    await supabase.from('rehab_items').update({ [field]: value }).eq('id', id)
+    await supabase.from('cashoffer_rehab_items').update({ [field]: value }).eq('id', id)
     if (field === 'actual_cost' || field === 'estimated_cost') notifyParent()
   }
 
   async function removeItem(id) {
-    await supabase.from('rehab_items').delete().eq('id', id)
+    await supabase.from('cashoffer_rehab_items').delete().eq('id', id)
     setItems(prev => prev.filter(it => it.id !== id))
     notifyParent()
   }
@@ -82,13 +82,13 @@ export default function RehabTracker({ property, repairItems = [], onChange }) {
   async function saveBudget(val) {
     setBudget(val)
     if (!property?.id) return
-    await supabase.from('properties').update({ rehab_estimated_cost: parseFloat(val) || null }).eq('id', property.id)
+    await supabase.from('cashoffer_properties').update({ rehab_estimated_cost: parseFloat(val) || null }).eq('id', property.id)
   }
 
   function notifyParent() {
     setTimeout(async () => {
       const { data } = await supabase
-        .from('rehab_items')
+        .from('cashoffer_rehab_items')
         .select('actual_cost, estimated_cost')
         .eq('property_id', property.id)
       if (!data) return
