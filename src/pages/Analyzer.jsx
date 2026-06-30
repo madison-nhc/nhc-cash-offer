@@ -21,12 +21,18 @@ function calcCashOffer(p) {
   return p.cash_offer_override ? parseFloat(p.cash_offer_override) : arv-reno-(commCash*arv)-cashHold-profit
 }
 
-// Active = no disposition, OR listing with no close date, OR flip/hold with no sale_date
-function isActive(p) {
-  if (!p.disposition || p.disposition === null) return true
-  if (p.disposition === 'listing' && !p.disposition_date) return true
-  if ((p.disposition === 'flip' || p.disposition === 'hold') && !p.sale_date) return true
-  return false
+const DISP_FILTERS = [
+  { key:'analyzing', label:'Analyzing' },
+  { key:'listing',   label:'Listings' },
+  { key:'flip',      label:'Flips' },
+  { key:'hold',      label:'Holds' },
+  { key:'wholesale', label:'Wholesale' },
+  { key:'lost',      label:'Lost / Passed' },
+]
+
+function matchesDispFilter(p, key) {
+  if (key === 'analyzing') return !p.disposition
+  return p.disposition === key
 }
 
 export default function Analyzer() {
@@ -36,7 +42,7 @@ export default function Analyzer() {
   const [loading, setLoading] = useState(true)
   const [drawer, setDrawer] = useState(null)
   const [proposal, setProposal] = useState(null)
-  const [filter, setFilter] = useState('active')
+  const [filter, setFilter] = useState('analyzing')
   const [search, setSearch] = useState('')
   const mobile = useIsMobile()
 
@@ -55,11 +61,8 @@ export default function Analyzer() {
 
   const EMPTY = { address:'', status:'analyzing', arv:'', asis_pct:50, profit_margin:15, comm_cash_pct:9, comm_list_pct:6, hold_cash_pct:0.75, hold_cash_months:6, hold_opt2_pct:0.5, hold_opt2_months:3, hold_opt3_pct:0.5, hold_opt3_months:6, repair_items:[] }
 
-  const activeProps = properties.filter(p => isActive(p))
-  const pastProps   = properties.filter(p => !isActive(p))
-
   const filtered = properties.filter(p => {
-    const matchFilter = filter === 'active' ? isActive(p) : !isActive(p)
+    const matchFilter = matchesDispFilter(p, filter)
     const matchSearch = !search || p.address?.toLowerCase().includes(search.toLowerCase())
     return matchFilter && matchSearch
   })
@@ -89,10 +92,13 @@ export default function Analyzer() {
         {/* Filters */}
         <div style={{ display:'flex', gap:8, marginBottom:14, alignItems:'center', flexWrap:'wrap' }}>
           <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search address..." style={{ padding:'6px 12px', border:'1px solid #D6D2CA', borderRadius:6, fontSize:13, fontFamily:'inherit', outline:'none', flex:1, minWidth:140 }} />
-          <div style={{ display:'flex', gap:4 }}>
-            {[['active',`Active (${activeProps.length})`],['past',`Past (${pastProps.length})`]].map(([f,l])=>(
-              <button key={f} onClick={()=>setFilter(f)} style={{ padding:'6px 16px', border:'none', borderRadius:6, cursor:'pointer', background:filter===f?'#2C2C2C':'#F0EDE6', color:filter===f?'#fff':'#6b7280', fontSize:12, fontWeight:filter===f?700:400, fontFamily:'inherit', whiteSpace:'nowrap' }}>{l}</button>
-            ))}
+          <div style={{ display:'flex', gap:4, flexWrap:'wrap' }}>
+            {DISP_FILTERS.map(({key,label})=>{
+              const count = properties.filter(p=>matchesDispFilter(p,key)).length
+              return (
+                <button key={key} onClick={()=>setFilter(key)} style={{ padding:'6px 14px', border:'none', borderRadius:6, cursor:'pointer', background:filter===key?'#2C2C2C':'#F0EDE6', color:filter===key?'#fff':'#6b7280', fontSize:12, fontWeight:filter===key?700:400, fontFamily:'inherit', whiteSpace:'nowrap' }}>{label} ({count})</button>
+              )
+            })}
           </div>
         </div>
 
