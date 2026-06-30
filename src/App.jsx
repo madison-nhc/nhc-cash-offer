@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useIsMobile } from './hooks/useIsMobile.js'
 import Dashboard from './pages/Dashboard.jsx'
 import Analyzer from './pages/Analyzer.jsx'
@@ -7,21 +7,67 @@ import BPVInvestments from './pages/BPVInvestments.jsx'
 import MailingTracker from './pages/MailingTracker.jsx'
 
 const TABS = [
-  { id:'dashboard',    label:'Dashboard',        short:'Home' },
-  { id:'analyzer',     label:'Analyzer',          short:'Analyze' },
-  { id:'nhc',          label:'NHC Deals',         short:'NHC' },
-  { id:'bpv',          label:'BPV Investments',   short:'BPV' },
-  { id:'mailings',     label:'Mailing Tracker',   short:'Mailers' },
+  { id:'dashboard',    label:'Dashboard',        short:'Home',    path:'/' },
+  { id:'analyzer',     label:'Analyzer',          short:'Analyze', path:'/analyzer' },
+  { id:'nhc',          label:'NHC Deals',         short:'NHC',     path:'/nhc' },
+  { id:'bpv',          label:'BPV Investments',   short:'BPV',     path:'/bpv' },
+  { id:'mailings',     label:'Mailing Tracker',   short:'Mailers', path:'/mailings' },
 ]
 
+function tabForPath(pathname) {
+  const match = TABS.find(t => t.path === pathname)
+  return match ? match.id : null
+}
+
+function pathForTab(tab) {
+  return TABS.find(t => t.id === tab)?.path || '/'
+}
+
+// Resolve the initial tab from the URL first (so a refresh or a bookmarked
+// link lands on the right page), falling back to the old localStorage value
+// for anyone who had a tab open before this routing existed, then dashboard.
+function initialTab() {
+  return tabForPath(window.location.pathname) || localStorage.getItem('nhc_hub_tab') || 'dashboard'
+}
+
 export default function App() {
-  const [active, setActive] = useState(()=>localStorage.getItem('nhc_hub_tab')||'dashboard')
+  const [active, setActive] = useState(initialTab)
   const mobile = useIsMobile()
 
-  function navigate(tab) {
+  // navigate() is called from clicks inside the app — it pushes a new
+  // history entry so the browser's back/forward buttons have something
+  // real to move between, instead of every tab sharing the same URL.
+  const navigate = useCallback((tab) => {
     localStorage.setItem('nhc_hub_tab', tab)
+    const path = pathForTab(tab)
+    if (window.location.pathname !== path) {
+      window.history.pushState({ tab }, '', path)
+    }
     setActive(tab)
-  }
+  }, [])
+
+  // popstate fires when the user clicks the browser's back/forward
+  // buttons — sync React state to whatever the URL now is rather than
+  // letting the browser navigate to a path the SPA never registered.
+  useEffect(() => {
+    function onPopState() {
+      const tab = tabForPath(window.location.pathname) || 'dashboard'
+      localStorage.setItem('nhc_hub_tab', tab)
+      setActive(tab)
+    }
+    window.addEventListener('popstate', onPopState)
+    return () => window.removeEventListener('popstate', onPopState)
+  }, [])
+
+  // If we landed here via the localStorage fallback (URL didn't match a
+  // known tab — e.g. first load after this update), normalize the URL to
+  // match so subsequent back/forward behaves correctly from this point on.
+  useEffect(() => {
+    const path = pathForTab(active)
+    if (window.location.pathname !== path) {
+      window.history.replaceState({ tab: active }, '', path)
+    }
+  }, [])
 
   const pages = {
     dashboard: <Dashboard onNavigate={navigate} />,
