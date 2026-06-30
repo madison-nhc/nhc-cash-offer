@@ -100,7 +100,7 @@ function AddPropertyDrawer({ packageId, open, onClose, onSave }) {
 }
 
 // ── Main component ────────────────────────────────────────────────────────────
-export default function PackageDeals() {
+export default function PackageDeals({ openPropertyId, onOpenedTarget } = {}) {
   const mobile = useIsMobile()
   const [packages, setPackages] = useState([])
   const [properties, setProperties] = useState([])
@@ -112,6 +112,18 @@ export default function PackageDeals() {
   const [proposal, setProposal] = useState(null)
 
   useEffect(() => { load() }, [])
+
+  // A property arriving from the global search: find which package it
+  // lives in, expand that package, and open the property's drawer.
+  useEffect(() => {
+    if (!openPropertyId || loading) return
+    const match = properties.find(p => p.id === openPropertyId)
+    if (match) {
+      setActivePackage(match.package_id)
+      setPropDrawer(match)
+    }
+    onOpenedTarget && onOpenedTarget()
+  }, [openPropertyId, loading]) // eslint-disable-line react-hooks/exhaustive-deps
 
   async function load() {
     setLoading(true)
