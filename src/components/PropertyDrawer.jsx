@@ -79,7 +79,7 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
   }, [property])
 
   async function loadIncome(id) {
-    const { data } = await supabase.from('property_income').select('*').eq('property_id',id).order('income_month',{ascending:false})
+    const { data } = await supabase.from('cashoffer_property_income').select('*').eq('property_id',id).order('income_month',{ascending:false})
     setIncome(data||[])
   }
 
@@ -143,8 +143,8 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
             : 'analyzing',
       investment_type: form.disposition==='flip' ? 'flip' : form.disposition==='hold' ? 'hold' : null,
     }
-    if (isNew) await supabase.from('properties').insert(payload)
-    else await supabase.from('properties').update(payload).eq('id',form.id)
+    if (isNew) await supabase.from('cashoffer_properties').insert(payload)
+    else await supabase.from('cashoffer_properties').update(payload).eq('id',form.id)
     onSave()
   }
 
@@ -155,13 +155,13 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
 
   async function del() {
     if (!confirm('Delete this property?')) return
-    await supabase.from('properties').delete().eq('id',form.id)
+    await supabase.from('cashoffer_properties').delete().eq('id',form.id)
     onSave(); onClose()
   }
 
   async function addIncome() {
     if (!incomeForm.income_month || !form.id) return
-    await supabase.from('property_income').insert({ property_id:form.id, ...incomeForm })
+    await supabase.from('cashoffer_property_income').insert({ property_id:form.id, ...incomeForm })
     setIncomeForm({ income_month:'', rent_received:'', expenses:'', notes:'' })
     loadIncome(form.id)
   }
