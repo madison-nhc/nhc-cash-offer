@@ -19,7 +19,7 @@ function GlobalSearch({ onSelect, mobile }) {
     setLoading(true)
     const timer = setTimeout(async () => {
       const { data } = await supabase
-        .from('properties')
+        .from('cashoffer_properties')
         .select('id,address,disposition,package_id,arv')
         .ilike('address', `%${query.trim()}%`)
         .order('updated_at', { ascending:false })
