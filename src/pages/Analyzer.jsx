@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase.js'
 import { useIsMobile } from '../hooks/useIsMobile.js'
-import { PageWrap, SectionBar, Card, Btn, Badge, EmptyState, LoadingSpinner, fmt } from '../components/ui.jsx'
+import { PageWrap, SectionBar, Card, Btn, Badge, EmptyState, LoadingSpinner, fmt, useSort, SortTh } from '../components/ui.jsx'
 import PropertyDrawer from '../components/PropertyDrawer.jsx'
 import ProposalModal from '../components/ProposalModal.jsx'
 import PackageDeals from './PackageDeals.jsx'
@@ -89,6 +89,11 @@ export default function Analyzer({ openPropertyId, openInPackage, onOpenedTarget
     return matchFilter && matchSearch
   })
 
+  const { sorted, sortKey, sortDir, toggleSort } = useSort(filtered, 'updated_at', 'desc', {
+    cash_offer: p => calcCashOffer(p),
+    rehab: p => (p.repair_items||[]).reduce((s,r)=>s+(parseFloat(r.cost)||0),0),
+  })
+
   if (loading) return <LoadingSpinner />
 
   return (
@@ -151,13 +156,17 @@ export default function Analyzer({ openPropertyId, openInPackage, onOpenedTarget
             <table style={{ width:'100%', borderCollapse:'collapse' }}>
               <thead>
                 <tr style={{ background:'#F0EDE6' }}>
-                  {['Address','Cash Offer','Est. Rehab','ARV','Disposition','Updated',''].map(h=>(
-                    <th key={h} style={{ padding:'8px 14px', textAlign:'left', fontSize:11, fontWeight:600, letterSpacing:0.8, color:'#6b7280', textTransform:'uppercase' }}>{h}</th>
-                  ))}
+                  <SortTh sortKeyName="address" {...{sortKey,sortDir,toggleSort}}>Address</SortTh>
+                  <SortTh sortKeyName="cash_offer" {...{sortKey,sortDir,toggleSort}}>Cash Offer</SortTh>
+                  <SortTh sortKeyName="rehab" {...{sortKey,sortDir,toggleSort}}>Est. Rehab</SortTh>
+                  <SortTh sortKeyName="arv" {...{sortKey,sortDir,toggleSort}}>ARV</SortTh>
+                  <SortTh sortKeyName="disposition" {...{sortKey,sortDir,toggleSort}}>Disposition</SortTh>
+                  <SortTh sortKeyName="updated_at" {...{sortKey,sortDir,toggleSort}}>Updated</SortTh>
+                  <th style={{ padding:'8px 14px' }}></th>
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((p,i)=>{
+                {sorted.map((p,i)=>{
                   const cashOffer = calcCashOffer(p)
                   return (
                     <tr key={p.id} onClick={()=>setDrawer(p)}
