@@ -149,7 +149,7 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
   }
 
   async function handleClose() {
-    if (form.id && form.address) await save()
+    if (form.address) await save()
     onClose()
   }
 
