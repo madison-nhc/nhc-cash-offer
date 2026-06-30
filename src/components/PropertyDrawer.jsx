@@ -36,13 +36,23 @@ function calcOffers(p, repairs) {
   const profit = p.profit_override ? parseFloat(p.profit_override) : arv*profitPct
   const asisDisc = (parseFloat(p.asis_pct)||50)/100
   const asisVal  = p.asis_override ? parseFloat(p.asis_override) : arv-(asisDisc*reno)
-  const cashHold = (parseFloat(p.hold_cash_pct)||0.75)/100*(parseFloat(p.hold_cash_months)||6)*arv
+  const cashHoldMo = parseFloat(p.hold_cash_months)||6
+  const cashHold = (parseFloat(p.hold_cash_pct)||0.75)/100*cashHoldMo*arv
   const cashOffer= p.cash_offer_override ? parseFloat(p.cash_offer_override) : arv-reno-(commCash*arv)-cashHold-profit
-  const opt2Hold = (parseFloat(p.hold_opt2_pct)||0.5)/100*(parseFloat(p.hold_opt2_months)||3)*arv
-  const opt2Net  = asisVal-(commList*asisVal)-opt2Hold
-  const opt3Hold = (parseFloat(p.hold_opt3_pct)||0.5)/100*(parseFloat(p.hold_opt3_months)||6)*arv
-  const opt3Net  = arv-reno-(commList*arv)-opt3Hold
-  return { arv, reno, cashOffer, asisVal, opt2Net, opt3Net, profit }
+  const opt2HoldMo = parseFloat(p.hold_opt2_months)||3
+  const opt2Comm = commList*asisVal
+  const opt2Hold = (parseFloat(p.hold_opt2_pct)||0.5)/100*opt2HoldMo*arv
+  const opt2Net  = asisVal-opt2Comm-opt2Hold
+  const opt3HoldMo = parseFloat(p.hold_opt3_months)||6
+  const opt3Comm = commList*arv
+  const opt3Hold = (parseFloat(p.hold_opt3_pct)||0.5)/100*opt3HoldMo*arv
+  const opt3Net  = arv-reno-opt3Comm-opt3Hold
+  return {
+    arv, reno, cashOffer, asisVal, opt2Net, opt3Net, profit,
+    commCashPct: commCash, commListPct: commList, cashHold, cashHoldMo,
+    opt2Comm, opt2Hold, opt2HoldMo,
+    opt3Comm, opt3Hold, opt3HoldMo,
+  }
 }
 
 export default function PropertyDrawer({ property, open, onClose, onSave, mailings=[], onViewOffer }) {
@@ -51,6 +61,7 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
   const [income, setIncome] = useState([])
   const [tab, setTab] = useState('analyzer')
   const [rehabCost, setRehabCost] = useState(null)
+  const [showBreakdown, setShowBreakdown] = useState(false)
   const autoSaveTimer = useRef(null)
   const [incomeForm, setIncomeForm] = useState({ income_month:'', rent_received:'', expenses:'', notes:'' })
 
@@ -226,14 +237,51 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
 
           {/* Live 3-option preview */}
           {form.arv && (
-            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:8 }}>
-              {[['Cash Offer',fmt(d.cashOffer),'#3B6D11'],['As-Is Net',`~${fmt(d.opt2Net)}`,'#2D6FAF'],['Full Retail',`~${fmt(d.opt3Net)}`,'#D97825']].map(([l,v,c])=>(
-                <div key={l} style={{ background:'#FAFAF8', borderRadius:6, padding:'8px 10px', borderTop:`3px solid ${c}` }}>
-                  <div style={{ fontSize:10, color:'#9ca3af', textTransform:'uppercase', letterSpacing:0.8 }}>{l}</div>
-                  <div style={{ fontSize:15, fontWeight:700, fontFamily:'monospace', color:c, marginTop:2 }}>{v}</div>
+            <>
+              <div style={{ display:'flex', justifyContent:'flex-end', marginBottom:-4 }}>
+                <button onClick={()=>setShowBreakdown(s=>!s)} style={{ background:'none', border:'none', color:'#2D6FAF', fontSize:11, fontWeight:600, cursor:'pointer', fontFamily:'inherit', padding:'2px 0' }}>
+                  {showBreakdown ? 'Hide breakdown' : 'Show breakdown'}
+                </button>
+              </div>
+              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:8 }}>
+                <div style={{ background:'#FAFAF8', borderRadius:6, padding:'8px 10px', borderTop:'3px solid #3B6D11' }}>
+                  <div style={{ fontSize:10, color:'#9ca3af', textTransform:'uppercase', letterSpacing:0.8 }}>Cash Offer</div>
+                  <div style={{ fontSize:15, fontWeight:700, fontFamily:'monospace', color:'#3B6D11', marginTop:2 }}>{fmt(d.cashOffer)}</div>
+                  {showBreakdown && (
+                    <div style={{ marginTop:6, paddingTop:6, borderTop:'1px solid #F0EDE6', fontSize:10, color:'#6b7280', lineHeight:1.6 }}>
+                      <div style={{ display:'flex', justifyContent:'space-between' }}><span>ARV</span><span style={{ fontFamily:'monospace' }}>{fmt(d.arv)}</span></div>
+                      <div style={{ display:'flex', justifyContent:'space-between', color:'#B91C1C' }}><span>Repairs</span><span style={{ fontFamily:'monospace' }}>−{fmt(d.reno)}</span></div>
+                      <div style={{ display:'flex', justifyContent:'space-between', color:'#B91C1C' }}><span>Comm ({(d.commCashPct*100).toFixed(1).replace(/\.0$/,'')}%)</span><span style={{ fontFamily:'monospace' }}>−{fmt(d.commCashPct*d.arv)}</span></div>
+                      <div style={{ display:'flex', justifyContent:'space-between', color:'#B91C1C' }}><span>Holding ({d.cashHoldMo} mo)</span><span style={{ fontFamily:'monospace' }}>−{fmt(d.cashHold)}</span></div>
+                      <div style={{ display:'flex', justifyContent:'space-between', color:'#B91C1C' }}><span>Profit margin</span><span style={{ fontFamily:'monospace' }}>−{fmt(d.profit)}</span></div>
+                    </div>
+                  )}
                 </div>
-              ))}
-            </div>
+                <div style={{ background:'#FAFAF8', borderRadius:6, padding:'8px 10px', borderTop:'3px solid #2D6FAF' }}>
+                  <div style={{ fontSize:10, color:'#9ca3af', textTransform:'uppercase', letterSpacing:0.8 }}>As-Is Net</div>
+                  <div style={{ fontSize:15, fontWeight:700, fontFamily:'monospace', color:'#2D6FAF', marginTop:2 }}>~{fmt(d.opt2Net)}</div>
+                  {showBreakdown && (
+                    <div style={{ marginTop:6, paddingTop:6, borderTop:'1px solid #F0EDE6', fontSize:10, color:'#6b7280', lineHeight:1.6 }}>
+                      <div style={{ display:'flex', justifyContent:'space-between' }}><span>List Price</span><span style={{ fontFamily:'monospace' }}>{fmt(d.asisVal)}</span></div>
+                      <div style={{ display:'flex', justifyContent:'space-between', color:'#B91C1C' }}><span>Comm ({(d.commListPct*100).toFixed(1).replace(/\.0$/,'')}%)</span><span style={{ fontFamily:'monospace' }}>−{fmt(d.opt2Comm)}</span></div>
+                      <div style={{ display:'flex', justifyContent:'space-between', color:'#B91C1C' }}><span>Holding ({d.opt2HoldMo} mo)</span><span style={{ fontFamily:'monospace' }}>−{fmt(d.opt2Hold)}</span></div>
+                    </div>
+                  )}
+                </div>
+                <div style={{ background:'#FAFAF8', borderRadius:6, padding:'8px 10px', borderTop:'3px solid #D97825' }}>
+                  <div style={{ fontSize:10, color:'#9ca3af', textTransform:'uppercase', letterSpacing:0.8 }}>Full Retail</div>
+                  <div style={{ fontSize:15, fontWeight:700, fontFamily:'monospace', color:'#D97825', marginTop:2 }}>~{fmt(d.opt3Net)}</div>
+                  {showBreakdown && (
+                    <div style={{ marginTop:6, paddingTop:6, borderTop:'1px solid #F0EDE6', fontSize:10, color:'#6b7280', lineHeight:1.6 }}>
+                      <div style={{ display:'flex', justifyContent:'space-between' }}><span>Sale Price</span><span style={{ fontFamily:'monospace' }}>{fmt(d.arv)}</span></div>
+                      <div style={{ display:'flex', justifyContent:'space-between', color:'#B91C1C' }}><span>Repairs</span><span style={{ fontFamily:'monospace' }}>−{fmt(d.reno)}</span></div>
+                      <div style={{ display:'flex', justifyContent:'space-between', color:'#B91C1C' }}><span>Comm ({(d.commListPct*100).toFixed(1).replace(/\.0$/,'')}%)</span><span style={{ fontFamily:'monospace' }}>−{fmt(d.opt3Comm)}</span></div>
+                      <div style={{ display:'flex', justifyContent:'space-between', color:'#B91C1C' }}><span>Holding ({d.opt3HoldMo} mo)</span><span style={{ fontFamily:'monospace' }}>−{fmt(d.opt3Hold)}</span></div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </>
           )}
 
           <div className="drawer-section">Repairs ({fmt(d.reno)} total)</div>
