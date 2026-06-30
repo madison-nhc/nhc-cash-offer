@@ -41,8 +41,8 @@ export default function MailingTracker() {
   async function load() {
     setLoading(true)
     const [{ data:m }, { data:p }] = await Promise.all([
-      supabase.from('mailings').select('*').order('drop_date', { ascending:true }),
-      supabase.from('properties').select('id,mailing_id,disposition,commission_earned,wholesale_fee,sale_price,purchase_price,closing_costs,rehab_cost'),
+      supabase.from('cashoffer_mailings').select('*').order('drop_date', { ascending:true }),
+      supabase.from('cashoffer_properties').select('id,mailing_id,disposition,commission_earned,wholesale_fee,sale_price,purchase_price,closing_costs,rehab_cost'),
     ])
     setMailings(m||[])
     setProperties(p||[])
@@ -200,13 +200,13 @@ function CampaignDrawer({ campaign, properties, open, onClose, onSave }) {
 
   async function save() {
     const payload = { campaign_name:form.campaign_name, drop_date:form.drop_date||null, list_size:parseInt(form.list_size)||null, piece_type:form.piece_type||'Postcard', mailer_cost:form.mailer_cost||null, calls_total:parseInt(form.calls_total)||null, calls_answered:parseInt(form.calls_answered)||null, calls_missed:parseInt(form.calls_missed)||null, notes:form.notes, entity:'NHC' }
-    if (isNew) await supabase.from('mailings').insert(payload)
-    else await supabase.from('mailings').update(payload).eq('id', form.id)
+    if (isNew) await supabase.from('cashoffer_mailings').insert(payload)
+    else await supabase.from('cashoffer_mailings').update(payload).eq('id', form.id)
     onSave()
   }
   async function del() {
     if (!confirm('Delete this campaign?')) return
-    await supabase.from('mailings').delete().eq('id', form.id)
+    await supabase.from('cashoffer_mailings').delete().eq('id', form.id)
     onSave()
   }
 
