@@ -1,3 +1,6 @@
+import { useRef, useState } from 'react'
+import html2canvas from 'html2canvas'
+import { jsPDF } from 'jspdf'
 import { fmt } from './ui.jsx'
 
 // ── Calculations ────────────────────────────────────────────────────────────
@@ -191,92 +194,6 @@ const CSS = `
   .ftr-box .fn { font-size:13px;font-weight:700;color:var(--blue); }
   .ftr-box .fs { font-size:10.5px;color:#888;font-style:italic;margin-top:2px; }
 
-  /* ── PRINT ── */
-  @media print {
-    @page { margin:0; size:letter; }
-    /* visibility (not display:none) is depth-agnostic: it hides everything
-       in the document regardless of how deeply #prop-overlay is nested
-       in the page's component tree, without needing to know the exact
-       DOM structure of the host page. */
-    body * { visibility:hidden; }
-    #prop-overlay, #prop-overlay * { visibility:visible; }
-    #prop-toolbar { display:none!important; }
-
-    /* The app's layout uses minHeight:100vh / height:100% on several
-       ancestors (App's flex wrapper, #root, etc). visibility:hidden keeps
-       those elements in the layout flow, so they still reserve a full
-       viewport's worth of blank space before our content prints. Since
-       ProposalModal can be nested at any depth depending on which page
-       it's rendered from, collapse height/min-height universally rather
-       than targeting specific ancestor selectors.
-       IMPORTANT: ":not(.pg)" excludes the page boxes themselves — "body *"
-       has higher specificity than ".pg" alone (element selector vs class
-       selector), so without this exclusion this rule was silently winning
-       over .pg's fixed height:1056px!important below, collapsing every
-       page to its auto content height and causing unpredictable splits
-       across physical printed pages. */
-    body *:not(.pg) {
-      height:auto!important;
-      min-height:0!important;
-      max-height:none!important;
-    }
-
-    /* Force backgrounds/colors to print — browsers strip background-color
-       by default in print mode to save ink unless explicitly told not to. */
-    * {
-      -webkit-print-color-adjust:exact!important;
-      print-color-adjust:exact!important;
-      color-adjust:exact!important;
-    }
-
-    html, body {
-      margin:0!important;
-      padding:0!important;
-      height:auto!important;
-      min-height:0!important;
-      overflow:visible!important;
-    }
-
-    #prop-overlay {
-      position:static!important;
-      inset:auto!important;
-      background:none!important;
-      display:block!important;
-      margin:0!important;
-      padding:0!important;
-      height:auto!important;
-      min-height:0!important;
-      overflow:visible!important;
-    }
-
-    #prop-canvas {
-      background:none!important;
-      padding:0!important;
-      margin:0!important;
-      gap:0!important;
-      overflow:visible!important;
-      display:block!important;
-      position:static!important;
-      height:auto!important;
-      min-height:0!important;
-      align-items:initial!important;
-    }
-
-    .pg {
-      box-shadow:none!important;
-      page-break-after:always;
-      break-after:page;
-      margin:0!important;
-      width:816px!important;
-      height:1056px!important;
-      max-height:1056px!important;
-      overflow:hidden!important;
-      position:relative!important;
-      display:block!important;
-    }
-    .pg:first-child { page-break-before:avoid!important; break-before:avoid!important; }
-    .pg:last-child { page-break-after:auto!important; break-after:auto!important; }
-  }
 `
 
 export default function ProposalModal({ property, onClose }) {
@@ -426,16 +343,33 @@ export default function ProposalModal({ property, onClose }) {
   `
 
   const printFilename = `Cash Offer - ${addr.split(',')[0].trim() || 'Property'}`
+  const canvasRef = useRef(null)
+  const [downloading, setDownloading] = useState(false)
 
-  function handlePrint() {
-    const originalTitle = document.title
-    document.title = printFilename
-    const restore = () => {
-      document.title = originalTitle
-      window.removeEventListener('afterprint', restore)
+  async function handleDownload() {
+    if (!canvasRef.current || downloading) return
+    setDownloading(true)
+    try {
+      const pageEls = canvasRef.current.querySelectorAll('.pg')
+      // 8.5x11in letter page, matching the .pg element's own 816x1056px size at 96dpi
+      const pdf = new jsPDF({ unit:'in', format:'letter', orientation:'portrait' })
+      for (let i = 0; i < pageEls.length; i++) {
+        const el = pageEls[i]
+        // scale:2 renders at higher resolution than the 816px CSS size for
+        // crisp text/lines in the final PDF, since html2canvas screenshots
+        // at the element's native pixel size otherwise.
+        const canvas = await html2canvas(el, { scale:2, backgroundColor:'#ffffff', useCORS:true })
+        const imgData = canvas.toDataURL('image/jpeg', 0.95)
+        if (i > 0) pdf.addPage('letter', 'portrait')
+        pdf.addImage(imgData, 'JPEG', 0, 0, 8.5, 11)
+      }
+      pdf.save(`${printFilename}.pdf`)
+    } catch (err) {
+      console.error('PDF generation failed:', err)
+      alert('Something went wrong generating the PDF. Please try again.')
+    } finally {
+      setDownloading(false)
     }
-    window.addEventListener('afterprint', restore)
-    window.print()
   }
 
   return (
@@ -443,12 +377,14 @@ export default function ProposalModal({ property, onClose }) {
       <style>{CSS}</style>
       <div id="prop-overlay">
         <div id="prop-toolbar">
-          <button className="btn-print" onClick={handlePrint}>⬇ Print / Save PDF</button>
+          <button className="btn-print" onClick={handleDownload} disabled={downloading}>
+            {downloading ? 'Generating PDF…' : '⬇ Download PDF'}
+          </button>
           <button className="btn-close" onClick={onClose}>✕ Close</button>
-          <span className="tip">File → Print → Save as PDF · Margins: None · Paper: Letter</span>
+          <span className="tip">Downloads as a PDF matching this preview exactly</span>
           <span className="page-info">3 pages</span>
         </div>
-        <div id="prop-canvas" dangerouslySetInnerHTML={{ __html: pages }} />
+        <div id="prop-canvas" ref={canvasRef} dangerouslySetInnerHTML={{ __html: pages }} />
       </div>
     </>
   )
