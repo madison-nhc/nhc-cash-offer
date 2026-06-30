@@ -22,9 +22,9 @@ export default function Investments() {
   async function load() {
     setLoading(true)
     const [{ data:p }, { data:i }, { data:m }] = await Promise.all([
-      supabase.from('properties').select('*').order('updated_at',{ascending:false}),
-      supabase.from('property_income').select('*'),
-      supabase.from('mailings').select('id,campaign_name,drop_date').order('drop_date',{ascending:false}),
+      supabase.from('cashoffer_properties').select('*').order('updated_at',{ascending:false}),
+      supabase.from('cashoffer_property_income').select('*'),
+      supabase.from('cashoffer_mailings').select('id,campaign_name,drop_date').order('drop_date',{ascending:false}),
     ])
     setProperties(p||[])
     setIncome(i||[])
