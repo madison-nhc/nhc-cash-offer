@@ -1,10 +1,81 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useIsMobile } from './hooks/useIsMobile.js'
+import { supabase } from './lib/supabase.js'
 import Dashboard from './pages/Dashboard.jsx'
 import Analyzer from './pages/Analyzer.jsx'
 import NHCDeals from './pages/NHCDeals.jsx'
 import BPVInvestments from './pages/BPVInvestments.jsx'
 import MailingTracker from './pages/MailingTracker.jsx'
+
+function GlobalSearch({ onSelect, mobile }) {
+  const [query, setQuery] = useState('')
+  const [results, setResults] = useState([])
+  const [open, setOpen] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const boxRef = useRef(null)
+
+  useEffect(() => {
+    if (!query.trim()) { setResults([]); setOpen(false); return }
+    setLoading(true)
+    const timer = setTimeout(async () => {
+      const { data } = await supabase
+        .from('properties')
+        .select('id,address,disposition,package_id,arv')
+        .ilike('address', `%${query.trim()}%`)
+        .order('updated_at', { ascending:false })
+        .limit(8)
+      setResults(data || [])
+      setOpen(true)
+      setLoading(false)
+    }, 250) // debounce so we don't fire a query on every keystroke
+    return () => clearTimeout(timer)
+  }, [query])
+
+  // Close the results dropdown on outside click
+  useEffect(() => {
+    function onClick(e) { if (boxRef.current && !boxRef.current.contains(e.target)) setOpen(false) }
+    window.addEventListener('mousedown', onClick)
+    return () => window.removeEventListener('mousedown', onClick)
+  }, [])
+
+  function pick(p) {
+    onSelect(p)
+    setQuery('')
+    setResults([])
+    setOpen(false)
+  }
+
+  const DISP_LABEL = { listing:'Listing', wholesale:'Wholesale', flip:'Flip', hold:'Hold', lost:'Lost' }
+
+  return (
+    <div ref={boxRef} style={{ position:'relative', width: mobile ? '100%' : 220, marginLeft: mobile ? 0 : 'auto' }}>
+      <input
+        value={query}
+        onChange={e=>setQuery(e.target.value)}
+        onFocus={()=>{ if (results.length) setOpen(true) }}
+        placeholder="Search deals..."
+        style={{ width:'100%', padding:'6px 10px', border:'1px solid #D6D2CA', borderRadius:6, fontSize:12, fontFamily:'inherit', outline:'none', background:'#FAFAF8' }}
+      />
+      {open && (
+        <div style={{ position:'absolute', top:'calc(100% + 4px)', right:0, width: mobile ? '100%' : 320, maxHeight:320, overflowY:'auto', background:'#fff', border:'1px solid #D6D2CA', borderRadius:8, boxShadow:'0 4px 16px rgba(0,0,0,0.12)', zIndex:300 }}>
+          {loading && <div style={{ padding:'10px 14px', fontSize:12, color:'#9ca3af' }}>Searching…</div>}
+          {!loading && results.length===0 && <div style={{ padding:'10px 14px', fontSize:12, color:'#9ca3af' }}>No matching properties</div>}
+          {!loading && results.map(p=>(
+            <div key={p.id} onClick={()=>pick(p)} style={{ padding:'9px 14px', cursor:'pointer', borderBottom:'1px solid #F0EDE6', display:'flex', alignItems:'center', justifyContent:'space-between', gap:8 }}
+              onMouseEnter={e=>e.currentTarget.style.background='#fef9f0'}
+              onMouseLeave={e=>e.currentTarget.style.background='#fff'}>
+              <div style={{ minWidth:0 }}>
+                <div style={{ fontSize:13, fontWeight:600, color:'#2C2C2C', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{p.address}</div>
+                {p.package_id && <div style={{ fontSize:10, color:'#6b21a8', marginTop:1 }}>In package</div>}
+              </div>
+              <span style={{ fontSize:10, color:'#B8892A', fontWeight:600, whiteSpace:'nowrap', flexShrink:0 }}>{p.disposition ? DISP_LABEL[p.disposition] : 'Analyzing'}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
 
 const TABS = [
   { id:'dashboard',    label:'Dashboard',        short:'Home',    path:'/' },
@@ -32,6 +103,7 @@ function initialTab() {
 
 export default function App() {
   const [active, setActive] = useState(initialTab)
+  const [targetProperty, setTargetProperty] = useState(null)
   const mobile = useIsMobile()
 
   // navigate() is called from clicks inside the app — it pushes a new
@@ -69,9 +141,17 @@ export default function App() {
     }
   }, [])
 
+  // Search results jump straight into the Analyzer with that property's
+  // drawer pre-opened, regardless of whether it's a standalone property
+  // or one nested inside a package deal.
+  const handleSearchSelect = useCallback((property) => {
+    setTargetProperty(property)
+    navigate('analyzer')
+  }, [navigate])
+
   const pages = {
     dashboard: <Dashboard onNavigate={navigate} />,
-    analyzer:  <Analyzer />,
+    analyzer:  <Analyzer openPropertyId={targetProperty?.id} openInPackage={!!targetProperty?.package_id} onOpenedTarget={()=>setTargetProperty(null)} />,
     nhc:       <NHCDeals />,
     bpv:       <BPVInvestments />,
     mailings:  <MailingTracker />,
@@ -99,6 +179,8 @@ export default function App() {
             </div>
           )}
 
+          {!mobile && <GlobalSearch onSelect={handleSearchSelect} mobile={false} />}
+
           {mobile && (
             <span style={{ fontSize:13, fontWeight:700, color:'#2C2C2C', flex:1, textAlign:'center' }}>
               {TABS.find(t=>t.id===active)?.label||''}
@@ -118,6 +200,12 @@ export default function App() {
                 transition:'all 0.15s'
               }}>{t.short}</button>
             ))}
+          </div>
+        )}
+
+        {mobile && (
+          <div style={{ padding:'0 12px 8px' }}>
+            <GlobalSearch onSelect={handleSearchSelect} mobile={true} />
           </div>
         )}
       </nav>
