@@ -24,8 +24,8 @@ export default function Deals() {
   async function load() {
     setLoading(true)
     const [{ data:d }, { data:m }] = await Promise.all([
-      supabase.from('mailing_deals').select('*').not('deal_type','eq','cash_purchase').order('created_at',{ascending:false}),
-      supabase.from('mailings').select('id,campaign_name,drop_date').order('drop_date',{ascending:false}),
+      supabase.from('cashoffer_mailing_deals').select('*').not('deal_type','eq','cash_purchase').order('created_at',{ascending:false}),
+      supabase.from('cashoffer_mailings').select('id,campaign_name,drop_date').order('drop_date',{ascending:false}),
     ])
     setDeals(d||[])
     setMailings(m||[])
@@ -164,13 +164,13 @@ function DealDrawer({ deal, mailings, open, onClose, onSave }) {
   async function save() {
     if (!form.address) return
     const payload = { address:form.address, deal_type:form.deal_type||'listing', status:form.status||'active_listing', sale_price:form.sale_price||null, commission_pct:form.commission_pct||null, commission_earned:form.commission_earned||null, mailing_id:form.mailing_id||null, notes:form.notes||null, entity:'NHC' }
-    if (isNew) await supabase.from('mailing_deals').insert(payload)
-    else await supabase.from('mailing_deals').update(payload).eq('id',form.id)
+    if (isNew) await supabase.from('cashoffer_mailing_deals').insert(payload)
+    else await supabase.from('cashoffer_mailing_deals').update(payload).eq('id',form.id)
     onSave()
   }
   async function del() {
     if (!confirm('Delete this deal?')) return
-    await supabase.from('mailing_deals').delete().eq('id',form.id)
+    await supabase.from('cashoffer_mailing_deals').delete().eq('id',form.id)
     onSave()
   }
 
