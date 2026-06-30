@@ -21,10 +21,10 @@ const TOP_LEVEL = [
 ]
 
 const DEFAULT_REPAIRS = [
-  { name:'Flooring', cost:'' }, { name:'Painting', cost:'' },
-  { name:'Demo / Cleanup', cost:'' }, { name:'Drywall', cost:'' },
-  { name:'Appliances', cost:'' }, { name:'Plumbing', cost:'' },
-  { name:'Electrical', cost:'' }, { name:'Misc', cost:'' },
+  { name:'Flooring', sqft:'', pricePerSqft:'', cost:'' }, { name:'Painting', sqft:'', pricePerSqft:'', cost:'' },
+  { name:'Demo / Cleanup', sqft:'', pricePerSqft:'', cost:'' }, { name:'Drywall', sqft:'', pricePerSqft:'', cost:'' },
+  { name:'Appliances', sqft:'', pricePerSqft:'', cost:'' }, { name:'Plumbing', sqft:'', pricePerSqft:'', cost:'' },
+  { name:'Electrical', sqft:'', pricePerSqft:'', cost:'' }, { name:'Misc', sqft:'', pricePerSqft:'', cost:'' },
 ]
 
 function calcOffers(p, repairs) {
@@ -114,7 +114,7 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
       arv:form.arv||null, asis_pct:form.asis_pct||50, asis_override:form.asis_override||null,
       profit_margin:form.profit_margin||15, profit_override:form.profit_override||null,
       cash_offer_override:form.cash_offer_override||null,
-      repair_items: repairs.filter(r=>r.name||r.cost).map(r=>({name:r.name,cost:parseFloat(r.cost)||0})),
+      repair_items: repairs.filter(r=>r.name||r.cost).map(r=>({name:r.name,sqft:r.sqft||'',pricePerSqft:r.pricePerSqft||'',cost:parseFloat(r.cost)||0})),
       comm_cash_pct:form.comm_cash_pct||9, comm_list_pct:form.comm_list_pct||6,
       hold_cash_pct:form.hold_cash_pct||0.75, hold_cash_months:form.hold_cash_months||6,
       hold_opt2_pct:form.hold_opt2_pct||0.5, hold_opt2_months:form.hold_opt2_months||3,
@@ -166,9 +166,20 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
     loadIncome(form.id)
   }
 
-  function addRepair() { setRepairs(rs=>[...rs,{id:Date.now(),name:'',cost:''}]) }
+  function addRepair() { setRepairs(rs=>[...rs,{id:Date.now(),name:'',sqft:'',pricePerSqft:'',cost:''}]) }
   function removeRepair(id) { setRepairs(rs=>rs.filter(r=>r.id!==id)) }
-  function updateRepair(id,k,v) { setRepairs(rs=>rs.map(r=>r.id===id?{...r,[k]:v}:r)) }
+  function updateRepair(id,k,v) {
+    setRepairs(rs=>rs.map(r=>{
+      if (r.id!==id) return r
+      const next = {...r,[k]:v}
+      if (k==='sqft' || k==='pricePerSqft') {
+        const sqft = parseFloat(k==='sqft'?v:next.sqft)||0
+        const price = parseFloat(k==='pricePerSqft'?v:next.pricePerSqft)||0
+        next.cost = sqft && price ? String(sqft*price) : ''
+      }
+      return next
+    }))
+  }
 
   const dispColor = form.disposition==='listing'?'#3B6D11':form.disposition==='wholesale'?'#6b21a8':(form.disposition==='flip'||form.disposition==='hold')?'#2D6FAF':form.disposition==='lost'?'#9ca3af':'#B8892A'
   const dispLabel = form.disposition==='listing'?'Listing':form.disposition==='wholesale'?'Wholesale':form.disposition==='flip'?'Flip':form.disposition==='hold'?'Hold':form.disposition==='lost'?'Lost':null
@@ -274,11 +285,24 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
 
           <div className="drawer-section">Repairs ({fmt(d.reno)} total)</div>
           <table style={{ width:'100%', borderCollapse:'collapse' }}>
+            <thead>
+              <tr>
+                <th style={{ textAlign:'left', fontSize:10, color:'#9ca3af', fontWeight:600, textTransform:'uppercase', letterSpacing:0.5, paddingBottom:4 }}>Item</th>
+                <th style={{ textAlign:'right', fontSize:10, color:'#9ca3af', fontWeight:600, textTransform:'uppercase', letterSpacing:0.5, paddingBottom:4, width:70 }}>Sq Ft</th>
+                <th style={{ textAlign:'right', fontSize:10, color:'#9ca3af', fontWeight:600, textTransform:'uppercase', letterSpacing:0.5, paddingBottom:4, width:80 }}>$/Sq Ft</th>
+                <th style={{ textAlign:'right', fontSize:10, color:'#9ca3af', fontWeight:600, textTransform:'uppercase', letterSpacing:0.5, paddingBottom:4, width:90 }}>Total</th>
+                <th style={{ width:24 }}></th>
+              </tr>
+            </thead>
             <tbody>
               {repairs.map(r=>(
                 <tr key={r.id}>
-                  <td style={{ paddingBottom:6, paddingRight:6 }}><input style={{ ...inp, fontSize:12 }} value={r.name} onChange={e=>updateRepair(r.id,'name',e.target.value)} placeholder="Item" /></td>
-                  <td style={{ paddingBottom:6, paddingRight:6, width:110 }}><input style={{ ...monoInp, fontSize:12, textAlign:'right' }} type="number" value={r.cost} onChange={e=>updateRepair(r.id,'cost',e.target.value)} placeholder="0" /></td>
+                  <td style={{ paddingBottom:6, paddingRight:6 }}><input style={{ ...inp, fontSize:12 }} value={r.name||''} onChange={e=>updateRepair(r.id,'name',e.target.value)} placeholder="Item" /></td>
+                  <td style={{ paddingBottom:6, paddingRight:6 }}><input style={{ ...monoInp, fontSize:12, textAlign:'right' }} type="number" value={r.sqft||''} onChange={e=>updateRepair(r.id,'sqft',e.target.value)} placeholder="0" /></td>
+                  <td style={{ paddingBottom:6, paddingRight:6 }}><input style={{ ...monoInp, fontSize:12, textAlign:'right' }} type="number" step="0.01" value={r.pricePerSqft||''} onChange={e=>updateRepair(r.id,'pricePerSqft',e.target.value)} placeholder="0.00" /></td>
+                  <td style={{ paddingBottom:6, paddingRight:6 }}>
+                    <div style={{ ...monoInp, fontSize:12, textAlign:'right', background:'#FAFAF8', color:'#2C2C2C', fontWeight:600, display:'flex', alignItems:'center', justifyContent:'flex-end' }}>{r.cost ? fmt(r.cost) : '—'}</div>
+                  </td>
                   <td style={{ paddingBottom:6, width:24, textAlign:'center' }}><button onClick={()=>removeRepair(r.id)} style={{ background:'none', border:'none', color:'#D6D2CA', cursor:'pointer', fontSize:16, padding:0 }}>×</button></td>
                 </tr>
               ))}
