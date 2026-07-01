@@ -5,6 +5,7 @@ import { PageWrap, SectionBar, Card, Field, FieldRow, inp, monoInp, Btn, Badge, 
 import Drawer from '../components/Drawer.jsx'
 import PropertyDrawer from '../components/PropertyDrawer.jsx'
 import ProposalModal from '../components/ProposalModal.jsx'
+import PropertyMapModal from '../components/PropertyMapModal.jsx'
 import AddressInput from '../components/AddressInput.jsx'
 
 const DISP_COLORS = { listing:'#3B6D11', wholesale:'#6b21a8', flip:'#D97825', hold:'#2D6FAF', lost:'#9ca3af' }
@@ -198,6 +199,7 @@ export default function PackageDeals({ openPropertyId, onOpenedTarget } = {}) {
   const [propDrawer, setPropDrawer] = useState(null)        // edit individual property
   const [addPropPkg, setAddPropPkg] = useState(null)        // add property to package
   const [proposal, setProposal] = useState(null)
+  const [mapPkg, setMapPkg] = useState(null)  // package being viewed on map
 
   useEffect(() => { load() }, [])
 
@@ -292,6 +294,10 @@ export default function PackageDeals({ openPropertyId, onOpenedTarget } = {}) {
                       onClick={e => { e.stopPropagation(); setAddPropPkg(pkg.id) }}
                       style={{ background: '#B8892A', border: 'none', borderRadius: 4, padding: '5px 10px', fontSize: 11, cursor: 'pointer', color: '#fff', fontWeight: 600, fontFamily: 'inherit' }}
                     >+ Property</button>
+                    <button
+                      onClick={e => { e.stopPropagation(); setMapPkg({ pkg, props: pkgProps }) }}
+                      style={{ background: '#2D6FAF', border: 'none', borderRadius: 4, padding: '5px 10px', fontSize: 11, cursor: 'pointer', color: '#fff', fontWeight: 600, fontFamily: 'inherit' }}
+                    >Map</button>
                   </div>
                 </div>
 
@@ -336,6 +342,17 @@ export default function PackageDeals({ openPropertyId, onOpenedTarget } = {}) {
         onViewOffer={p => setProposal(p)}
       />
       {proposal && <ProposalModal property={proposal} onClose={() => setProposal(null)} />}
+
+      {/* Map modal — scoped to one package */}
+      {mapPkg && (
+        <PropertyMapModal
+          properties={mapPkg.props}
+          packageName={mapPkg.pkg.deal_name}
+          onClose={() => setMapPkg(null)}
+          onOpenProperty={p => { setMapPkg(null); setPropDrawer(p) }}
+        />
+      )}
     </PageWrap>
   )
 }
+
