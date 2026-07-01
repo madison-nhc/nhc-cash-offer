@@ -50,10 +50,10 @@ export default function Analyzer({ openPropertyId, openInPackage, onOpenedTarget
   async function load() {
     setLoading(true)
     const [{ data: p }, { data: m }] = await Promise.all([
-      // Analyzer only shows properties that haven't been given a disposition yet
+      // Analyzer shows Analyzing + Under Contract + Lost
       supabase.from('cashoffer_properties').select('*')
         .is('package_id', null)
-        .is('disposition', null)
+        .in('stage', ['Analyzing','Under Contract','Lost / Passed'])
         .order('updated_at', { ascending: false }),
       supabase.from('cashoffer_mailings').select('id,campaign_name,drop_date').order('drop_date', { ascending: false }),
     ])
@@ -85,7 +85,7 @@ export default function Analyzer({ openPropertyId, openInPackage, onOpenedTarget
       <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:16 }}>
         <div>
           <h1 style={{ fontSize: mobile ? 18 : 20, fontWeight:700, color:'#2C2C2C' }}>Property Analyzer</h1>
-          <p style={{ fontSize:12, color:'#6b7280', marginTop:2 }}>Properties being evaluated · no disposition yet</p>
+          <p style={{ fontSize:12, color:'#6b7280', marginTop:2 }}>Properties being evaluated · analyzing and under contract</p>
         </div>
         {tab === 'properties' && <Btn onClick={() => setDrawer({ ...EMPTY })} style={{ fontSize:12, padding:'7px 14px' }}>+ New Property</Btn>}
       </div>
@@ -111,7 +111,7 @@ export default function Analyzer({ openPropertyId, openInPackage, onOpenedTarget
             />
           </div>
 
-          <SectionBar>Analyzing ({filtered.length})</SectionBar>
+          <SectionBar>Properties ({filtered.length})</SectionBar>
 
           {filtered.length === 0 ? (
             <EmptyState icon="○" text="No properties being analyzed. Click + New Property to add one." />
@@ -142,7 +142,8 @@ export default function Analyzer({ openPropertyId, openInPackage, onOpenedTarget
                     <SortTh sortKeyName="cash_offer" {...{sortKey,sortDir,toggleSort}}>Cash Offer</SortTh>
                     <SortTh sortKeyName="rehab"      {...{sortKey,sortDir,toggleSort}}>Est. Rehab</SortTh>
                     <SortTh sortKeyName="arv"        {...{sortKey,sortDir,toggleSort}}>ARV</SortTh>
-                    <SortTh sortKeyName="updated_at" {...{sortKey,sortDir,toggleSort}}>Updated</SortTh>
+                    <SortTh sortKeyName="stage"      {...{sortKey,sortDir,toggleSort}}>Stage</SortTh>
+                  <SortTh sortKeyName="updated_at" {...{sortKey,sortDir,toggleSort}}>Updated</SortTh>
                     <th style={{ padding:'8px 14px' }}></th>
                   </tr>
                 </thead>
@@ -164,7 +165,13 @@ export default function Analyzer({ openPropertyId, openInPackage, onOpenedTarget
                         <td style={{ padding:'10px 14px', fontSize:13, fontFamily:'monospace', color:'#3B6D11', fontWeight:600 }}>{cashOffer ? fmt(cashOffer) : '—'}</td>
                         <td style={{ padding:'10px 14px', fontSize:13, fontFamily:'monospace', color:'#6b7280' }}>{rehabTotal > 0 ? fmt(rehabTotal) : '—'}</td>
                         <td style={{ padding:'10px 14px', fontSize:13, fontFamily:'monospace', fontWeight:700 }}>{fmt(p.arv) || '—'}</td>
-                        <td style={{ padding:'10px 14px', fontSize:11, color:'#9ca3af' }}>{new Date(p.updated_at).toLocaleDateString()}</td>
+                        <td style={{ padding:'10px 14px' }}>
+                        {p.stage && p.stage!=='Analyzing' && (
+                          <span style={{ fontSize:11, fontWeight:600, color: p.stage==='Under Contract'?'#2D6FAF':p.stage==='Lost / Passed'?'#9ca3af':'#B8892A' }}>{p.stage}</span>
+                        )}
+                        {p.post_occupancy && <div style={{ fontSize:10, color:'#B8892A', marginTop:1 }}>{p.post_occupancy==='owner'?'Post-Occ: Owner':'Post-Occ: Renting Back'}</div>}
+                      </td>
+                      <td style={{ padding:'10px 14px', fontSize:11, color:'#9ca3af' }}>{new Date(p.updated_at).toLocaleDateString()}</td>
                         <td style={{ padding:'10px 10px' }} onClick={e => e.stopPropagation()}>
                           {p.arv && (
                             <button onClick={() => setProposal(p)} style={{ background:'#2D6FAF', color:'#fff', border:'none', borderRadius:4, padding:'4px 10px', fontSize:11, fontWeight:600, cursor:'pointer', fontFamily:'inherit', whiteSpace:'nowrap' }}>

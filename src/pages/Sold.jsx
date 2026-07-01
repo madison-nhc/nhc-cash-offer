@@ -22,9 +22,7 @@ export default function Sold() {
     setLoading(true)
     const [{ data: p }, { data: m }] = await Promise.all([
       // Sold = has a sold_date, OR a disposition_date (listings), OR converted_to_sale
-      supabase.from('cashoffer_properties').select('*')
-        .or('sold_date.not.is.null,disposition_date.not.is.null,converted_to_sale.eq.true')
-        .order('sold_date', { ascending: false }),
+      supabase.from('cashoffer_properties').select('*').eq('stage', 'Sold / Closed').order('sold_date', { ascending: false }),
       supabase.from('cashoffer_mailings').select('id,campaign_name,drop_date'),
     ])
     setProperties(p || [])

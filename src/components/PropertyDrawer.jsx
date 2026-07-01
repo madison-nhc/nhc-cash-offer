@@ -5,7 +5,22 @@ import Drawer from './Drawer.jsx'
 import AddressInput from './AddressInput.jsx'
 import RehabTracker from './RehabTracker.jsx'
 
-// ── Disposition options matching our new nav pages ──────────────────────────
+// ── Stage options ─────────────────────────────────────────────────────────────
+const STAGES = [
+  { value:'Analyzing',        color:'#B8892A' },
+  { value:'Under Contract',   color:'#2D6FAF' },
+  { value:'Purchased',        color:'#D97825' },
+  { value:'Rehabbing',        color:'#6b21a8' },
+  { value:'Active Hold',      color:'#B8892A' },
+  { value:'Active Listing',   color:'#3B6D11' },
+  { value:'Active Wholesale', color:'#6b21a8' },
+  { value:'Sold / Closed',    color:'#3B6D11' },
+  { value:'Lost / Passed',    color:'#9ca3af' },
+]
+
+const STAGE_MAP = Object.fromEntries(STAGES.map(s=>[s.value,s.color]))
+
+// ── Disposition options ───────────────────────────────────────────────────────
 const DISP_OPTIONS = [
   { value:'listing',   label:'Listing',       color:'#3B6D11' },
   { value:'hold',      label:'Hold',          color:'#B8892A' },
@@ -14,9 +29,9 @@ const DISP_OPTIONS = [
   { value:'lost',      label:'Lost / Passed', color:'#9ca3af' },
 ]
 
-// ── Rehab stages ─────────────────────────────────────────────────────────────
+// ── Rehab stages ──────────────────────────────────────────────────────────────
 const REHAB_STAGES = ['Not Started','Demo','Rough Work','Inspections','Finishes','Punch List','Complete']
-const STAGE_COLOR  = {
+const REHAB_COLOR  = {
   'Not Started':'#9ca3af','Demo':'#D97825','Rough Work':'#B8892A',
   'Inspections':'#2D6FAF','Finishes':'#6b21a8','Punch List':'#3B6D11','Complete':'#3B6D11',
 }
@@ -32,6 +47,13 @@ const DEFAULT_REPAIRS = [
   { name:'Misc',         sqft:'', pricePerSqft:'', cost:'' },
 ]
 
+// Truncate "123 Main Street, Lexington, KY 40502" → "123 Main Street"
+function shortAddress(addr) {
+  if (!addr) return 'New Property'
+  const parts = addr.split(',')
+  return parts[0].trim()
+}
+
 function calcOffers(p, repairs) {
   const arv       = parseFloat(p.arv)||0
   const reno      = repairs.reduce((s,r)=>s+(parseFloat(r.cost)||0),0)
@@ -41,17 +63,17 @@ function calcOffers(p, repairs) {
   const profit    = p.profit_override ? parseFloat(p.profit_override) : arv*profitPct
   const asisDisc  = (parseFloat(p.asis_pct)||50)/100
   const asisVal   = p.asis_override ? parseFloat(p.asis_override) : arv-(asisDisc*reno)
-  const cashHoldMo = parseFloat(p.hold_cash_months)||6
-  const cashHold   = (parseFloat(p.hold_cash_pct)||0.75)/100*cashHoldMo*arv
-  const cashOffer  = p.cash_offer_override ? parseFloat(p.cash_offer_override) : arv-reno-(commCash*arv)-cashHold-profit
-  const opt2HoldMo = parseFloat(p.hold_opt2_months)||3
-  const opt2Comm   = commList*asisVal
-  const opt2Hold   = (parseFloat(p.hold_opt2_pct)||0.5)/100*opt2HoldMo*arv
-  const opt2Net    = asisVal-opt2Comm-opt2Hold
-  const opt3HoldMo = parseFloat(p.hold_opt3_months)||6
-  const opt3Comm   = commList*arv
-  const opt3Hold   = (parseFloat(p.hold_opt3_pct)||0.5)/100*opt3HoldMo*arv
-  const opt3Net    = arv-reno-opt3Comm-opt3Hold
+  const cashHoldMo= parseFloat(p.hold_cash_months)||6
+  const cashHold  = (parseFloat(p.hold_cash_pct)||0.75)/100*cashHoldMo*arv
+  const cashOffer = p.cash_offer_override ? parseFloat(p.cash_offer_override) : arv-reno-(commCash*arv)-cashHold-profit
+  const opt2HoldMo= parseFloat(p.hold_opt2_months)||3
+  const opt2Comm  = commList*asisVal
+  const opt2Hold  = (parseFloat(p.hold_opt2_pct)||0.5)/100*opt2HoldMo*arv
+  const opt2Net   = asisVal-opt2Comm-opt2Hold
+  const opt3HoldMo= parseFloat(p.hold_opt3_months)||6
+  const opt3Comm  = commList*arv
+  const opt3Hold  = (parseFloat(p.hold_opt3_pct)||0.5)/100*opt3HoldMo*arv
+  const opt3Net   = arv-reno-opt3Comm-opt3Hold
   return {
     arv, reno, cashOffer, asisVal, opt2Net, opt3Net, profit,
     commCashPct:commCash, commListPct:commList,
@@ -59,22 +81,33 @@ function calcOffers(p, repairs) {
   }
 }
 
-// ── Small summary pill ───────────────────────────────────────────────────────
-function SummaryRow({ label, value, color='#2C2C2C', bold=false }) {
+function ProfitBox({ label, value, sub, color }) {
   return (
-    <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'5px 0', borderBottom:'0.5px solid #F0EDE6' }}>
-      <span style={{ fontSize:12, color:'#6b7280' }}>{label}</span>
-      <span style={{ fontSize:13, fontFamily:'monospace', fontWeight:bold?700:500, color }}>{value}</span>
+    <div style={{ background:color+'12', border:`1px solid ${color}30`, borderRadius:8, padding:'10px 14px', flex:1, minWidth:0 }}>
+      <div style={{ fontSize:10, color:'#6b7280', textTransform:'uppercase', letterSpacing:0.8, marginBottom:4 }}>{label}</div>
+      <div style={{ fontSize:18, fontWeight:700, fontFamily:'monospace', color }}>{value}</div>
+      {sub && <div style={{ fontSize:10, color:'#9ca3af', marginTop:2 }}>{sub}</div>}
     </div>
   )
 }
 
-function ProfitBox({ label, value, sub, color }) {
+function Toggle({ on, onToggle, label, sub }) {
   return (
-    <div style={{ background: color+'12', border:`1px solid ${color}30`, borderRadius:8, padding:'10px 14px', flex:1 }}>
-      <div style={{ fontSize:10, color:'#6b7280', textTransform:'uppercase', letterSpacing:0.8, marginBottom:4 }}>{label}</div>
-      <div style={{ fontSize:20, fontWeight:700, fontFamily:'monospace', color }}>{value}</div>
-      {sub && <div style={{ fontSize:10, color:'#9ca3af', marginTop:2 }}>{sub}</div>}
+    <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'10px 0' }}>
+      <div>
+        <div style={{ fontSize:12, fontWeight:600, color:'#2C2C2C' }}>{label}</div>
+        {sub && <div style={{ fontSize:11, color:'#9ca3af', marginTop:1 }}>{sub}</div>}
+      </div>
+      <button onClick={onToggle} style={{
+        width:48, height:26, borderRadius:13, border:'none', cursor:'pointer',
+        background:on?'#B8892A':'#D6D2CA', position:'relative', transition:'background 0.2s', flexShrink:0,
+      }}>
+        <div style={{
+          position:'absolute', top:3, left:on?24:3, width:20, height:20,
+          borderRadius:10, background:'#fff', transition:'left 0.2s',
+          boxShadow:'0 1px 3px rgba(0,0,0,0.2)',
+        }} />
+      </button>
     </div>
   )
 }
@@ -85,14 +118,15 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
   const [tab, setTab]             = useState('analyzer')
   const [rehabCost, setRehabCost] = useState(null)
 
-  const isNew       = !form.id
-  const disp        = form.disposition || null
-  const isFlipOrHold= disp==='flip' || disp==='hold'
-  const dispOpt     = DISP_OPTIONS.find(o=>o.value===disp)
+  const isNew   = !form.id
+  const stage   = form.stage || 'Analyzing'
+  const disp    = form.disposition || null
+  const dispOpt = DISP_OPTIONS.find(o=>o.value===disp)
+  const stageColor = STAGE_MAP[stage] || '#9ca3af'
 
   useEffect(() => {
     if (property) {
-      setForm({ ...property })
+      setForm({ ...property, stage: property.stage || 'Analyzing' })
       setRepairs(
         property.repair_items?.length
           ? property.repair_items.map((r,i)=>({...r,id:i}))
@@ -103,11 +137,10 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
     }
   }, [property])
 
-  const set = k => e => setForm(f=>({...f,[k]:e.target.value}))
-  const setVal = (k,v) => setForm(f=>({...f,[k]:v}))
+  const set    = k => e => setForm(f=>({...f,[k]:e.target.value}))
+  const setVal = (k,v)  => setForm(f=>({...f,[k]:v}))
   const d = calcOffers(form, repairs)
 
-  // ── Repair helpers ───────────────────────────────────────────────────────
   function addRepair() { setRepairs(rs=>[...rs,{id:Date.now(),name:'',sqft:'',pricePerSqft:'',cost:''}]) }
   function removeRepair(id) { setRepairs(rs=>rs.filter(r=>r.id!==id)) }
   function updateRepair(id,k,v) {
@@ -123,15 +156,11 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
     }))
   }
 
-  // ── Commission auto-calc helper ──────────────────────────────────────────
   function calcCommission(pct, base, min) {
-    const p=parseFloat(pct)||0
-    const b=parseFloat(base)||0
-    const m=parseFloat(min)||5000
-    return b && p ? Math.max(m, b*p/100) : null
+    const p=parseFloat(pct)||0, b=parseFloat(base)||0, m=parseFloat(min)||5000
+    return b&&p ? Math.max(m, b*p/100) : null
   }
 
-  // ── Save ─────────────────────────────────────────────────────────────────
   async function save() {
     if (!form.address) return
     const rehab = rehabCost !== null ? rehabCost : (form.rehab_cost||null)
@@ -149,31 +178,25 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
       hold_opt2_pct:form.hold_opt2_pct||0.5, hold_opt2_months:form.hold_opt2_months||3,
       hold_opt3_pct:form.hold_opt3_pct||0.5, hold_opt3_months:form.hold_opt3_months||6,
       mailing_id:form.mailing_id||null,
-      commission_pct:form.commission_pct||null,
-      commission_earned:form.commission_earned||null,
+      commission_pct:form.commission_pct||null, commission_earned:form.commission_earned||null,
       commission_min:form.commission_min||5000,
       nhc_notes:form.nhc_notes||null,
-      purchase_price:form.purchase_price||null,
-      closing_costs:form.closing_costs||null,
-      rehab_cost:rehab,
-      sale_price:form.sale_price||null,
-      sale_date:form.sale_date||null,
-      days_on_market:form.days_on_market||null,
-      bpv_notes:form.bpv_notes||null,
-      purchase_date:form.purchase_date||null,
-      sold_date:form.sold_date||null,
+      purchase_price:form.purchase_price||null, closing_costs:form.closing_costs||null,
+      rehab_cost:rehab, sale_price:form.sale_price||null, sale_date:form.sale_date||null,
+      days_on_market:form.days_on_market||null, bpv_notes:form.bpv_notes||null,
+      purchase_date:form.purchase_date||null, sold_date:form.sold_date||null,
       offer_date:form.offer_date||null,
-      disposition:form.disposition||null,
-      disposition_date:form.disposition_date||null,
-      wholesale_fee:form.wholesale_fee||null,
-      wholesale_buyer:form.wholesale_buyer||null,
-      lost_reason:form.lost_reason||null,
-      list_date:form.list_date||null,
-      // New Stage 1 fields
+      disposition:form.disposition||null, disposition_date:form.disposition_date||null,
+      wholesale_fee:form.wholesale_fee||null, wholesale_buyer:form.wholesale_buyer||null,
+      lost_reason:form.lost_reason||null, list_date:form.list_date||null,
+      // Stage + post-occupancy
+      stage:form.stage||'Analyzing',
+      post_occupancy:form.post_occupancy||null,
+      post_occupancy_end_date:form.post_occupancy_end_date||null,
+      // Stage 1 fields
       acquisition_type:form.acquisition_type||'Purchased',
-      owner:form.owner||'BPV',
-      managed_by_bpv:form.managed_by_bpv||false,
-      rehab_active:form.rehab_active||false,
+      owner:form.owner||'BPV', managed_by_bpv:form.managed_by_bpv||false,
+      rehab_active:form.stage==='Rehabbing', // keep in sync
       rehab_stage:form.rehab_stage||'Not Started',
       rehab_start_date:form.rehab_start_date||null,
       converted_to_sale:form.converted_to_sale||false,
@@ -186,58 +209,34 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
     onSave()
   }
 
-  async function handleClose() {
-    if (form.address) await save()
-    onClose()
-  }
-
+  async function handleClose() { if (form.address) await save(); onClose() }
   async function del() {
     if (!confirm('Delete this property?')) return
     await supabase.from('cashoffer_properties').delete().eq('id',form.id)
     onSave(); onClose()
   }
 
-  // Tabs — always Analyzer, Rehab, Disposition
   const TABS = [
     { key:'analyzer',    label:'Analyzer' },
     { key:'rehab',       label:'Rehab' },
     { key:'disposition', label:'Disposition' },
   ]
 
+  // P&L helpers
+  const rc         = rehabCost!==null ? rehabCost : (parseFloat(form.rehab_cost)||0)
+  const totalCost  = (parseFloat(form.purchase_price)||0)+(parseFloat(form.closing_costs)||0)+rc
+  const flipProfit = form.sale_price ? (parseFloat(form.sale_price)||0)-totalCost : null
+  const flipROI    = totalCost>0&&flipProfit!==null ? ((flipProfit/totalCost)*100).toFixed(1) : null
+
   if (!property) return null
 
-  // ── Flip P&L ─────────────────────────────────────────────────────────────
-  const rc       = rehabCost !== null ? rehabCost : (parseFloat(form.rehab_cost)||0)
-  const totalCost= (parseFloat(form.purchase_price)||0)+(parseFloat(form.closing_costs)||0)+rc
-  const flipProfit = form.sale_price ? (parseFloat(form.sale_price)||0)-totalCost : null
-  const flipROI    = totalCost>0 && flipProfit!==null ? ((flipProfit/totalCost)*100).toFixed(1) : null
+  // Post-occupancy badge label
+  const poLabel = form.post_occupancy==='owner' ? 'Post-Occ: Owner' : form.post_occupancy==='renting_back' ? 'Post-Occ: Renting Back' : null
 
   const innerContent = (
     <>
-      {/* ── Stage selector — always visible above tabs ── */}
-      <div style={{ marginBottom:4, marginTop:6 }}>
-        <div style={{ fontSize:10, color:'#9ca3af', textTransform:'uppercase', letterSpacing:0.8, marginBottom:6 }}>Disposition</div>
-        <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
-          {DISP_OPTIONS.map(opt => {
-            const active = disp === opt.value
-            return (
-              <button key={opt.value}
-                onClick={() => setVal('disposition', active ? null : opt.value)}
-                style={{
-                  padding:'5px 12px', border:`1.5px solid ${active?opt.color:'#D6D2CA'}`,
-                  borderRadius:20, cursor:'pointer', fontSize:11, fontWeight:active?700:400,
-                  fontFamily:'inherit', background:active?opt.color:'#fff',
-                  color:active?'#fff':'#6b7280', transition:'all 0.12s', whiteSpace:'nowrap',
-                }}>
-                {opt.label}
-              </button>
-            )
-          })}
-        </div>
-      </div>
-
       {/* ── Tab bar ── */}
-      <div style={{ display:'flex', gap:0, borderBottom:'2px solid #F0EDE6', marginBottom:16, marginTop:12 }}>
+      <div style={{ display:'flex', gap:0, borderBottom:'2px solid #F0EDE6', marginBottom:16, marginTop:8 }}>
         {TABS.map(t=>(
           <button key={t.key} onClick={()=>setTab(t.key)} style={{
             padding:'8px 18px', border:'none', background:'none', cursor:'pointer',
@@ -262,7 +261,6 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
             <Field label="Sq Ft"><input style={monoInp} type="number" value={form.sqft||''} onChange={set('sqft')} placeholder="1850" /></Field>
             <Field label="Units"><input style={monoInp} type="number" value={form.unit_count||''} onChange={set('unit_count')} placeholder="1" /></Field>
           </FieldRow>
-
           <FieldRow>
             <Field label="Owner">
               <select style={inp} value={form.owner||'BPV'} onChange={set('owner')}>
@@ -294,7 +292,6 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
             <Field label="Holding Months"><input style={monoInp} type="number" value={form.hold_opt3_months||6} onChange={set('hold_opt3_months')} /></Field>
           </FieldRow>
 
-          {/* Live 3-option preview */}
           {form.arv && (
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:8 }}>
               {[
@@ -334,7 +331,7 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
             <thead>
               <tr>
                 {['Item','Sq Ft','$/Sq Ft','Total',''].map((h,i)=>(
-                  <th key={h} style={{ textAlign:i>0?'right':'left', fontSize:10, color:'#9ca3af', fontWeight:600, textTransform:'uppercase', letterSpacing:0.5, paddingBottom:4, width:i===0?undefined:i===4?24:80 }}>{h}</th>
+                  <th key={h} style={{ textAlign:i>0?'right':'left', fontSize:10, color:'#9ca3af', fontWeight:600, textTransform:'uppercase', letterSpacing:0.5, paddingBottom:4, width:i===4?24:undefined }}>{h}</th>
                 ))}
               </tr>
             </thead>
@@ -353,7 +350,6 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
             </tbody>
           </table>
           <button onClick={addRepair} style={{ background:'transparent', border:'1px dashed #D6D2CA', borderRadius:6, padding:'6px', color:'#9ca3af', fontSize:12, cursor:'pointer', fontFamily:'inherit', width:'100%' }}>+ Add Line Item</button>
-
           {form.arv && (
             <button onClick={()=>onViewOffer&&onViewOffer({...form, repair_items:repairs.filter(r=>r.name||r.cost).map(r=>({name:r.name,cost:parseFloat(r.cost)||0}))})}
               style={{ background:'#2D6FAF', color:'#fff', border:'none', borderRadius:6, padding:'10px 16px', cursor:'pointer', fontSize:13, fontWeight:700, fontFamily:'inherit', width:'100%', marginTop:4 }}>
@@ -367,62 +363,31 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
       {/* ══════════════ REHAB TAB ══════════════ */}
       {tab==='rehab' && (
         <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
-
-          {/* Active Rehab toggle + Stage + Start Date */}
           <div style={{ background:'#FAFAF8', borderRadius:8, padding:'12px 14px', border:'0.5px solid #D6D2CA' }}>
-            <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:12 }}>
-              <div>
-                <div style={{ fontSize:13, fontWeight:700, color:'#2C2C2C' }}>Active Rehab</div>
-                <div style={{ fontSize:11, color:'#9ca3af', marginTop:1 }}>Appears on the Rehabs dashboard</div>
-              </div>
-              <button
-                onClick={()=>setVal('rehab_active', !form.rehab_active)}
-                style={{
-                  width:48, height:26, borderRadius:13, border:'none', cursor:'pointer',
-                  background:form.rehab_active?'#B8892A':'#D6D2CA', position:'relative',
-                  transition:'background 0.2s', flexShrink:0,
-                }}>
-                <div style={{
-                  position:'absolute', top:3, left:form.rehab_active?24:3,
-                  width:20, height:20, borderRadius:10, background:'#fff',
-                  transition:'left 0.2s', boxShadow:'0 1px 3px rgba(0,0,0,0.2)',
-                }} />
-              </button>
+            <div style={{ fontSize:10, color:'#9ca3af', textTransform:'uppercase', letterSpacing:0.8, marginBottom:8 }}>Rehab Stage</div>
+            <div style={{ display:'flex', gap:4, flexWrap:'wrap' }}>
+              {REHAB_STAGES.map(st=>{
+                const active=(form.rehab_stage||'Not Started')===st
+                const color=REHAB_COLOR[st]
+                return (
+                  <button key={st} onClick={()=>setVal('rehab_stage',st)} style={{
+                    padding:'4px 10px', border:`1.5px solid ${active?color:'#D6D2CA'}`,
+                    borderRadius:16, cursor:'pointer', fontSize:11, fontWeight:active?700:400,
+                    fontFamily:'inherit', background:active?color:'#fff', color:active?'#fff':'#6b7280',
+                    transition:'all 0.12s', whiteSpace:'nowrap',
+                  }}>{st}</button>
+                )
+              })}
             </div>
-
-            {/* Rehab Stage */}
-            <div style={{ marginBottom:10 }}>
-              <div style={{ fontSize:10, color:'#9ca3af', textTransform:'uppercase', letterSpacing:0.8, marginBottom:6 }}>Stage</div>
-              <div style={{ display:'flex', gap:4, flexWrap:'wrap' }}>
-                {REHAB_STAGES.map(st=>{
-                  const active = (form.rehab_stage||'Not Started')===st
-                  const color  = STAGE_COLOR[st]
-                  return (
-                    <button key={st} onClick={()=>setVal('rehab_stage',st)} style={{
-                      padding:'4px 10px', border:`1.5px solid ${active?color:'#D6D2CA'}`,
-                      borderRadius:16, cursor:'pointer', fontSize:11,
-                      fontWeight:active?700:400, fontFamily:'inherit',
-                      background:active?color:'#fff', color:active?'#fff':'#6b7280',
-                      transition:'all 0.12s', whiteSpace:'nowrap',
-                    }}>{st}</button>
-                  )
-                })}
-              </div>
+            <div style={{ marginTop:10 }}>
+              <Field label="Rehab Start Date">
+                <input style={inp} type="date" value={form.rehab_start_date||''} onChange={set('rehab_start_date')} />
+              </Field>
             </div>
-
-            {/* Rehab start date */}
-            <Field label="Rehab Start Date">
-              <input style={inp} type="date" value={form.rehab_start_date||''} onChange={set('rehab_start_date')} />
-            </Field>
           </div>
 
-          {/* Rehab line items tracker */}
           {form.id ? (
-            <RehabTracker
-              property={form}
-              repairItems={repairs}
-              onChange={total=>setRehabCost(total)}
-            />
+            <RehabTracker property={form} repairItems={repairs} onChange={total=>setRehabCost(total)} />
           ) : (
             <div style={{ background:'#F0EDE6', borderRadius:8, padding:'14px', textAlign:'center', fontSize:12, color:'#9ca3af' }}>
               Save the property first to track rehab line items.
@@ -435,13 +400,31 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
       {tab==='disposition' && (
         <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
 
+          {/* Disposition type pills */}
+          <div>
+            <div style={{ fontSize:10, color:'#9ca3af', textTransform:'uppercase', letterSpacing:0.8, marginBottom:8 }}>Type</div>
+            <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
+              {DISP_OPTIONS.map(opt=>{
+                const active=disp===opt.value
+                return (
+                  <button key={opt.value} onClick={()=>setVal('disposition', active?null:opt.value)} style={{
+                    padding:'5px 12px', border:`1.5px solid ${active?opt.color:'#D6D2CA'}`,
+                    borderRadius:20, cursor:'pointer', fontSize:11, fontWeight:active?700:400,
+                    fontFamily:'inherit', background:active?opt.color:'#fff',
+                    color:active?'#fff':'#6b7280', transition:'all 0.12s', whiteSpace:'nowrap',
+                  }}>{opt.label}</button>
+                )
+              })}
+            </div>
+          </div>
+
           {!disp && (
             <div style={{ background:'#F0EDE6', borderRadius:8, padding:'14px', textAlign:'center', fontSize:12, color:'#9ca3af' }}>
-              Select a disposition above to see relevant fields.
+              Select a type above to see relevant fields.
             </div>
           )}
 
-          {/* ── LISTING ───────────────────────────────────── */}
+          {/* ── LISTING ── */}
           {disp==='listing' && (<>
             <div className="drawer-section">Listing Details</div>
             <FieldRow>
@@ -449,27 +432,21 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
               <Field label="Offer Date"><input style={inp} type="date" value={form.offer_date||''} onChange={set('offer_date')} /></Field>
             </FieldRow>
             <Field label="ARV / List Price ($)"><input style={monoInp} type="number" value={form.arv||''} onChange={set('arv')} placeholder="285000" /></Field>
-
             <div className="drawer-section">NHC Commission</div>
             <FieldRow>
               <Field label="Commission %">
                 <input style={monoInp} type="number" value={form.commission_pct||''} placeholder="3"
-                  onChange={e=>{
-                    const earned = calcCommission(e.target.value, form.sale_price||form.arv, form.commission_min)
-                    setForm(f=>({...f, commission_pct:e.target.value, commission_earned:earned?earned.toFixed(2):f.commission_earned}))
-                  }} />
+                  onChange={e=>{ const e2=calcCommission(e.target.value,form.sale_price||form.arv,form.commission_min); setForm(f=>({...f,commission_pct:e.target.value,commission_earned:e2?e2.toFixed(2):f.commission_earned})) }} />
               </Field>
               <Field label="Minimum ($)"><input style={monoInp} type="number" value={form.commission_min||5000} onChange={set('commission_min')} /></Field>
             </FieldRow>
             <Field label="Commission Earned ($)"><input style={monoInp} type="number" value={form.commission_earned||''} onChange={set('commission_earned')} placeholder="Auto" /></Field>
-
             <div className="drawer-section">Sale</div>
             <FieldRow>
               <Field label="Sale Price ($)"><input style={monoInp} type="number" value={form.sale_price||''} onChange={set('sale_price')} placeholder="285000" /></Field>
               <Field label="Close Date"><input style={inp} type="date" value={form.disposition_date||''} onChange={set('disposition_date')} /></Field>
             </FieldRow>
             <Field label="Days on Market"><input style={monoInp} type="number" value={form.days_on_market||''} onChange={set('days_on_market')} /></Field>
-
             {(form.commission_earned||form.sale_price) && (
               <div style={{ display:'flex', gap:8, marginTop:4 }}>
                 {form.commission_earned && <ProfitBox label="NHC Commission" value={fmt(form.commission_earned)} color="#3B6D11" />}
@@ -478,7 +455,7 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
             )}
           </>)}
 
-          {/* ── WHOLESALE ─────────────────────────────────── */}
+          {/* ── WHOLESALE ── */}
           {disp==='wholesale' && (<>
             <div className="drawer-section">Wholesale Details</div>
             <FieldRow>
@@ -489,19 +466,14 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
               <Field label="Buyer"><input style={inp} type="text" value={form.wholesale_buyer||''} onChange={set('wholesale_buyer')} placeholder="Buyer name or company" /></Field>
               <Field label="Close Date"><input style={inp} type="date" value={form.disposition_date||''} onChange={set('disposition_date')} /></Field>
             </FieldRow>
-
             <div className="drawer-section">NHC Commission</div>
             <FieldRow>
               <Field label="Commission %">
                 <input style={monoInp} type="number" value={form.commission_pct||''} placeholder="3"
-                  onChange={e=>{
-                    const earned = calcCommission(e.target.value, form.purchase_price, form.commission_min)
-                    setForm(f=>({...f, commission_pct:e.target.value, commission_earned:earned?earned.toFixed(2):f.commission_earned}))
-                  }} />
+                  onChange={e=>{ const e2=calcCommission(e.target.value,form.purchase_price,form.commission_min); setForm(f=>({...f,commission_pct:e.target.value,commission_earned:e2?e2.toFixed(2):f.commission_earned})) }} />
               </Field>
               <Field label="Commission Earned ($)"><input style={monoInp} type="number" value={form.commission_earned||''} onChange={set('commission_earned')} placeholder="Auto" /></Field>
             </FieldRow>
-
             {(form.wholesale_fee||form.commission_earned) && (
               <div style={{ display:'flex', gap:8, marginTop:4 }}>
                 {form.wholesale_fee && <ProfitBox label="BPV Fee" value={fmt(form.wholesale_fee)} color="#6b21a8" />}
@@ -510,7 +482,7 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
             )}
           </>)}
 
-          {/* ── FLIP ──────────────────────────────────────── */}
+          {/* ── FLIP ── */}
           {disp==='flip' && (<>
             <div className="drawer-section">Acquisition</div>
             <FieldRow>
@@ -521,50 +493,40 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
               <Field label="Closing Costs ($)"><input style={monoInp} type="number" value={form.closing_costs||''} onChange={set('closing_costs')} placeholder="2500" /></Field>
               <Field label="Rehab Cost ($)">
                 <input style={{ ...monoInp, color:rehabCost!==null?'#B8892A':undefined }}
-                  type="number"
-                  value={rehabCost!==null?rehabCost:(form.rehab_cost||'')}
-                  onChange={e=>setForm(f=>({...f,rehab_cost:e.target.value}))}
-                  placeholder="Auto from Rehab tab" />
+                  type="number" value={rehabCost!==null?rehabCost:(form.rehab_cost||'')}
+                  onChange={e=>setForm(f=>({...f,rehab_cost:e.target.value}))} placeholder="Auto from Rehab tab" />
               </Field>
             </FieldRow>
-
             <div className="drawer-section">NHC Commission on Purchase</div>
             <FieldRow>
               <Field label="Commission %">
                 <input style={monoInp} type="number" value={form.commission_pct||''} placeholder="3"
-                  onChange={e=>{
-                    const earned = calcCommission(e.target.value, form.purchase_price, form.commission_min)
-                    setForm(f=>({...f, commission_pct:e.target.value, commission_earned:earned?earned.toFixed(2):f.commission_earned}))
-                  }} />
+                  onChange={e=>{ const e2=calcCommission(e.target.value,form.purchase_price,form.commission_min); setForm(f=>({...f,commission_pct:e.target.value,commission_earned:e2?e2.toFixed(2):f.commission_earned})) }} />
               </Field>
               <Field label="Minimum ($)"><input style={monoInp} type="number" value={form.commission_min||5000} onChange={set('commission_min')} /></Field>
             </FieldRow>
             <Field label="Commission Earned ($)"><input style={monoInp} type="number" value={form.commission_earned||''} onChange={set('commission_earned')} placeholder="Auto — greater of % or minimum" /></Field>
-
             <div className="drawer-section">Loan</div>
             <div style={{ background:'#FAFAF8', borderRadius:8, padding:'12px 14px', border:'0.5px solid #D6D2CA', fontSize:12, color:'#9ca3af', textAlign:'center' }}>
-              Loan tracker coming in Stage 4. Enter total rehab cost above for now.
+              Loan tracker coming in Stage 4.
             </div>
-
             <div className="drawer-section">Resale</div>
             <FieldRow>
               <Field label="Sale Price ($)"><input style={monoInp} type="number" value={form.sale_price||''} onChange={set('sale_price')} placeholder="215000" /></Field>
               <Field label="Sale Date"><input style={inp} type="date" value={form.sale_date||''} onChange={set('sale_date')} /></Field>
             </FieldRow>
             <Field label="Days on Market"><input style={monoInp} type="number" value={form.days_on_market||''} onChange={set('days_on_market')} placeholder="24" /></Field>
-
-            {flipProfit !== null && (
+            {flipProfit!==null && (
               <div style={{ display:'flex', gap:8, flexWrap:'wrap', marginTop:4 }}>
                 <ProfitBox label="BPV Profit" value={`${flipProfit>=0?'+':''}${fmt(flipProfit)}`} color={flipProfit>=0?'#3B6D11':'#B91C1C'} sub={flipROI?`${flipROI}% ROI`:null} />
                 <ProfitBox label="NHC Commission" value={fmt(form.commission_earned)||'—'} color="#B8892A" />
                 <ProfitBox label="Total Cost" value={fmt(totalCost)} color="#6b7280" />
               </div>
             )}
-
             <Field label="BPV Notes"><textarea style={{ ...inp, minHeight:56, resize:'vertical' }} value={form.bpv_notes||''} onChange={set('bpv_notes')} /></Field>
           </>)}
 
-          {/* ── HOLD ──────────────────────────────────────── */}
+          {/* ── HOLD ── */}
           {disp==='hold' && (<>
             <div className="drawer-section">Acquisition</div>
             <FieldRow>
@@ -572,50 +534,30 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
               <Field label="Purchase Price ($)"><input style={monoInp} type="number" value={form.purchase_price||''} onChange={set('purchase_price')} placeholder="120000" /></Field>
             </FieldRow>
             <Field label="Closing Costs ($)"><input style={monoInp} type="number" value={form.closing_costs||''} onChange={set('closing_costs')} placeholder="2500" /></Field>
-
             <div className="drawer-section">NHC Commission on Purchase</div>
             <FieldRow>
               <Field label="Commission %">
                 <input style={monoInp} type="number" value={form.commission_pct||''} placeholder="3"
-                  onChange={e=>{
-                    const earned = calcCommission(e.target.value, form.purchase_price, form.commission_min)
-                    setForm(f=>({...f, commission_pct:e.target.value, commission_earned:earned?earned.toFixed(2):f.commission_earned}))
-                  }} />
+                  onChange={e=>{ const e2=calcCommission(e.target.value,form.purchase_price,form.commission_min); setForm(f=>({...f,commission_pct:e.target.value,commission_earned:e2?e2.toFixed(2):f.commission_earned})) }} />
               </Field>
               <Field label="Commission Earned ($)"><input style={monoInp} type="number" value={form.commission_earned||''} onChange={set('commission_earned')} placeholder="Auto" /></Field>
             </FieldRow>
-
             <div className="drawer-section">Loan</div>
             <div style={{ background:'#FAFAF8', borderRadius:8, padding:'12px 14px', border:'0.5px solid #D6D2CA', fontSize:12, color:'#9ca3af', textAlign:'center' }}>
               Full loan tracker (amortization, refi support) coming in Stage 4.
             </div>
-
             <div className="drawer-section">Rent</div>
             <div style={{ background:'#FAFAF8', borderRadius:8, padding:'12px 14px', border:'0.5px solid #D6D2CA', fontSize:12, color:'#9ca3af', textAlign:'center' }}>
               Lease and rent payment tracker coming in Stage 5.
             </div>
-
             <div className="drawer-section">Convert to Sale</div>
             <div style={{ background:'#FAFAF8', borderRadius:8, padding:'12px 14px', border:'0.5px solid #D6D2CA' }}>
-              <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom: form.converted_to_sale?12:0 }}>
-                <div>
-                  <div style={{ fontSize:12, fontWeight:600, color:'#2C2C2C' }}>This hold is being sold</div>
-                  <div style={{ fontSize:11, color:'#9ca3af', marginTop:1 }}>Records the sale while preserving hold history</div>
-                </div>
-                <button
-                  onClick={()=>setVal('converted_to_sale', !form.converted_to_sale)}
-                  style={{
-                    width:48, height:26, borderRadius:13, border:'none', cursor:'pointer',
-                    background:form.converted_to_sale?'#B8892A':'#D6D2CA', position:'relative',
-                    transition:'background 0.2s', flexShrink:0,
-                  }}>
-                  <div style={{
-                    position:'absolute', top:3, left:form.converted_to_sale?24:3,
-                    width:20, height:20, borderRadius:10, background:'#fff',
-                    transition:'left 0.2s', boxShadow:'0 1px 3px rgba(0,0,0,0.2)',
-                  }} />
-                </button>
-              </div>
+              <Toggle
+                on={!!form.converted_to_sale}
+                onToggle={()=>setVal('converted_to_sale',!form.converted_to_sale)}
+                label="This hold is being sold"
+                sub="Records the sale while preserving hold history"
+              />
               {form.converted_to_sale && (<>
                 <FieldRow>
                   <Field label="Sale Price ($)"><input style={monoInp} type="number" value={form.sale_price||''} onChange={set('sale_price')} placeholder="215000" /></Field>
@@ -631,18 +573,16 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
                 </Field>
               </>)}
             </div>
-
             <Field label="BPV Notes"><textarea style={{ ...inp, minHeight:56, resize:'vertical' }} value={form.bpv_notes||''} onChange={set('bpv_notes')} /></Field>
           </>)}
 
-          {/* ── LOST ──────────────────────────────────────── */}
+          {/* ── LOST ── */}
           {disp==='lost' && (<>
             <div className="drawer-section">Lost / Passed Details</div>
             <Field label="Date Passed"><input style={inp} type="date" value={form.disposition_date||''} onChange={set('disposition_date')} /></Field>
             <Field label="Reason"><textarea style={{ ...inp, minHeight:72, resize:'vertical' }} value={form.lost_reason||''} onChange={set('lost_reason')} placeholder="Why did we pass on this property?" /></Field>
           </>)}
 
-          {/* Source / Campaign — always at bottom of Disposition */}
           {mailings.length>0 && (<>
             <div className="drawer-section">Source</div>
             <Field label="Mailing Campaign">
@@ -664,25 +604,79 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
 
   if (inlineMode) return <div style={{ padding:'0 16px 24px' }}>{innerContent}</div>
 
-  const dispColor = dispOpt?.color || '#9ca3af'
-  const stageColor = STAGE_COLOR[form.rehab_stage||'Not Started']
-
   return (
     <Drawer open={open} onClose={handleClose} width={580}
-      title={form.address||'New Property'}
+      title={shortAddress(form.address)}
       subtitle={
-        <div style={{ display:'flex', alignItems:'center', gap:6, marginTop:4, flexWrap:'wrap' }}>
-          {dispOpt
-            ? <span style={{ background:dispColor+'20', color:dispColor, border:`1px solid ${dispColor}40`, borderRadius:4, padding:'2px 8px', fontSize:11, fontWeight:700, textTransform:'uppercase', letterSpacing:0.8 }}>{dispOpt.label}</span>
-            : <span style={{ fontSize:11, color:'#9ca3af' }}>Analyzing</span>}
-          {form.rehab_active && (
-            <span style={{ background:stageColor+'20', color:stageColor, border:`1px solid ${stageColor}40`, borderRadius:4, padding:'2px 8px', fontSize:11, fontWeight:700 }}>
-              Rehab: {form.rehab_stage||'Not Started'}
+        <div style={{ display:'flex', alignItems:'center', gap:8, marginTop:6, flexWrap:'wrap' }}>
+          {/* Stage dropdown */}
+          <select
+            value={stage}
+            onChange={e=>setVal('stage',e.target.value)}
+            onClick={e=>e.stopPropagation()}
+            style={{
+              border:`1.5px solid ${stageColor}`, borderRadius:6, padding:'3px 8px',
+              fontSize:11, fontWeight:700, fontFamily:'inherit',
+              color:stageColor, background:stageColor+'12', cursor:'pointer', outline:'none',
+            }}>
+            {STAGES.map(s=><option key={s.value} value={s.value}>{s.value}</option>)}
+          </select>
+
+          {/* Post-occupancy — shown when stage is Purchased */}
+          {stage==='Purchased' && (
+            <select
+              value={form.post_occupancy||''}
+              onChange={e=>setVal('post_occupancy',e.target.value||null)}
+              style={{
+                border:'1.5px solid #D6D2CA', borderRadius:6, padding:'3px 8px',
+                fontSize:11, fontFamily:'inherit', color:'#6b7280', background:'#fff',
+                cursor:'pointer', outline:'none',
+              }}>
+              <option value="">Standard Closing</option>
+              <option value="owner">Post-Occ: Owner Staying</option>
+              <option value="renting_back">Post-Occ: Renting Back</option>
+            </select>
+          )}
+
+          {/* Post-occupancy end date if set */}
+          {form.post_occupancy && (
+            <input type="date" value={form.post_occupancy_end_date||''} onChange={set('post_occupancy_end_date')}
+              style={{ border:'1px solid #D6D2CA', borderRadius:6, padding:'3px 8px', fontSize:11, fontFamily:'inherit', color:'#6b7280', background:'#fff', cursor:'pointer', outline:'none' }} />
+          )}
+
+          {/* Disposition badge */}
+          {dispOpt && (
+            <span style={{ background:dispOpt.color+'20', color:dispOpt.color, border:`1px solid ${dispOpt.color}40`, borderRadius:4, padding:'2px 8px', fontSize:11, fontWeight:700, textTransform:'uppercase', letterSpacing:0.8 }}>
+              {dispOpt.label}
+            </span>
+          )}
+
+          {/* Post-occ badge when not on Purchased stage */}
+          {poLabel && stage!=='Purchased' && (
+            <span style={{ background:'#fef9f0', color:'#B8892A', border:'1px solid #B8892A40', borderRadius:4, padding:'2px 8px', fontSize:10, fontWeight:700 }}>
+              {poLabel}
             </span>
           )}
         </div>
       }>
       {innerContent}
     </Drawer>
+  )
+}
+
+function Toggle({ on, onToggle, label, sub }) {
+  return (
+    <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'4px 0' }}>
+      <div>
+        <div style={{ fontSize:12, fontWeight:600, color:'#2C2C2C' }}>{label}</div>
+        {sub && <div style={{ fontSize:11, color:'#9ca3af', marginTop:1 }}>{sub}</div>}
+      </div>
+      <button onClick={onToggle} style={{
+        width:48, height:26, borderRadius:13, border:'none', cursor:'pointer',
+        background:on?'#B8892A':'#D6D2CA', position:'relative', transition:'background 0.2s', flexShrink:0,
+      }}>
+        <div style={{ position:'absolute', top:3, left:on?24:3, width:20, height:20, borderRadius:10, background:'#fff', transition:'left 0.2s', boxShadow:'0 1px 3px rgba(0,0,0,0.2)' }} />
+      </button>
+    </div>
   )
 }
