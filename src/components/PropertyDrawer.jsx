@@ -10,7 +10,6 @@ import RentTracker from './RentTracker.jsx'
 // ── Stage options ─────────────────────────────────────────────────────────────
 const STAGES = [
   { value:'Analyzing',        color:'#B8892A' },
-  { value:'Under Contract',   color:'#2D6FAF' },
   { value:'Purchased',        color:'#D97825' },
   { value:'Rehabbing',        color:'#6b21a8' },
   { value:'Active Hold',      color:'#B8892A' },
@@ -197,6 +196,8 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
       stage:form.stage||'Analyzing',
       post_occupancy:form.post_occupancy||null,
       post_occupancy_end_date:form.post_occupancy_end_date||null,
+      post_occupancy_months:form.post_occupancy_months||null,
+      post_occupancy_payment:form.post_occupancy_payment||null,
       // Stage 1 fields
       acquisition_type:form.acquisition_type||'Purchased',
       owner:form.owner||'BPV', managed_by_bpv:form.managed_by_bpv||false,
@@ -268,7 +269,7 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
           <FieldRow>
             <Field label="Owner">
               <select style={inp} value={form.owner||'BPV'} onChange={set('owner')}>
-                {['BPV','NHC','Bob Sophiea','Eric Garverick','Other'].map(o=><option key={o}>{o}</option>)}
+                {['BPV','Bob Sophiea','Eric Kimble','Other'].map(o=><option key={o}>{o}</option>)}
               </select>
             </Field>
             <Field label="Acquisition">
@@ -278,6 +279,32 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
               </select>
             </Field>
           </FieldRow>
+
+          <div style={{ background:'#FAFAF8', borderRadius:8, padding:'4px 14px 12px', border:'0.5px solid #D6D2CA' }}>
+            <Toggle
+              on={!!form.post_occupancy}
+              onToggle={()=>setForm(f=>({
+                ...f,
+                post_occupancy: f.post_occupancy ? null : 'owner',
+                ...(f.post_occupancy ? { post_occupancy_end_date:null, post_occupancy_months:null, post_occupancy_payment:null } : {}),
+              }))}
+              label="Post-Occupancy"
+              sub="Seller stays in the home after closing"
+            />
+            {form.post_occupancy && (<>
+              <Field label="Type">
+                <select style={inp} value={form.post_occupancy||'owner'} onChange={e=>setVal('post_occupancy',e.target.value)}>
+                  <option value="owner">Owner Staying</option>
+                  <option value="renting_back">Renting Back</option>
+                </select>
+              </Field>
+              <FieldRow>
+                <Field label="# of Months"><input style={monoInp} type="number" value={form.post_occupancy_months||''} onChange={set('post_occupancy_months')} /></Field>
+                <Field label="Payment ($)"><input style={monoInp} type="number" value={form.post_occupancy_payment||''} onChange={set('post_occupancy_payment')} /></Field>
+              </FieldRow>
+              <Field label="End Date"><input style={inp} type="date" value={form.post_occupancy_end_date||''} onChange={set('post_occupancy_end_date')} /></Field>
+            </>)}
+          </div>
 
           <div className="drawer-section">Valuation</div>
           <Field label="After Renovation Value ($)">
@@ -667,39 +694,10 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
             {STAGES.map(s=><option key={s.value} value={s.value}>{s.value}</option>)}
           </select>
 
-          {/* Post-occupancy — shown when stage is Purchased */}
-          {stage==='Purchased' && (
-            <select
-              value={form.post_occupancy||''}
-              onChange={e=>setVal('post_occupancy',e.target.value||null)}
-              style={{
-                border:'1.5px solid #D6D2CA', borderRadius:6, padding:'3px 8px',
-                fontSize:11, fontFamily:'inherit', color:'#6b7280', background:'#fff',
-                cursor:'pointer', outline:'none',
-              }}>
-              <option value="">Standard Closing</option>
-              <option value="owner">Post-Occ: Owner Staying</option>
-              <option value="renting_back">Post-Occ: Renting Back</option>
-            </select>
-          )}
-
-          {/* Post-occupancy end date if set */}
-          {form.post_occupancy && (
-            <input type="date" value={form.post_occupancy_end_date||''} onChange={set('post_occupancy_end_date')}
-              style={{ border:'1px solid #D6D2CA', borderRadius:6, padding:'3px 8px', fontSize:11, fontFamily:'inherit', color:'#6b7280', background:'#fff', cursor:'pointer', outline:'none' }} />
-          )}
-
           {/* Disposition badge */}
           {dispOpt && (
             <span style={{ background:dispOpt.color+'20', color:dispOpt.color, border:`1px solid ${dispOpt.color}40`, borderRadius:4, padding:'2px 8px', fontSize:11, fontWeight:700, textTransform:'uppercase', letterSpacing:0.8 }}>
               {dispOpt.label}
-            </span>
-          )}
-
-          {/* Post-occ badge when not on Purchased stage */}
-          {poLabel && stage!=='Purchased' && (
-            <span style={{ background:'#fef9f0', color:'#B8892A', border:'1px solid #B8892A40', borderRadius:4, padding:'2px 8px', fontSize:10, fontWeight:700 }}>
-              {poLabel}
             </span>
           )}
         </div>
