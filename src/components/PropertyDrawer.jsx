@@ -689,20 +689,3 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
     </Drawer>
   )
 }
-
-function Toggle({ on, onToggle, label, sub }) {
-  return (
-    <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'4px 0' }}>
-      <div>
-        <div style={{ fontSize:12, fontWeight:600, color:'#2C2C2C' }}>{label}</div>
-        {sub && <div style={{ fontSize:11, color:'#9ca3af', marginTop:1 }}>{sub}</div>}
-      </div>
-      <button onClick={onToggle} style={{
-        width:48, height:26, borderRadius:13, border:'none', cursor:'pointer',
-        background:on?'#B8892A':'#D6D2CA', position:'relative', transition:'background 0.2s', flexShrink:0,
-      }}>
-        <div style={{ position:'absolute', top:3, left:on?24:3, width:20, height:20, borderRadius:10, background:'#fff', transition:'left 0.2s', boxShadow:'0 1px 3px rgba(0,0,0,0.2)' }} />
-      </button>
-    </div>
-  )
-}
