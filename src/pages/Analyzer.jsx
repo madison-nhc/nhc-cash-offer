@@ -18,7 +18,7 @@ function calcCashOffer(p) {
   return p.cash_offer_override ? parseFloat(p.cash_offer_override) : arv - reno - (commCash * arv) - cashHold - profit
 }
 
-export default function Analyzer({ openPropertyId, openInPackage, onOpenedTarget } = {}) {
+export default function Analyzer({ openPropertyId, openInPackage, onOpenedTarget, onOpenNew } = {}) {
   const [tab, setTab] = useState('properties')
   const [properties, setProperties] = useState([])
   const [mailings, setMailings] = useState([])
@@ -87,7 +87,7 @@ export default function Analyzer({ openPropertyId, openInPackage, onOpenedTarget
           <h1 style={{ fontSize: mobile ? 18 : 20, fontWeight:700, color:'#2C2C2C' }}>Property Analyzer</h1>
           <p style={{ fontSize:12, color:'#6b7280', marginTop:2 }}>Properties being evaluated · analyzing and under contract</p>
         </div>
-        {tab === 'properties' && <Btn onClick={() => setDrawer({ ...EMPTY })} style={{ fontSize:12, padding:'7px 14px' }}>+ New Property</Btn>}
+
       </div>
 
       {/* Page tabs */}
@@ -114,7 +114,7 @@ export default function Analyzer({ openPropertyId, openInPackage, onOpenedTarget
           <SectionBar>Properties ({filtered.length})</SectionBar>
 
           {filtered.length === 0 ? (
-            <EmptyState icon="○" text="No properties being analyzed. Click + New Property to add one." />
+            <EmptyState icon="○" text="No properties being analyzed. Use the + Add Property button in the nav to add one." />
           ) : mobile ? (
             <div style={{ marginTop:8 }}>
               {filtered.map(p => {
@@ -194,3 +194,4 @@ export default function Analyzer({ openPropertyId, openInPackage, onOpenedTarget
     </PageWrap>
   )
 }
+

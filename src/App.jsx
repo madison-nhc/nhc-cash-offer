@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { useIsMobile } from './hooks/useIsMobile.js'
 import { supabase } from './lib/supabase.js'
 import Analyzer from './pages/Analyzer.jsx'
+import PropertyDrawer from './components/PropertyDrawer.jsx'
 import Rehabs from './pages/Rehabs.jsx'
 import Listings from './pages/Listings.jsx'
 import Holds from './pages/Holds.jsx'
@@ -106,6 +107,7 @@ function initialTab() {
 export default function App() {
   const [active, setActive] = useState(initialTab)
   const [targetProperty, setTargetProperty] = useState(null)
+  const [newPropertyOpen, setNewPropertyOpen] = useState(false)
   const mobile = useIsMobile()
 
   const navigate = useCallback((tab) => {
@@ -140,7 +142,7 @@ export default function App() {
   }, [navigate])
 
   const pages = {
-    analyzer:  <Analyzer openPropertyId={targetProperty?.id} openInPackage={!!targetProperty?.package_id} onOpenedTarget={() => setTargetProperty(null)} />,
+    analyzer:  <Analyzer openPropertyId={targetProperty?.id} openInPackage={!!targetProperty?.package_id} onOpenedTarget={() => setTargetProperty(null)} onOpenNew={() => setNewPropertyOpen(true)} />,
     rehabs:    <Rehabs />,
     listings:  <Listings />,
     holds:     <Holds />,
@@ -177,12 +179,33 @@ export default function App() {
             </div>
           )}
 
+          {/* Global Add Property button */}
+          <button
+            onClick={() => setNewPropertyOpen(true)}
+            style={{
+              marginLeft:'auto', background:'#B8892A', color:'#fff', border:'none',
+              borderRadius:6, padding:'6px 14px', cursor:'pointer', fontSize:12,
+              fontWeight:700, fontFamily:'inherit', whiteSpace:'nowrap', flexShrink:0,
+            }}>
+            + Add Property
+          </button>
           {!mobile && <GlobalSearch onSelect={handleSearchSelect} mobile={false} />}
 
           {mobile && (
             <span style={{ fontSize:13, fontWeight:700, color:'#2C2C2C', flex:1, textAlign:'center' }}>
               {TABS.find(t => t.id === active)?.label || ''}
             </span>
+          )}
+          {mobile && (
+            <button
+              onClick={() => setNewPropertyOpen(true)}
+              style={{
+                background:'#B8892A', color:'#fff', border:'none',
+                borderRadius:6, padding:'5px 10px', cursor:'pointer',
+                fontSize:11, fontWeight:700, fontFamily:'inherit', flexShrink:0,
+              }}>
+              +
+            </button>
           )}
         </div>
 
@@ -210,6 +233,27 @@ export default function App() {
       <main style={{ flex:1, overflow:'auto' }}>
         {pages[active]}
       </main>
+
+      {/* Global new property drawer — accessible from any page */}
+      <PropertyDrawer
+        property={newPropertyOpen ? {
+          address:'', arv:'', asis_pct:50, profit_margin:15,
+          comm_cash_pct:9, comm_list_pct:6, hold_cash_pct:0.75, hold_cash_months:6,
+          hold_opt2_pct:0.5, hold_opt2_months:3, hold_opt3_pct:0.5, hold_opt3_months:6,
+          repair_items:[], stage:'Analyzing', acquisition_type:'Purchased', owner:'BPV',
+        } : null}
+        open={newPropertyOpen}
+        onClose={() => setNewPropertyOpen(false)}
+        onSave={() => {
+          setNewPropertyOpen(false)
+          // Refresh the current page by re-navigating to it
+          const cur = active
+          setActive(null)
+          setTimeout(() => setActive(cur), 50)
+        }}
+        mailings={[]}
+      />
     </div>
   )
 }
+
