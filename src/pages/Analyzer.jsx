@@ -50,10 +50,10 @@ export default function Analyzer({ openPropertyId, openInPackage, onOpenedTarget
   async function load() {
     setLoading(true)
     const [{ data: p }, { data: m }] = await Promise.all([
-      // Analyzer shows Analyzing + Under Contract + Lost
+      // Analyzer shows Analyzing + Lost, plus any type currently Under Contract
       supabase.from('cashoffer_properties').select('*')
         .is('package_id', null)
-        .in('stage', ['Analyzing','Under Contract','Lost / Passed'])
+        .or('type.in.(Analyzing,Lost),stage.eq.Under Contract')
         .order('updated_at', { ascending: false }),
       supabase.from('cashoffer_mailings').select('id,campaign_name,drop_date').order('drop_date', { ascending: false }),
     ])
@@ -166,8 +166,11 @@ export default function Analyzer({ openPropertyId, openInPackage, onOpenedTarget
                         <td style={{ padding:'10px 14px', fontSize:13, fontFamily:'monospace', color:'#6b7280' }}>{rehabTotal > 0 ? fmt(rehabTotal) : '—'}</td>
                         <td style={{ padding:'10px 14px', fontSize:13, fontFamily:'monospace', fontWeight:700 }}>{fmt(p.arv) || '—'}</td>
                         <td style={{ padding:'10px 14px' }}>
+                        {p.type==='Lost' && (
+                          <span style={{ fontSize:11, fontWeight:600, color:'#9ca3af' }}>Lost</span>
+                        )}
                         {p.stage && p.stage!=='Analyzing' && (
-                          <span style={{ fontSize:11, fontWeight:600, color: p.stage==='Under Contract'?'#2D6FAF':p.stage==='Lost / Passed'?'#9ca3af':'#B8892A' }}>{p.stage}</span>
+                          <span style={{ fontSize:11, fontWeight:600, color: p.stage==='Under Contract'?'#2D6FAF':'#B8892A' }}>{p.stage}</span>
                         )}
                         {p.post_occupancy && <div style={{ fontSize:10, color:'#B8892A', marginTop:1 }}>{p.post_occupancy==='owner'?'Post-Occ: Owner':'Post-Occ: Renting Back'}</div>}
                       </td>

@@ -16,7 +16,7 @@ export default function Wholesale() {
   async function load() {
     setLoading(true)
     const [{ data: p }, { data: m }] = await Promise.all([
-      supabase.from('cashoffer_properties').select('*').eq('stage', 'Active Wholesale').order('disposition_date', { ascending: false }),
+      supabase.from('cashoffer_properties').select('*').eq('type', 'Wholesale').order('disposition_date', { ascending: false }),
       supabase.from('cashoffer_mailings').select('id,campaign_name,drop_date').order('drop_date', { ascending: false }),
     ])
     setProperties(p || [])

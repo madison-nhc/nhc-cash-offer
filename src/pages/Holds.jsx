@@ -28,7 +28,7 @@ export default function Holds() {
   async function load() {
     setLoading(true)
     const [{ data: p }, { data: l }, { data: ln }, { data: m }] = await Promise.all([
-      supabase.from('cashoffer_properties').select('*').eq('stage', 'Active Hold').order('purchase_date', { ascending: false }),
+      supabase.from('cashoffer_properties').select('*').eq('type', 'Hold').order('purchase_date', { ascending: false }),
       supabase.from('cashoffer_leases').select('*').eq('status', 'Active'),
       supabase.from('cashoffer_loans').select('*').eq('is_active', true),
       supabase.from('cashoffer_mailings').select('id,campaign_name,drop_date').order('drop_date', { ascending: false }),

@@ -7,28 +7,41 @@ import RehabTracker from './RehabTracker.jsx'
 import LoanTracker from './LoanTracker.jsx'
 import RentTracker from './RentTracker.jsx'
 
-// ── Stage options ─────────────────────────────────────────────────────────────
-const STAGES = [
-  { value:'Analyzing',        color:'#B8892A' },
-  { value:'Purchased',        color:'#D97825' },
-  { value:'Rehabbing',        color:'#6b21a8' },
-  { value:'Active Hold',      color:'#B8892A' },
-  { value:'Active Listing',   color:'#3B6D11' },
-  { value:'Active Wholesale', color:'#6b21a8' },
-  { value:'Sold / Closed',    color:'#3B6D11' },
-  { value:'Lost / Passed',    color:'#9ca3af' },
+// ── Type options (primary) ────────────────────────────────────────────────────
+const TYPE_OPTIONS = [
+  { value:'Analyzing',       color:'#B8892A' },
+  { value:'Flip',            color:'#D97825' },
+  { value:'Hold',            color:'#B8892A' },
+  { value:'Retail Listing',  color:'#3B6D11' },
+  { value:'Wholesale',       color:'#6b21a8' },
+  { value:'Lost',            color:'#9ca3af' },
 ]
+const TYPE_COLOR = Object.fromEntries(TYPE_OPTIONS.map(t=>[t.value,t.color]))
 
-const STAGE_MAP = Object.fromEntries(STAGES.map(s=>[s.value,s.color]))
+// Legacy disposition <-> new type mapping (disposition kept in sync for Sold/Rehabs/PackageDeals pages)
+const TYPE_TO_DISP = { 'Analyzing':null, 'Flip':'flip', 'Hold':'hold', 'Retail Listing':'listing', 'Wholesale':'wholesale', 'Lost':'lost' }
 
-// ── Disposition options ───────────────────────────────────────────────────────
-const DISP_OPTIONS = [
-  { value:'listing',   label:'Listing',       color:'#3B6D11' },
-  { value:'hold',      label:'Hold',          color:'#B8892A' },
-  { value:'flip',      label:'Flip',          color:'#D97825' },
-  { value:'wholesale', label:'Wholesale',     color:'#6b21a8' },
-  { value:'lost',      label:'Lost / Passed', color:'#9ca3af' },
-]
+// Stages scoped per type — As-Is Retail Listing skips the two Reno stages
+const STAGE_BY_TYPE = {
+  'Analyzing':      [],
+  'Flip':           ['Purchased','Rehab','Listed','Under Contract','Sold'],
+  'Hold':           ['Purchased','Rehab','Rent Ready','Leased','Sold'],
+  'Retail Listing': { 'As-Is':['Listed','Under Contract','Sold'], 'Reno':['Reno In Progress','Reno Completed','Listed','Under Contract','Sold'] },
+  'Wholesale':      ['Under Contract','Assigned','Closed'],
+  'Lost':           [],
+}
+const STAGE_COLOR = {
+  Purchased:'#D97825', Rehab:'#6b21a8', Listed:'#3B6D11', 'Under Contract':'#2D6FAF', Sold:'#3B6D11',
+  'Rent Ready':'#B8892A', Leased:'#3B6D11', 'Reno In Progress':'#D97825', 'Reno Completed':'#B8892A',
+  Assigned:'#6b21a8', Closed:'#3B6D11',
+}
+
+function stagesForType(type, listingType) {
+  const s = STAGE_BY_TYPE[type]
+  if (!s) return []
+  if (type==='Retail Listing') return s[listingType||'As-Is']
+  return s
+}
 
 // ── Rehab stages ──────────────────────────────────────────────────────────────
 const REHAB_STAGES = ['Not Started','Demo','Rough Work','Inspections','Finishes','Punch List','Complete']
@@ -122,14 +135,20 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
   const [rentOpen, setRentOpen] = useState(false)
 
   const isNew   = !form.id
-  const stage   = form.stage || 'Analyzing'
-  const disp    = form.disposition || null
-  const dispOpt = DISP_OPTIONS.find(o=>o.value===disp)
-  const stageColor = STAGE_MAP[stage] || '#9ca3af'
+  const type       = form.type || 'Analyzing'
+  const listingType = form.listing_type || 'As-Is'
+  const disp    = TYPE_TO_DISP[type] // derived — kept in sync for Sold/Rehabs/PackageDeals pages
+  const scopedStages = stagesForType(type, listingType)
+  const stage   = form.stage || (scopedStages[0] || null)
+  const typeColor  = TYPE_COLOR[type] || '#9ca3af'
+  const stageColor = STAGE_COLOR[stage] || '#9ca3af'
 
   useEffect(() => {
     if (property) {
-      setForm({ ...property, stage: property.stage || 'Analyzing' })
+      const t = property.type || 'Analyzing'
+      const lt = property.listing_type || 'As-Is'
+      const stages = stagesForType(t, lt)
+      setForm({ ...property, type:t, listing_type:lt, stage: property.stage || stages[0] || null })
       setRepairs(
         property.repair_items?.length
           ? property.repair_items.map((r,i)=>({...r,id:i}))
@@ -139,6 +158,17 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
       setTab('analyzer')
     }
   }, [property])
+
+  // When type or listing_type changes, snap stage to the first valid stage for the new scope
+  function setType(newType) {
+    const lt = newType==='Retail Listing' ? (form.listing_type||'As-Is') : null
+    const stages = stagesForType(newType, lt)
+    setForm(f=>({ ...f, type:newType, listing_type:lt, stage: stages[0] || null }))
+  }
+  function setListingType(lt) {
+    const stages = stagesForType('Retail Listing', lt)
+    setForm(f=>({ ...f, listing_type:lt, stage: stages[0] || null }))
+  }
 
   const set    = k => e => setForm(f=>({...f,[k]:e.target.value}))
   const setVal = (k,v)  => setForm(f=>({...f,[k]:v}))
@@ -189,11 +219,13 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
       days_on_market:form.days_on_market||null, bpv_notes:form.bpv_notes||null,
       purchase_date:form.purchase_date||null, sold_date:form.sold_date||null,
       offer_date:form.offer_date||null,
-      disposition:form.disposition||null, disposition_date:form.disposition_date||null,
+      disposition:disp, disposition_date:form.disposition_date||null,
+      type:type, listing_type:type==='Retail Listing'?listingType:null,
+      bpv_rehab_fee:form.bpv_rehab_fee||null,
       wholesale_fee:form.wholesale_fee||null, wholesale_buyer:form.wholesale_buyer||null,
       lost_reason:form.lost_reason||null, list_date:form.list_date||null,
       // Stage + post-occupancy
-      stage:form.stage||'Analyzing',
+      stage:stage||null,
       post_occupancy:form.post_occupancy||null,
       post_occupancy_end_date:form.post_occupancy_end_date||null,
       post_occupancy_months:form.post_occupancy_months||null,
@@ -201,7 +233,7 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
       // Stage 1 fields
       acquisition_type:form.acquisition_type||'Purchased',
       owner:form.owner||'BPV', managed_by_bpv:form.managed_by_bpv||false,
-      rehab_active:form.stage==='Rehabbing', // keep in sync
+      rehab_active:stage==='Rehab', // keep in sync
       rehab_stage:form.rehab_stage||'Not Started',
       rehab_start_date:form.rehab_start_date||null,
       converted_to_sale:form.converted_to_sale||false,
@@ -431,27 +463,9 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
       {tab==='disposition' && (
         <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
 
-          {/* Disposition type pills */}
-          <div>
-            <div style={{ fontSize:10, color:'#9ca3af', textTransform:'uppercase', letterSpacing:0.8, marginBottom:8 }}>Type</div>
-            <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
-              {DISP_OPTIONS.map(opt=>{
-                const active=disp===opt.value
-                return (
-                  <button key={opt.value} onClick={()=>setVal('disposition', active?null:opt.value)} style={{
-                    padding:'5px 12px', border:`1.5px solid ${active?opt.color:'#D6D2CA'}`,
-                    borderRadius:20, cursor:'pointer', fontSize:11, fontWeight:active?700:400,
-                    fontFamily:'inherit', background:active?opt.color:'#fff',
-                    color:active?'#fff':'#6b7280', transition:'all 0.12s', whiteSpace:'nowrap',
-                  }}>{opt.label}</button>
-                )
-              })}
-            </div>
-          </div>
-
           {!disp && (
             <div style={{ background:'#F0EDE6', borderRadius:8, padding:'14px', textAlign:'center', fontSize:12, color:'#9ca3af' }}>
-              Select a type above to see relevant fields.
+              Set a type in the header above to see relevant fields.
             </div>
           )}
 
@@ -463,6 +477,11 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
               <Field label="Offer Date"><input style={inp} type="date" value={form.offer_date||''} onChange={set('offer_date')} /></Field>
             </FieldRow>
             <Field label="ARV / List Price ($)"><input style={monoInp} type="number" value={form.arv||''} onChange={set('arv')} /></Field>
+            {listingType==='Reno' && (
+              <Field label="BPV Rehab Fee ($) — placeholder, not yet wired to logic">
+                <input style={monoInp} type="number" value={form.bpv_rehab_fee||''} onChange={set('bpv_rehab_fee')} />
+              </Field>
+            )}
             <div className="drawer-section">NHC Commission</div>
             <FieldRow>
               <Field label="Commission %">
@@ -605,31 +624,26 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
             ) : (
               <div style={{ background:'#F0EDE6', borderRadius:8, padding:'12px 14px', fontSize:12, color:'#9ca3af', textAlign:'center' }}>Save property first to add lease details.</div>
             )}
-            <div className="drawer-section">Convert to Sale</div>
+            <div className="drawer-section">Sale</div>
             <div style={{ background:'#FAFAF8', borderRadius:8, padding:'12px 14px', border:'0.5px solid #D6D2CA' }}>
-              <Toggle
-                on={!!form.converted_to_sale}
-                onToggle={()=>setVal('converted_to_sale',!form.converted_to_sale)}
-                label="This hold is being sold"
-                sub="Records the sale while preserving hold history"
-              />
-              {form.converted_to_sale && (<>
+              {stage==='Sold' ? (<>
+                <div style={{ fontSize:11, color:'#9ca3af', marginBottom:8 }}>Stage is set to Sold — record the sale details below.</div>
                 <FieldRow>
                   <Field label="Sale Price ($)"><input style={monoInp} type="number" value={form.sale_price||''} onChange={set('sale_price')} /></Field>
-                  <Field label="Sale Date"><input style={inp} type="date" value={form.conversion_date||''} onChange={set('conversion_date')} /></Field>
+                  <Field label="Sale Date"><input style={inp} type="date" value={form.sale_date||''} onChange={set('sale_date')} /></Field>
                 </FieldRow>
-                <Field label="Conversion Disposition">
-                  <select style={inp} value={form.conversion_disposition||''} onChange={set('conversion_disposition')}>
-                    <option value="">Select...</option>
-                    <option value="Listing">Listing (NHC)</option>
-                    <option value="Flip">Flip (BPV)</option>
-                    <option value="Wholesale">Wholesale</option>
-                  </select>
-                </Field>
-              </>)}
+              </>) : (
+                <div style={{ fontSize:11, color:'#9ca3af' }}>Set the stage to Sold in the header to record a sale on this hold.</div>
+              )}
+              {(form.converted_to_sale) && (
+                <div style={{ marginTop:8, paddingTop:8, borderTop:'0.5px solid #D6D2CA', fontSize:10, color:'#9ca3af' }}>
+                  Historical: previously marked converted-to-sale ({form.conversion_disposition||'—'}, {form.conversion_date||'—'}). No longer editable here.
+                </div>
+              )}
             </div>
             <Field label="BPV Notes"><textarea style={{ ...inp, minHeight:56, resize:'vertical' }} value={form.bpv_notes||''} onChange={set('bpv_notes')} /></Field>
           </>)}
+
 
           {/* ── LOST ── */}
           {disp==='lost' && (<>
@@ -681,24 +695,48 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
       title={shortAddress(form.address)}
       subtitle={
         <div style={{ display:'flex', alignItems:'center', gap:8, marginTop:6, flexWrap:'wrap' }}>
-          {/* Stage dropdown */}
+          {/* Type dropdown — primary */}
           <select
-            value={stage}
-            onChange={e=>setVal('stage',e.target.value)}
+            value={type}
+            onChange={e=>setType(e.target.value)}
             onClick={e=>e.stopPropagation()}
             style={{
-              border:`1.5px solid ${stageColor}`, borderRadius:6, padding:'3px 8px',
+              border:`1.5px solid ${typeColor}`, borderRadius:6, padding:'3px 8px',
               fontSize:11, fontWeight:700, fontFamily:'inherit',
-              color:stageColor, background:stageColor+'12', cursor:'pointer', outline:'none',
+              color:typeColor, background:typeColor+'12', cursor:'pointer', outline:'none',
             }}>
-            {STAGES.map(s=><option key={s.value} value={s.value}>{s.value}</option>)}
+            {TYPE_OPTIONS.map(t=><option key={t.value} value={t.value}>{t.value}</option>)}
           </select>
 
-          {/* Disposition badge */}
-          {dispOpt && (
-            <span style={{ background:dispOpt.color+'20', color:dispOpt.color, border:`1px solid ${dispOpt.color}40`, borderRadius:4, padding:'2px 8px', fontSize:11, fontWeight:700, textTransform:'uppercase', letterSpacing:0.8 }}>
-              {dispOpt.label}
-            </span>
+          {/* As-Is / Reno toggle — Retail Listing only */}
+          {type==='Retail Listing' && (
+            <select
+              value={listingType}
+              onChange={e=>setListingType(e.target.value)}
+              onClick={e=>e.stopPropagation()}
+              style={{
+                border:'1.5px solid #D6D2CA', borderRadius:6, padding:'3px 8px',
+                fontSize:11, fontWeight:600, fontFamily:'inherit', color:'#6b7280', background:'#fff',
+                cursor:'pointer', outline:'none',
+              }}>
+              <option value="As-Is">As-Is</option>
+              <option value="Reno">Reno</option>
+            </select>
+          )}
+
+          {/* Scoped stage dropdown — hidden for Analyzing/Lost which have no stages */}
+          {scopedStages.length>0 && (
+            <select
+              value={stage||''}
+              onChange={e=>setVal('stage',e.target.value)}
+              onClick={e=>e.stopPropagation()}
+              style={{
+                border:`1.5px solid ${stageColor}`, borderRadius:6, padding:'3px 8px',
+                fontSize:11, fontWeight:700, fontFamily:'inherit',
+                color:stageColor, background:stageColor+'12', cursor:'pointer', outline:'none',
+              }}>
+              {scopedStages.map(s=><option key={s} value={s}>{s}</option>)}
+            </select>
           )}
         </div>
       }>

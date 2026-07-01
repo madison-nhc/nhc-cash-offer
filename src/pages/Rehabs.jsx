@@ -27,7 +27,7 @@ export default function Rehabs() {
   async function load() {
     setLoading(true)
     const [{ data: p }, { data: ri }, { data: m }] = await Promise.all([
-      supabase.from('cashoffer_properties').select('*').eq('stage', 'Rehabbing').order('rehab_start_date', { ascending: false }),
+      supabase.from('cashoffer_properties').select('*').in('stage', ['Rehab','Reno In Progress','Reno Completed']).order('rehab_start_date', { ascending: false }),
       supabase.from('cashoffer_rehab_items').select('property_id,estimated_cost,actual_cost,status'),
       supabase.from('cashoffer_mailings').select('id,campaign_name,drop_date'),
     ])

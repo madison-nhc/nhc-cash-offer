@@ -19,7 +19,7 @@ export default function Listings() {
     setLoading(true)
     const [{ data: p }, { data: m }] = await Promise.all([
       // Active listings only — no sold_date and no disposition_date
-      supabase.from('cashoffer_properties').select('*').eq('stage', 'Active Listing').order('list_date', { ascending: false }),
+      supabase.from('cashoffer_properties').select('*').eq('type', 'Retail Listing').order('list_date', { ascending: false }),
       supabase.from('cashoffer_mailings').select('id,campaign_name,drop_date').order('drop_date', { ascending: false }),
     ])
     setProperties(p || [])
