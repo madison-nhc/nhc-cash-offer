@@ -244,6 +244,10 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
             <Field label="Profit Margin %"><input style={monoInp} type="number" value={form.profit_margin||15} onChange={set('profit_margin')} /></Field>
             <Field label="Cash Offer Override ($)"><input style={monoInp} type="number" value={form.cash_offer_override||''} onChange={set('cash_offer_override')} placeholder="Auto" /></Field>
           </FieldRow>
+          <FieldRow>
+            <Field label="Full Retail — Holding % / mo"><input style={monoInp} type="number" step="0.05" value={form.hold_opt3_pct||0.5} onChange={set('hold_opt3_pct')} /></Field>
+            <Field label="Full Retail — Holding Months"><input style={monoInp} type="number" value={form.hold_opt3_months||6} onChange={set('hold_opt3_months')} /></Field>
+          </FieldRow>
 
           {/* Live 3-option preview, always with breakdown */}
           {form.arv && (
@@ -565,3 +569,4 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
     </Drawer>
   )
 }
+

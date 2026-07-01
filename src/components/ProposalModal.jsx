@@ -232,7 +232,10 @@ export default function ProposalModal({ property, onClose }) {
           <tbody>${repairRows}</tbody>
           <tfoot><tr class="total"><td>TOTAL ESTIMATED REPAIRS</td><td>${d$(d.reno)}</td></tr></tfoot>
         </table>
-      `:''}
+      `:`
+        <div class="sec-title">Renovation Breakdown</div>
+        <div class="reno-note" style="font-style:italic;color:#555;font-size:12px;padding:10px 0;">No repairs identified — this property appears to be move-in ready.</div>
+      `}
 
       <div class="pg-foot">New Home Collective · Page 1 of 3</div>
     </div>
@@ -293,7 +296,7 @@ export default function ProposalModal({ property, onClose }) {
             <div class="price-lbl">Projected Sale Price</div>
             <div class="price-num">${d$(d.arv)}</div>
             <div class="less-ttl">Less Costs:</div>
-            <div class="less-row"><span>Repairs:</span><span>${dn$(d.reno)}</span></div>
+            <div class="less-row"><span>Repairs:</span><span>${d.reno > 0 ? dn$(d.reno) : "Move-In Ready"}</span></div>
             <div class="less-row"><span>Commission (${commPct}%):</span><span>${dn$(d.opt3Comm)}</span></div>
             <div class="less-row"><span>Holding (${d.holdOpt3Mo} mo):</span><span>${dn$(d.opt3Hold)}</span></div>
             <div class="net-row"><span>Net to Seller:</span><span>~${d$(d.opt3Net)}</span></div>
@@ -389,4 +392,5 @@ export default function ProposalModal({ property, onClose }) {
     </>
   )
 }
+
 
