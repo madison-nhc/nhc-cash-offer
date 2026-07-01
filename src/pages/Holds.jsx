@@ -60,8 +60,8 @@ export default function Holds() {
     return computePayment(loan)
   }
 
-  const totalMonthlyRent    = active.reduce((s, p) => s + monthlyRent(p.id), 0)
-  const totalLoanPayments   = active.reduce((s, p) => s + loanPayment(p.id), 0)
+  const totalMonthlyRent    = properties.reduce((s, p) => s + monthlyRent(p.id), 0)
+  const totalLoanPayments   = properties.reduce((s, p) => s + loanPayment(p.id), 0)
   const totalMonthlyCashFlow = totalMonthlyRent - totalLoanPayments
 
   const filtered = properties
@@ -86,7 +86,7 @@ export default function Holds() {
       {/* Stat cards */}
       <div style={{ display:'grid', gridTemplateColumns: mobile ? '1fr 1fr' : 'repeat(4,1fr)', gap:12, marginBottom:24 }}>
         {[
-          { label:'Active Holds',     value: active.length,                                                              color:'#B8892A' },
+          { label:'Active Holds',     value: properties.length,                                                              color:'#B8892A' },
           { label:'Monthly Rent',     value: totalMonthlyRent > 0 ? fmtK(totalMonthlyRent) : '—',                        color:'#3B6D11' },
           { label:'Loan Payments',    value: totalLoanPayments > 0 ? fmtK(totalLoanPayments) : '—',                      color:'#D97825' },
           { label:'Monthly Cash Flow',value: totalMonthlyCashFlow !== 0 ? fmtK(totalMonthlyCashFlow) : '—',              color: totalMonthlyCashFlow >= 0 ? '#3B6D11' : '#B91C1C' },
@@ -154,4 +154,5 @@ export default function Holds() {
     </PageWrap>
   )
 }
+
 
