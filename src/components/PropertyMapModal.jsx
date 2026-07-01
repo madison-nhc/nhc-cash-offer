@@ -66,7 +66,7 @@ function loadGoogleMaps() {
   if (mapsLoading) return mapsLoading
   mapsLoading = new Promise((resolve, reject) => {
     const script = document.createElement('script')
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${GMAPS_API_KEY}`
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${GMAPS_API_KEY}&libraries=places`
     script.async = true
     script.onload = resolve
     script.onerror = reject

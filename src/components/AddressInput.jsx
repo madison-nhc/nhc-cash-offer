@@ -1,121 +1,119 @@
 import { useState, useEffect, useRef } from 'react'
 import { inp } from './ui.jsx'
 
+const GMAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_KEY
+
+// Shared loader — reuses script if already injected (e.g. by PropertyMapModal)
+let placesLoading = null
+function loadPlaces() {
+  // Already loaded
+  if (window.google?.maps?.places) return Promise.resolve()
+  // Script already injected, wait for it
+  if (placesLoading) return placesLoading
+  placesLoading = new Promise((resolve, reject) => {
+    // If Maps is already loaded but Places library isn't, we can't re-load the
+    // script — use the callback approach to request just the places library
+    if (window.google?.maps && !window.google.maps.places) {
+      // Maps loaded but places missing — load places via dynamic import
+      const script = document.createElement('script')
+      script.src = `https://maps.googleapis.com/maps/api/js?key=${GMAPS_API_KEY}&libraries=places&callback=__nhcPlacesReady`
+      window.__nhcPlacesReady = () => { delete window.__nhcPlacesReady; resolve() }
+      script.onerror = reject
+      document.head.appendChild(script)
+    } else if (!window.google?.maps) {
+      // Nothing loaded yet — load maps + places together
+      const script = document.createElement('script')
+      script.src = `https://maps.googleapis.com/maps/api/js?key=${GMAPS_API_KEY}&libraries=places&callback=__nhcPlacesReady`
+      window.__nhcPlacesReady = () => { delete window.__nhcPlacesReady; resolve() }
+      script.onerror = reject
+      document.head.appendChild(script)
+    } else {
+      // Places already available
+      resolve()
+    }
+  })
+  return placesLoading
+}
+
 export default function AddressInput({ value, onChange, placeholder = '123 Main St, Lexington KY' }) {
+  const inputRef = useRef(null)
+  const autocompleteRef = useRef(null)
   const [query, setQuery] = useState(value || '')
-  const [suggestions, setSuggestions] = useState([])
-  const [open, setOpen] = useState(false)
-  const [loading, setLoading] = useState(false)
-  const debounce = useRef(null)
-  const wrapRef = useRef(null)
+  const [ready, setReady] = useState(false)
 
   // Sync external value changes (e.g. loading a saved property)
   useEffect(() => { setQuery(value || '') }, [value])
 
-  // Close on outside click
+  // Load Places API and attach Autocomplete to the input
   useEffect(() => {
-    function handler(e) { if (wrapRef.current && !wrapRef.current.contains(e.target)) setOpen(false) }
-    document.addEventListener('mousedown', handler)
-    return () => document.removeEventListener('mousedown', handler)
-  }, [])
+    let cancelled = false
+    loadPlaces().then(() => {
+      if (cancelled || !inputRef.current) return
+      const ac = new window.google.maps.places.Autocomplete(inputRef.current, {
+        types: ['address'],
+        componentRestrictions: { country: 'us' },
+        fields: ['formatted_address', 'address_components', 'geometry'],
+      })
+      autocompleteRef.current = ac
+
+      ac.addListener('place_changed', () => {
+        const place = ac.getPlace()
+        if (!place.formatted_address) return
+
+        // Build a clean address: "123 Main St, City, ST ZIP"
+        const comps = {}
+        for (const c of place.address_components || []) {
+          for (const t of c.types) comps[t] = c
+        }
+        const streetNum  = comps['street_number']?.long_name || ''
+        const route      = comps['route']?.long_name || ''
+        const city       = comps['locality']?.long_name || comps['sublocality']?.long_name || ''
+        const state      = comps['administrative_area_level_1']?.short_name || ''
+        const zip        = comps['postal_code']?.long_name || ''
+
+        const formatted = [
+          [streetNum, route].filter(Boolean).join(' '),
+          city,
+          state,
+          zip,
+        ].filter(Boolean).join(', ')
+
+        const final = formatted || place.formatted_address
+        setQuery(final)
+        onChange(final)
+      })
+
+      setReady(true)
+    }).catch(() => {
+      // Places failed to load — fall back gracefully (input still works, just no autocomplete)
+      setReady(true)
+    })
+
+    return () => {
+      cancelled = true
+      // Clean up listener
+      if (autocompleteRef.current && window.google?.maps?.event) {
+        window.google.maps.event.clearInstanceListeners(autocompleteRef.current)
+      }
+    }
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   function handleChange(e) {
     const val = e.target.value
     setQuery(val)
     onChange(val) // keep parent in sync as user types
-
-    clearTimeout(debounce.current)
-    if (val.length < 3) { setSuggestions([]); setOpen(false); return }
-
-    debounce.current = setTimeout(() => search(val), 350)
-  }
-
-  async function search(q) {
-    setLoading(true)
-    try {
-      // Bias toward Kentucky — countrycodes=us, viewbox around KY, bounded=0 so it falls back globally
-      const params = new URLSearchParams({
-        q: q + ', Kentucky',
-        format: 'json',
-        addressdetails: 1,
-        limit: 6,
-        countrycodes: 'us',
-        viewbox: '-89.57,39.15,-81.96,36.49', // KY bounding box
-        bounded: 0,
-      })
-      const res = await fetch(`https://nominatim.openstreetmap.org/search?${params}`, {
-        headers: { 'Accept-Language': 'en', 'User-Agent': 'NHC-CashOfferHub/1.0' }
-      })
-      const data = await res.json()
-      setSuggestions(data.slice(0, 6))
-      setOpen(data.length > 0)
-    } catch {
-      setSuggestions([])
-      setOpen(false)
-    }
-    setLoading(false)
-  }
-
-  function select(item) {
-    // Build a clean US address string
-    const a = item.address || {}
-    const parts = [
-      [a.house_number, a.road].filter(Boolean).join(' '),
-      a.city || a.town || a.village || a.county,
-      a.state,
-      a.postcode,
-    ].filter(Boolean)
-    const formatted = parts.join(', ')
-    setQuery(formatted)
-    onChange(formatted)
-    setSuggestions([])
-    setOpen(false)
   }
 
   return (
-    <div ref={wrapRef} style={{ position: 'relative' }}>
-      <div style={{ position: 'relative' }}>
-        <input
-          style={{ ...inp, paddingRight: loading ? 32 : 10 }}
-          value={query}
-          onChange={handleChange}
-          onFocus={() => suggestions.length > 0 && setOpen(true)}
-          placeholder={placeholder}
-          autoComplete="off"
-        />
-        {loading && (
-          <div style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', fontSize: 12, color: '#B8892A' }}>⟳</div>
-        )}
-      </div>
-
-      {open && suggestions.length > 0 && (
-        <div style={{
-          position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 999,
-          background: '#fff', border: '1px solid #D6D2CA', borderRadius: 6,
-          boxShadow: '0 4px 16px rgba(0,0,0,0.12)', marginTop: 2, overflow: 'hidden'
-        }}>
-          {suggestions.map((s, i) => {
-            const a = s.address || {}
-            const street = [a.house_number, a.road].filter(Boolean).join(' ')
-            const city   = a.city || a.town || a.village || a.county || ''
-            const state  = a.state || ''
-            const zip    = a.postcode || ''
-            return (
-              <div key={s.place_id} onMouseDown={()=>select(s)} style={{
-                padding: '9px 14px', cursor: 'pointer', fontSize: 13,
-                background: i % 2 === 0 ? '#fff' : '#FAFAF8',
-                borderTop: i > 0 ? '0.5px solid #F0EDE6' : 'none',
-                transition: 'background 0.1s'
-              }}
-              onMouseEnter={e=>e.currentTarget.style.background='#fef9f0'}
-              onMouseLeave={e=>e.currentTarget.style.background=i%2===0?'#fff':'#FAFAF8'}>
-                <div style={{ fontWeight: 600, color: '#2C2C2C' }}>{street || s.display_name.split(',')[0]}</div>
-                <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 2 }}>{[city, state, zip].filter(Boolean).join(', ')}</div>
-              </div>
-            )
-          })}
-        </div>
-      )}
+    <div style={{ position: 'relative' }}>
+      <input
+        ref={inputRef}
+        style={inp}
+        value={query}
+        onChange={handleChange}
+        placeholder={placeholder}
+        autoComplete="off"
+      />
     </div>
   )
 }
