@@ -30,11 +30,11 @@ export default function RehabTracker({ property, repairItems = [], onChange }) {
 
   async function loadVendors() {
     const { data } = await supabase
-      .from('cashoffer_rehab_items')
-      .select('vendor')
-      .not('vendor', 'is', null)
-      .neq('vendor', '')
-    const unique = [...new Set((data || []).map(r => r.vendor).filter(Boolean))].sort()
+      .from('cashoffer_vendors')
+      .select('company_name')
+      .not('company_name', 'is', null)
+      .neq('company_name', '')
+    const unique = [...new Set((data || []).map(r => r.company_name).filter(Boolean))].sort()
     setVendors(unique)
   }
 

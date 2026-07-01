@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase.js'
 import { Modal, Field, FieldRow, inp, monoInp, Btn, fmt } from './ui.jsx'
 
@@ -8,8 +8,21 @@ const STATUS_COLORS  = { Ordered:'#D97825', Received:'#3B6D11' }
 export default function SuppliesTracker({ propertyId, propertyAddress, open, onClose }) {
   const [items, setItems]     = useState([])
   const [loading, setLoading] = useState(true)
+  const [vendors, setVendors] = useState([])
+  const [activeVendorId, setActiveVendorId] = useState(null)
+  const vendorRefs = useRef({})
 
-  useEffect(() => { if (open && propertyId) load() }, [open, propertyId])
+  useEffect(() => { if (open && propertyId) { load(); loadVendors() } }, [open, propertyId])
+
+  async function loadVendors() {
+    const { data } = await supabase
+      .from('cashoffer_vendors')
+      .select('company_name')
+      .not('company_name', 'is', null)
+      .neq('company_name', '')
+    const unique = [...new Set((data || []).map(r => r.company_name).filter(Boolean))].sort()
+    setVendors(unique)
+  }
 
   async function load() {
     setLoading(true)
@@ -85,7 +98,37 @@ export default function SuppliesTracker({ propertyId, propertyAddress, open, onC
                   {fmt((parseFloat(it.unit_cost)||0)*(parseFloat(it.quantity)||0))}
                 </td>
                 <td style={{ paddingBottom:6, paddingRight:6 }}>
-                  <input style={{ ...inp, fontSize:12 }} autoComplete="off" name={`vendor-${it.id}`} value={it.vendor||''} onChange={e=>updateItem(it.id,'vendor',e.target.value)} />
+                  <div style={{ position:'relative' }}>
+                    <input
+                      ref={el => vendorRefs.current[it.id] = el}
+                      style={{ ...inp, fontSize:12 }}
+                      autoComplete="off" name={`vendor-${it.id}`}
+                      value={it.vendor||''}
+                      onChange={e=>{ updateItem(it.id,'vendor',e.target.value); setActiveVendorId(it.id) }}
+                      onFocus={()=>setActiveVendorId(it.id)}
+                      onBlur={()=>setTimeout(()=>setActiveVendorId(null),150)}
+                    />
+                    {activeVendorId===it.id && vendors.filter(v =>
+                      v.toLowerCase().includes((it.vendor||'').toLowerCase()) && v !== it.vendor
+                    ).length > 0 && (
+                      <div style={{
+                        position:'absolute', top:'100%', left:0, right:0, zIndex:50,
+                        background:'#fff', border:'0.5px solid #D6D2CA', borderRadius:4,
+                        boxShadow:'0 4px 12px rgba(0,0,0,0.1)', maxHeight:140, overflowY:'auto',
+                      }}>
+                        {vendors.filter(v =>
+                          v.toLowerCase().includes((it.vendor||'').toLowerCase()) && v !== it.vendor
+                        ).map(v => (
+                          <div key={v}
+                            onMouseDown={()=>{ updateItem(it.id,'vendor',v); setActiveVendorId(null) }}
+                            style={{ padding:'7px 10px', fontSize:12, cursor:'pointer', borderBottom:'0.5px solid #F0EDE6' }}
+                            onMouseEnter={e=>e.currentTarget.style.background='#FAFAF8'}
+                            onMouseLeave={e=>e.currentTarget.style.background='#fff'}
+                          >{v}</div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </td>
                 <td style={{ paddingBottom:6, paddingRight:6 }}>
                   <select style={{ ...inp, fontSize:11, color:STATUS_COLORS[it.status], fontWeight:700 }} value={it.status||'Ordered'} onChange={e=>updateItem(it.id,'status',e.target.value)}>

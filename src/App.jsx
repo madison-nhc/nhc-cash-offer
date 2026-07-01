@@ -10,6 +10,7 @@ import Holds from './pages/Holds.jsx'
 import Wholesale from './pages/Wholesale.jsx'
 import Sold from './pages/Sold.jsx'
 import MailingTracker from './pages/MailingTracker.jsx'
+import Vendors from './pages/Vendors.jsx'
 
 function GlobalSearch({ onSelect, mobile }) {
   const [query, setQuery] = useState('')
@@ -83,6 +84,7 @@ function GlobalSearch({ onSelect, mobile }) {
 }
 
 const TABS = [
+  { id:'mailings',   label:'Mailing Tracker',  short:'Mailers',   path:'/mailings' },
   { id:'analyzer',   label:'Analyzer',        short:'Analyze',   path:'/analyzer' },
   { id:'rehabs',     label:'Rehabs',           short:'Rehabs',    path:'/rehabs' },
   { id:'supplies',   label:'Supplies',         short:'Supplies',  path:'/supplies' },
@@ -90,7 +92,7 @@ const TABS = [
   { id:'listings',   label:'Listings',         short:'Listings',  path:'/listings' },
   { id:'wholesale',  label:'Wholesale',        short:'Wholesale', path:'/wholesale' },
   { id:'sold',       label:'Sold',             short:'Sold',      path:'/sold' },
-  { id:'mailings',   label:'Mailing Tracker',  short:'Mailers',   path:'/mailings' },
+  { id:'vendors',    label:'Vendors',          short:'Vendors',   path:'/vendors' },
 ]
 
 function tabForPath(pathname) {
@@ -152,6 +154,7 @@ export default function App() {
     wholesale: <Wholesale />,
     sold:      <Sold />,
     mailings:  <MailingTracker />,
+    vendors:   <Vendors />,
   }
 
   return (
