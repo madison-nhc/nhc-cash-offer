@@ -65,7 +65,7 @@ export default function SuppliesTracker({ propertyId, propertyAddress, open, onC
             Total: <span style={{ fontFamily:'monospace' }}>{fmt(total)}</span>
           </div>
         </div>
-        <table style={{ width:'100%', borderCollapse:'collapse' }}>
+        <table style={{ width:'100%', borderCollapse:'collapse', tableLayout:'fixed' }}>
           <colgroup>
             <col style={{ width:'28%' }} />
             <col style={{ width:'10%' }} />
@@ -112,7 +112,7 @@ export default function SuppliesTracker({ propertyId, propertyAddress, open, onC
                       v.toLowerCase().includes((it.vendor||'').toLowerCase()) && v !== it.vendor
                     ).length > 0 && (
                       <div style={{
-                        position:'absolute', top:'100%', left:0, right:0, zIndex:50,
+                        position:'absolute', top:'100%', left:0, minWidth:180, zIndex:50,
                         background:'#fff', border:'0.5px solid #D6D2CA', borderRadius:4,
                         boxShadow:'0 4px 12px rgba(0,0,0,0.1)', maxHeight:140, overflowY:'auto',
                       }}>
@@ -121,7 +121,7 @@ export default function SuppliesTracker({ propertyId, propertyAddress, open, onC
                         ).map(v => (
                           <div key={v}
                             onMouseDown={()=>{ updateItem(it.id,'vendor',v); setActiveVendorId(null) }}
-                            style={{ padding:'7px 10px', fontSize:12, cursor:'pointer', borderBottom:'0.5px solid #F0EDE6' }}
+                            style={{ padding:'7px 10px', fontSize:12, cursor:'pointer', borderBottom:'0.5px solid #F0EDE6', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}
                             onMouseEnter={e=>e.currentTarget.style.background='#FAFAF8'}
                             onMouseLeave={e=>e.currentTarget.style.background='#fff'}
                           >{v}</div>
