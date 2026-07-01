@@ -194,6 +194,7 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
   if (!property) return null
 
   const innerContent = (
+    <>
 
       {/* Tab switcher */}
       <div style={{ display:'flex', gap:0, borderBottom:'2px solid #F0EDE6', marginBottom:16, marginTop:8 }}>
@@ -554,6 +555,7 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
         {!isNew && <Btn variant="danger" onClick={del}>Delete</Btn>}
         <Btn variant="outline" onClick={handleClose} style={{ marginLeft:'auto' }}>Close</Btn>
       </div>
+    </>
   )
 
   if (inlineMode) {
@@ -577,5 +579,6 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
     </Drawer>
   )
 }
+
 
 
