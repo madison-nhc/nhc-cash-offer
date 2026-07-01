@@ -162,7 +162,7 @@ export function Badge({ children, color = '#B8892A' }) {
 }
 
 export function fmt(n) {
-  if (!n && n !== 0) return '—'
+  if (n === null || n === undefined || n === '') return '—'
   const num = parseFloat(n)
   if (isNaN(num)) return '—'
   return '$' + Math.round(num).toLocaleString('en-US')
@@ -244,3 +244,4 @@ export function LoadingSpinner() {
     </div>
   )
 }
+

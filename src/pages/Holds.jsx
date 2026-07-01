@@ -22,7 +22,6 @@ export default function Holds() {
   const [mailings, setMailings] = useState([])
   const [loading, setLoading] = useState(true)
   const [drawer, setDrawer] = useState(null)
-  const [filter, setFilter] = useState('active')
 
   useEffect(() => { load() }, [])
 
@@ -40,9 +39,6 @@ export default function Holds() {
     setMailings(m || [])
     setLoading(false)
   }
-
-  const active    = properties  // all on this page are Active Hold stage
-  const converted = []
 
   // Monthly rent = sum of all active leases for a property
   function monthlyRent(propId) {
@@ -68,7 +64,7 @@ export default function Holds() {
   const totalLoanPayments   = active.reduce((s, p) => s + loanPayment(p.id), 0)
   const totalMonthlyCashFlow = totalMonthlyRent - totalLoanPayments
 
-  const filtered = filter === 'active' ? active : filter === 'converted' ? converted : properties
+  const filtered = properties
 
   const { sorted, sortKey, sortDir, toggleSort } = useSort(filtered, 'purchase_date', 'desc', {
     rent: p => monthlyRent(p.id),
@@ -102,12 +98,7 @@ export default function Holds() {
         ))}
       </div>
 
-      {/* Filter pills */}
-      <div style={{ display:'flex', gap:4, marginBottom:14 }}>
-        {[['active',`Active (${active.length})`],['converted',`Converted to Sale (${converted.length})`],['all',`All (${properties.length})`]].map(([f,l])=>(
-          <button key={f} onClick={()=>setFilter(f)} style={{ padding:'5px 14px', border:'none', borderRadius:4, cursor:'pointer', background:filter===f?'#2C2C2C':'#F0EDE6', color:filter===f?'#fff':'#6b7280', fontSize:11, fontWeight:filter===f?700:400, fontFamily:'inherit', whiteSpace:'nowrap' }}>{l}</button>
-        ))}
-      </div>
+
 
       <SectionBar>Hold Properties ({filtered.length})</SectionBar>
 
@@ -163,3 +154,4 @@ export default function Holds() {
     </PageWrap>
   )
 }
+
