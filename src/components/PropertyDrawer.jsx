@@ -5,6 +5,7 @@ import Drawer from './Drawer.jsx'
 import AddressInput from './AddressInput.jsx'
 import RehabTracker from './RehabTracker.jsx'
 import LoanTracker from './LoanTracker.jsx'
+import RentTracker from './RentTracker.jsx'
 
 // ── Stage options ─────────────────────────────────────────────────────────────
 const STAGES = [
@@ -119,6 +120,7 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
   const [tab, setTab]             = useState('analyzer')
   const [rehabCost, setRehabCost] = useState(null)
   const [loanOpen, setLoanOpen] = useState(false)
+  const [rentOpen, setRentOpen] = useState(false)
 
   const isNew   = !form.id
   const stage   = form.stage || 'Analyzing'
@@ -565,9 +567,17 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
               <div style={{ background:'#F0EDE6', borderRadius:8, padding:'12px 14px', fontSize:12, color:'#9ca3af', textAlign:'center' }}>Save property first to add loan details.</div>
             )}
             <div className="drawer-section">Rent</div>
-            <div style={{ background:'#FAFAF8', borderRadius:8, padding:'12px 14px', border:'0.5px solid #D6D2CA', fontSize:12, color:'#9ca3af', textAlign:'center' }}>
-              Lease and rent payment tracker coming in Stage 5.
-            </div>
+            {form.id ? (
+              <button onClick={()=>setRentOpen(true)} style={{ width:'100%', background:'#fff', border:'1.5px solid #3B6D11', borderRadius:8, padding:'12px 16px', cursor:'pointer', fontFamily:'inherit', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+                <div style={{ textAlign:'left' }}>
+                  <div style={{ fontSize:13, fontWeight:700, color:'#3B6D11' }}>View Rent & Leases</div>
+                  <div style={{ fontSize:11, color:'#9ca3af', marginTop:2 }}>Lease terms, monthly payment log, collected vs expected</div>
+                </div>
+                <span style={{ fontSize:18, color:'#3B6D11' }}>→</span>
+              </button>
+            ) : (
+              <div style={{ background:'#F0EDE6', borderRadius:8, padding:'12px 14px', fontSize:12, color:'#9ca3af', textAlign:'center' }}>Save property first to add lease details.</div>
+            )}
             <div className="drawer-section">Convert to Sale</div>
             <div style={{ background:'#FAFAF8', borderRadius:8, padding:'12px 14px', border:'0.5px solid #D6D2CA' }}>
               <Toggle
@@ -619,6 +629,15 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
         propertyAddress={form.address}
         open={loanOpen}
         onClose={()=>setLoanOpen(false)}
+      />
+
+      {/* Rent Tracker modal */}
+      <RentTracker
+        propertyId={form.id}
+        propertyAddress={form.address}
+        open={rentOpen}
+        onClose={()=>setRentOpen(false)}
+        onRentChange={()=>onSave()}
       />
 
       <div style={{ display:'flex', justifyContent:'space-between', marginTop:20, paddingTop:16, borderTop:'1px solid #F0EDE6' }}>
@@ -689,4 +708,5 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
     </Drawer>
   )
 }
+
 

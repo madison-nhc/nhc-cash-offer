@@ -48,10 +48,20 @@ export default function Holds() {
   function monthlyRent(propId) {
     return leases.filter(l => l.property_id === propId).reduce((s, l) => s + (parseFloat(l.rent_amount) || 0), 0)
   }
-  // Active loan monthly payment
+  // Compute monthly payment from loan inputs (mirrors LoanTracker amortization engine)
+  function computePayment(loan) {
+    if (!loan) return 0
+    if (loan.monthly_payment) return parseFloat(loan.monthly_payment)
+    const P = parseFloat(loan.loan_amount) || 0
+    const r = (parseFloat(loan.interest_rate) || 0) / 100 / 12
+    const n = parseInt(loan.loan_term_months) || 0
+    if (!P || !n) return 0
+    if (r === 0) return P / n
+    return P * (r * Math.pow(1+r,n)) / (Math.pow(1+r,n)-1)
+  }
   function loanPayment(propId) {
     const loan = loans.find(l => l.property_id === propId)
-    return loan ? (parseFloat(loan.monthly_payment) || 0) : 0
+    return computePayment(loan)
   }
 
   const totalMonthlyRent    = active.reduce((s, p) => s + monthlyRent(p.id), 0)
