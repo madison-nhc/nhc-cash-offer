@@ -14,7 +14,7 @@ export default function RehabTracker({ property, repairItems = [], onChange }) {
 
   useEffect(() => {
     if (!property?.id) return
-    setBudget(property.rehab_estimated_cost || '')
+    setBudget(property.rehab_cost || '')
     loadItems(property.id)
     loadVendors()
   }, [property?.id])
@@ -82,7 +82,7 @@ export default function RehabTracker({ property, repairItems = [], onChange }) {
   async function saveBudget(val) {
     setBudget(val)
     if (!property?.id) return
-    await supabase.from('cashoffer_properties').update({ rehab_estimated_cost: parseFloat(val) || null }).eq('id', property.id)
+    await supabase.from('cashoffer_properties').update({ rehab_cost: parseFloat(val) || null }).eq('id', property.id)
   }
 
   function notifyParent() {
@@ -288,4 +288,5 @@ export default function RehabTracker({ property, repairItems = [], onChange }) {
     </div>
   )
 }
+
 
