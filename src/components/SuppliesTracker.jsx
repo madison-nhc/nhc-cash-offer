@@ -55,7 +55,7 @@ export default function SuppliesTracker({ propertyId, propertyAddress, open, onC
         <table style={{ width:'100%', borderCollapse:'collapse' }}>
           <thead>
             <tr>
-              {['Name','Unit Cost','Qty','Total','Vendor','Status',''].map((h,i)=>(
+              {['Name','Qty','Unit Cost','Total','Vendor/Store','Status',''].map((h,i)=>(
                 <th key={h} style={{ textAlign:i>0&&i<6?'right':'left', fontSize:10, color:'#9ca3af', fontWeight:600, textTransform:'uppercase', letterSpacing:0.5, paddingBottom:6 }}>{h}</th>
               ))}
             </tr>
@@ -67,16 +67,16 @@ export default function SuppliesTracker({ propertyId, propertyAddress, open, onC
                   <input style={{ ...inp, fontSize:12 }} value={it.name||''} onChange={e=>updateItem(it.id,'name',e.target.value)} />
                 </td>
                 <td style={{ paddingBottom:6, paddingRight:6 }}>
-                  <input style={{ ...monoInp, fontSize:12, textAlign:'right' }} type="number" value={it.unit_cost||''} onChange={e=>updateItem(it.id,'unit_cost',parseFloat(e.target.value)||0)} />
+                  <input style={{ ...monoInp, fontSize:12, textAlign:'right' }} type="number" value={it.quantity||''} onChange={e=>updateItem(it.id,'quantity',parseFloat(e.target.value)||0)} />
                 </td>
                 <td style={{ paddingBottom:6, paddingRight:6 }}>
-                  <input style={{ ...monoInp, fontSize:12, textAlign:'right' }} type="number" value={it.quantity||''} onChange={e=>updateItem(it.id,'quantity',parseFloat(e.target.value)||0)} />
+                  <input style={{ ...monoInp, fontSize:12, textAlign:'right' }} type="number" value={it.unit_cost||''} onChange={e=>updateItem(it.id,'unit_cost',parseFloat(e.target.value)||0)} />
                 </td>
                 <td style={{ paddingBottom:6, paddingRight:6, textAlign:'right', fontFamily:'monospace', fontSize:12, fontWeight:600 }}>
                   {fmt((parseFloat(it.unit_cost)||0)*(parseFloat(it.quantity)||0))}
                 </td>
                 <td style={{ paddingBottom:6, paddingRight:6 }}>
-                  <input style={{ ...inp, fontSize:12 }} placeholder="Lowe's, Home Depot…" value={it.vendor||''} onChange={e=>updateItem(it.id,'vendor',e.target.value)} />
+                  <input style={{ ...inp, fontSize:12 }} autoComplete="off" name={`vendor-${it.id}`} value={it.vendor||''} onChange={e=>updateItem(it.id,'vendor',e.target.value)} />
                 </td>
                 <td style={{ paddingBottom:6, paddingRight:6 }}>
                   <select style={{ ...inp, fontSize:11, color:STATUS_COLORS[it.status], fontWeight:700 }} value={it.status||'Ordered'} onChange={e=>updateItem(it.id,'status',e.target.value)}>
