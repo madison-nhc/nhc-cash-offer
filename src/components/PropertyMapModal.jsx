@@ -89,7 +89,7 @@ export default function PropertyMapModal({ properties: initialProperties, packag
   // Property currently open in the side drawer (null = drawer closed)
   const [drawerProp, setDrawerProp] = useState(null)
 
-  // After a save, refresh just this property from DB and update local list
+  // Refresh property data from DB after a save (keeps drawer open)
   const handleSave = useCallback(async () => {
     if (!drawerProp) return
     const { data } = await supabase
@@ -102,6 +102,23 @@ export default function PropertyMapModal({ properties: initialProperties, packag
       setDrawerProp(data)
     }
     onSaveProperty && onSaveProperty()
+  }, [drawerProp, onSaveProperty])
+
+  // Refresh data then close drawer — used as onClose in PropertyDrawer
+  // so save-on-close works correctly without the drawer re-opening
+  const handleDrawerClose = useCallback(async () => {
+    if (drawerProp) {
+      const { data } = await supabase
+        .from('cashoffer_properties')
+        .select('*')
+        .eq('id', drawerProp.id)
+        .single()
+      if (data) {
+        setProperties(prev => prev.map(p => p.id === data.id ? data : p))
+      }
+      onSaveProperty && onSaveProperty()
+    }
+    setDrawerProp(null)
   }, [drawerProp, onSaveProperty])
 
   // Wire __nhcOpenProp so info-window buttons can open the drawer
@@ -342,7 +359,7 @@ export default function PropertyMapModal({ properties: initialProperties, packag
                   </div>
                 </div>
                 <button
-                  onClick={() => setDrawerProp(null)}
+                  onClick={handleDrawerClose}
                   style={{ background: 'none', border: 'none', fontSize: 18, cursor: 'pointer', color: '#9ca3af', padding: 4 }}
                 >✕</button>
               </div>
@@ -352,7 +369,7 @@ export default function PropertyMapModal({ properties: initialProperties, packag
                 <PropertyDrawer
                   property={drawerProp}
                   open={true}
-                  onClose={() => setDrawerProp(null)}
+                  onClose={handleDrawerClose}
                   onSave={handleSave}
                   mailings={[]}
                   onViewOffer={() => {}}
