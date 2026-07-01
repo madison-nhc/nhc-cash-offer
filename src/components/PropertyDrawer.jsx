@@ -258,10 +258,10 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
             <AddressInput value={form.address||''} onChange={v=>setForm(f=>({...f,address:v}))} />
           </Field>
           <FieldRow>
-            <Field label="Beds"><input style={monoInp} type="number" value={form.beds||''} onChange={set('beds')} placeholder="3" /></Field>
-            <Field label="Baths"><input style={monoInp} type="number" value={form.baths||''} onChange={set('baths')} placeholder="2" /></Field>
-            <Field label="Sq Ft"><input style={monoInp} type="number" value={form.sqft||''} onChange={set('sqft')} placeholder="1850" /></Field>
-            <Field label="Units"><input style={monoInp} type="number" value={form.unit_count||''} onChange={set('unit_count')} placeholder="1" /></Field>
+            <Field label="Beds"><input style={monoInp} type="number" value={form.beds||''} onChange={set('beds')} /></Field>
+            <Field label="Baths"><input style={monoInp} type="number" value={form.baths||''} onChange={set('baths')} /></Field>
+            <Field label="Sq Ft"><input style={monoInp} type="number" value={form.sqft||''} onChange={set('sqft')} /></Field>
+            <Field label="Units"><input style={monoInp} type="number" value={form.unit_count||''} onChange={set('unit_count')} /></Field>
           </FieldRow>
           <FieldRow>
             <Field label="Owner">
@@ -279,15 +279,15 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
 
           <div className="drawer-section">Valuation</div>
           <Field label="After Renovation Value ($)">
-            <input style={{ ...monoInp, borderLeft:'3px solid #D97825' }} type="number" value={form.arv||''} onChange={set('arv')} placeholder="385000" />
+            <input style={{ ...monoInp, borderLeft:'3px solid #D97825' }} type="number" value={form.arv||''} onChange={set('arv')} />
           </Field>
           <FieldRow>
             <Field label="As-Is Deduction %"><input style={monoInp} type="number" value={form.asis_pct||50} onChange={set('asis_pct')} /></Field>
-            <Field label="As-Is Override ($)"><input style={monoInp} type="number" value={form.asis_override||''} onChange={set('asis_override')} placeholder="Auto" /></Field>
+            <Field label="As-Is Override ($)"><input style={monoInp} type="number" value={form.asis_override||''} onChange={set('asis_override')} /></Field>
           </FieldRow>
           <FieldRow>
             <Field label="Profit Margin %"><input style={monoInp} type="number" value={form.profit_margin||15} onChange={set('profit_margin')} /></Field>
-            <Field label="Cash Offer Override ($)"><input style={monoInp} type="number" value={form.cash_offer_override||''} onChange={set('cash_offer_override')} placeholder="Auto" /></Field>
+            <Field label="Cash Offer Override ($)"><input style={monoInp} type="number" value={form.cash_offer_override||''} onChange={set('cash_offer_override')} /></Field>
           </FieldRow>
           <FieldRow>
             <Field label="Holding % / mo"><input style={monoInp} type="number" step="0.05" value={form.hold_opt3_pct||0.5} onChange={set('hold_opt3_pct')} /></Field>
@@ -340,9 +340,9 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
             <tbody>
               {repairs.map(r=>(
                 <tr key={r.id}>
-                  <td style={{ paddingBottom:6, paddingRight:6 }}><input style={{ ...inp, fontSize:12 }} value={r.name||''} onChange={e=>updateRepair(r.id,'name',e.target.value)} placeholder="Item" /></td>
-                  <td style={{ paddingBottom:6, paddingRight:6 }}><input style={{ ...monoInp, fontSize:12, textAlign:'right' }} type="number" value={r.sqft||''} onChange={e=>updateRepair(r.id,'sqft',e.target.value)} placeholder="0" /></td>
-                  <td style={{ paddingBottom:6, paddingRight:6 }}><input style={{ ...monoInp, fontSize:12, textAlign:'right' }} type="number" step="0.01" value={r.pricePerSqft||''} onChange={e=>updateRepair(r.id,'pricePerSqft',e.target.value)} placeholder="0.00" /></td>
+                  <td style={{ paddingBottom:6, paddingRight:6 }}><input style={{ ...inp, fontSize:12 }} value={r.name||''} onChange={e=>updateRepair(r.id,'name',e.target.value)} /></td>
+                  <td style={{ paddingBottom:6, paddingRight:6 }}><input style={{ ...monoInp, fontSize:12, textAlign:'right' }} type="number" value={r.sqft||''} onChange={e=>updateRepair(r.id,'sqft',e.target.value)} /></td>
+                  <td style={{ paddingBottom:6, paddingRight:6 }}><input style={{ ...monoInp, fontSize:12, textAlign:'right' }} type="number" step="0.01" value={r.pricePerSqft||''} onChange={e=>updateRepair(r.id,'pricePerSqft',e.target.value)} /></td>
                   <td style={{ paddingBottom:6, paddingRight:6 }}>
                     <div style={{ ...monoInp, fontSize:12, textAlign:'right', background:'#FAFAF8', color:'#2C2C2C', fontWeight:600, display:'flex', alignItems:'center', justifyContent:'flex-end' }}>{r.cost?fmt(r.cost):'—'}</div>
                   </td>
@@ -358,7 +358,7 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
               View Offer PDF
             </button>
           )}
-          <Field label="Notes"><textarea style={{ ...inp, minHeight:56, resize:'vertical' }} value={form.nhc_notes||''} onChange={set('nhc_notes')} placeholder="Seller situation, offer context..." /></Field>
+          <Field label="Notes"><textarea style={{ ...inp, minHeight:56, resize:'vertical' }} value={form.nhc_notes||''} onChange={set('nhc_notes')} /></Field>
         </div>
       )}
 
@@ -433,19 +433,19 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
               <Field label="List Date"><input style={inp} type="date" value={form.list_date||''} onChange={set('list_date')} /></Field>
               <Field label="Offer Date"><input style={inp} type="date" value={form.offer_date||''} onChange={set('offer_date')} /></Field>
             </FieldRow>
-            <Field label="ARV / List Price ($)"><input style={monoInp} type="number" value={form.arv||''} onChange={set('arv')} placeholder="285000" /></Field>
+            <Field label="ARV / List Price ($)"><input style={monoInp} type="number" value={form.arv||''} onChange={set('arv')} /></Field>
             <div className="drawer-section">NHC Commission</div>
             <FieldRow>
               <Field label="Commission %">
-                <input style={monoInp} type="number" value={form.commission_pct||''} placeholder="3"
+                <input style={monoInp} type="number" value={form.commission_pct||''}
                   onChange={e=>{ const e2=calcCommission(e.target.value,form.sale_price||form.arv,form.commission_min); setForm(f=>({...f,commission_pct:e.target.value,commission_earned:e2?e2.toFixed(2):f.commission_earned})) }} />
               </Field>
               <Field label="Minimum ($)"><input style={monoInp} type="number" value={form.commission_min||5000} onChange={set('commission_min')} /></Field>
             </FieldRow>
-            <Field label="Commission Earned ($)"><input style={monoInp} type="number" value={form.commission_earned||''} onChange={set('commission_earned')} placeholder="Auto" /></Field>
+            <Field label="Commission Earned ($)"><input style={monoInp} type="number" value={form.commission_earned||''} onChange={set('commission_earned')} /></Field>
             <div className="drawer-section">Sale</div>
             <FieldRow>
-              <Field label="Sale Price ($)"><input style={monoInp} type="number" value={form.sale_price||''} onChange={set('sale_price')} placeholder="285000" /></Field>
+              <Field label="Sale Price ($)"><input style={monoInp} type="number" value={form.sale_price||''} onChange={set('sale_price')} /></Field>
               <Field label="Close Date"><input style={inp} type="date" value={form.disposition_date||''} onChange={set('disposition_date')} /></Field>
             </FieldRow>
             <Field label="Days on Market"><input style={monoInp} type="number" value={form.days_on_market||''} onChange={set('days_on_market')} /></Field>
@@ -461,20 +461,20 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
           {disp==='wholesale' && (<>
             <div className="drawer-section">Wholesale Details</div>
             <FieldRow>
-              <Field label="Contract Price ($)"><input style={monoInp} type="number" value={form.purchase_price||''} onChange={set('purchase_price')} placeholder="140000" /></Field>
-              <Field label="BPV Wholesale Fee ($)"><input style={monoInp} type="number" value={form.wholesale_fee||''} onChange={set('wholesale_fee')} placeholder="10000" /></Field>
+              <Field label="Contract Price ($)"><input style={monoInp} type="number" value={form.purchase_price||''} onChange={set('purchase_price')} /></Field>
+              <Field label="BPV Wholesale Fee ($)"><input style={monoInp} type="number" value={form.wholesale_fee||''} onChange={set('wholesale_fee')} /></Field>
             </FieldRow>
             <FieldRow>
-              <Field label="Buyer"><input style={inp} type="text" value={form.wholesale_buyer||''} onChange={set('wholesale_buyer')} placeholder="Buyer name or company" /></Field>
+              <Field label="Buyer"><input style={inp} type="text" value={form.wholesale_buyer||''} onChange={set('wholesale_buyer')} /></Field>
               <Field label="Close Date"><input style={inp} type="date" value={form.disposition_date||''} onChange={set('disposition_date')} /></Field>
             </FieldRow>
             <div className="drawer-section">NHC Commission</div>
             <FieldRow>
               <Field label="Commission %">
-                <input style={monoInp} type="number" value={form.commission_pct||''} placeholder="3"
+                <input style={monoInp} type="number" value={form.commission_pct||''}
                   onChange={e=>{ const e2=calcCommission(e.target.value,form.purchase_price,form.commission_min); setForm(f=>({...f,commission_pct:e.target.value,commission_earned:e2?e2.toFixed(2):f.commission_earned})) }} />
               </Field>
-              <Field label="Commission Earned ($)"><input style={monoInp} type="number" value={form.commission_earned||''} onChange={set('commission_earned')} placeholder="Auto" /></Field>
+              <Field label="Commission Earned ($)"><input style={monoInp} type="number" value={form.commission_earned||''} onChange={set('commission_earned')} /></Field>
             </FieldRow>
             {(form.wholesale_fee||form.commission_earned) && (
               <div style={{ display:'flex', gap:8, marginTop:4 }}>
@@ -489,25 +489,25 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
             <div className="drawer-section">Acquisition</div>
             <FieldRow>
               <Field label="Purchase Date"><input style={inp} type="date" value={form.purchase_date||''} onChange={set('purchase_date')} /></Field>
-              <Field label="Purchase Price ($)"><input style={monoInp} type="number" value={form.purchase_price||''} onChange={set('purchase_price')} placeholder="120000" /></Field>
+              <Field label="Purchase Price ($)"><input style={monoInp} type="number" value={form.purchase_price||''} onChange={set('purchase_price')} /></Field>
             </FieldRow>
             <FieldRow>
-              <Field label="Closing Costs ($)"><input style={monoInp} type="number" value={form.closing_costs||''} onChange={set('closing_costs')} placeholder="2500" /></Field>
+              <Field label="Closing Costs ($)"><input style={monoInp} type="number" value={form.closing_costs||''} onChange={set('closing_costs')} /></Field>
               <Field label="Rehab Cost ($)">
                 <input style={{ ...monoInp, color:rehabCost!==null?'#B8892A':undefined }}
                   type="number" value={rehabCost!==null?rehabCost:(form.rehab_cost||'')}
-                  onChange={e=>setForm(f=>({...f,rehab_cost:e.target.value}))} placeholder="Auto from Rehab tab" />
+                  onChange={e=>setForm(f=>({...f,rehab_cost:e.target.value}))} />
               </Field>
             </FieldRow>
             <div className="drawer-section">NHC Commission on Purchase</div>
             <FieldRow>
               <Field label="Commission %">
-                <input style={monoInp} type="number" value={form.commission_pct||''} placeholder="3"
+                <input style={monoInp} type="number" value={form.commission_pct||''}
                   onChange={e=>{ const e2=calcCommission(e.target.value,form.purchase_price,form.commission_min); setForm(f=>({...f,commission_pct:e.target.value,commission_earned:e2?e2.toFixed(2):f.commission_earned})) }} />
               </Field>
               <Field label="Minimum ($)"><input style={monoInp} type="number" value={form.commission_min||5000} onChange={set('commission_min')} /></Field>
             </FieldRow>
-            <Field label="Commission Earned ($)"><input style={monoInp} type="number" value={form.commission_earned||''} onChange={set('commission_earned')} placeholder="Auto — greater of % or minimum" /></Field>
+            <Field label="Commission Earned ($)"><input style={monoInp} type="number" value={form.commission_earned||''} onChange={set('commission_earned')} /></Field>
             <div className="drawer-section">Loan</div>
             {form.id ? (
               <button onClick={()=>setLoanOpen(true)} style={{ width:'100%', background:'#fff', border:'1.5px solid #2D6FAF', borderRadius:8, padding:'12px 16px', cursor:'pointer', fontFamily:'inherit', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
@@ -522,10 +522,10 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
             )}
             <div className="drawer-section">Resale</div>
             <FieldRow>
-              <Field label="Sale Price ($)"><input style={monoInp} type="number" value={form.sale_price||''} onChange={set('sale_price')} placeholder="215000" /></Field>
+              <Field label="Sale Price ($)"><input style={monoInp} type="number" value={form.sale_price||''} onChange={set('sale_price')} /></Field>
               <Field label="Sale Date"><input style={inp} type="date" value={form.sale_date||''} onChange={set('sale_date')} /></Field>
             </FieldRow>
-            <Field label="Days on Market"><input style={monoInp} type="number" value={form.days_on_market||''} onChange={set('days_on_market')} placeholder="24" /></Field>
+            <Field label="Days on Market"><input style={monoInp} type="number" value={form.days_on_market||''} onChange={set('days_on_market')} /></Field>
             {flipProfit!==null && (
               <div style={{ display:'flex', gap:8, flexWrap:'wrap', marginTop:4 }}>
                 <ProfitBox label="BPV Profit" value={`${flipProfit>=0?'+':''}${fmt(flipProfit)}`} color={flipProfit>=0?'#3B6D11':'#B91C1C'} sub={flipROI?`${flipROI}% ROI`:null} />
@@ -541,16 +541,16 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
             <div className="drawer-section">Acquisition</div>
             <FieldRow>
               <Field label="Purchase Date"><input style={inp} type="date" value={form.purchase_date||''} onChange={set('purchase_date')} /></Field>
-              <Field label="Purchase Price ($)"><input style={monoInp} type="number" value={form.purchase_price||''} onChange={set('purchase_price')} placeholder="120000" /></Field>
+              <Field label="Purchase Price ($)"><input style={monoInp} type="number" value={form.purchase_price||''} onChange={set('purchase_price')} /></Field>
             </FieldRow>
-            <Field label="Closing Costs ($)"><input style={monoInp} type="number" value={form.closing_costs||''} onChange={set('closing_costs')} placeholder="2500" /></Field>
+            <Field label="Closing Costs ($)"><input style={monoInp} type="number" value={form.closing_costs||''} onChange={set('closing_costs')} /></Field>
             <div className="drawer-section">NHC Commission on Purchase</div>
             <FieldRow>
               <Field label="Commission %">
-                <input style={monoInp} type="number" value={form.commission_pct||''} placeholder="3"
+                <input style={monoInp} type="number" value={form.commission_pct||''}
                   onChange={e=>{ const e2=calcCommission(e.target.value,form.purchase_price,form.commission_min); setForm(f=>({...f,commission_pct:e.target.value,commission_earned:e2?e2.toFixed(2):f.commission_earned})) }} />
               </Field>
-              <Field label="Commission Earned ($)"><input style={monoInp} type="number" value={form.commission_earned||''} onChange={set('commission_earned')} placeholder="Auto" /></Field>
+              <Field label="Commission Earned ($)"><input style={monoInp} type="number" value={form.commission_earned||''} onChange={set('commission_earned')} /></Field>
             </FieldRow>
             <div className="drawer-section">Loan</div>
             {form.id ? (
@@ -578,7 +578,7 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
               />
               {form.converted_to_sale && (<>
                 <FieldRow>
-                  <Field label="Sale Price ($)"><input style={monoInp} type="number" value={form.sale_price||''} onChange={set('sale_price')} placeholder="215000" /></Field>
+                  <Field label="Sale Price ($)"><input style={monoInp} type="number" value={form.sale_price||''} onChange={set('sale_price')} /></Field>
                   <Field label="Sale Date"><input style={inp} type="date" value={form.conversion_date||''} onChange={set('conversion_date')} /></Field>
                 </FieldRow>
                 <Field label="Conversion Disposition">
@@ -598,7 +598,7 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
           {disp==='lost' && (<>
             <div className="drawer-section">Lost / Passed Details</div>
             <Field label="Date Passed"><input style={inp} type="date" value={form.disposition_date||''} onChange={set('disposition_date')} /></Field>
-            <Field label="Reason"><textarea style={{ ...inp, minHeight:72, resize:'vertical' }} value={form.lost_reason||''} onChange={set('lost_reason')} placeholder="Why did we pass on this property?" /></Field>
+            <Field label="Reason"><textarea style={{ ...inp, minHeight:72, resize:'vertical' }} value={form.lost_reason||''} onChange={set('lost_reason')} /></Field>
           </>)}
 
           {mailings.length>0 && (<>
@@ -689,3 +689,4 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
     </Drawer>
   )
 }
+

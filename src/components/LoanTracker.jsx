@@ -185,8 +185,8 @@ function LoanForm({ loan, onSave, onCancel, onDelete }) {
   return (
     <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
       <FieldRow>
-        <Field label="Lender Name"><input style={inp} value={form.lender_name} onChange={set('lender_name')} placeholder="First National Bank" /></Field>
-        <Field label="Bank / Institution"><input style={inp} value={form.bank} onChange={set('bank')} placeholder="Bank name" /></Field>
+        <Field label="Lender Name"><input style={inp} value={form.lender_name} onChange={set('lender_name')} /></Field>
+        <Field label="Bank / Institution"><input style={inp} value={form.bank} onChange={set('bank')} /></Field>
       </FieldRow>
       <FieldRow>
         <Field label="Loan Type">
@@ -197,12 +197,12 @@ function LoanForm({ loan, onSave, onCancel, onDelete }) {
         <Field label="Loan Start Date"><input style={inp} type="date" value={form.loan_start_date} onChange={set('loan_start_date')} /></Field>
       </FieldRow>
       <FieldRow>
-        <Field label="Loan Amount ($)"><input style={monoInp} type="number" value={form.loan_amount} onChange={set('loan_amount')} placeholder="180000" /></Field>
-        <Field label="Interest Rate (%)"><input style={monoInp} type="number" step="0.01" value={form.interest_rate} onChange={set('interest_rate')} placeholder="7.25" /></Field>
-        <Field label="Term (months)"><input style={monoInp} type="number" value={form.loan_term_months} onChange={set('loan_term_months')} placeholder="360" /></Field>
+        <Field label="Loan Amount ($)"><input style={monoInp} type="number" value={form.loan_amount} onChange={set('loan_amount')} /></Field>
+        <Field label="Interest Rate (%)"><input style={monoInp} type="number" step="0.01" value={form.interest_rate} onChange={set('interest_rate')} /></Field>
+        <Field label="Term (months)"><input style={monoInp} type="number" value={form.loan_term_months} onChange={set('loan_term_months')} /></Field>
       </FieldRow>
       <Field label="Monthly Payment Override ($)">
-        <input style={monoInp} type="number" value={form.monthly_payment} onChange={set('monthly_payment')} placeholder={computedPayment ? `Auto — $${Math.round(computedPayment).toLocaleString()}` : 'Auto'} />
+        <input style={monoInp} type="number" value={form.monthly_payment} onChange={set('monthly_payment')}` : 'Auto'} />
       </Field>
 
       {/* Live summary */}
@@ -223,7 +223,7 @@ function LoanForm({ loan, onSave, onCancel, onDelete }) {
         </div>
       )}
 
-      <Field label="Notes"><textarea style={{ ...inp, minHeight:52, resize:'vertical' }} value={form.notes} onChange={set('notes')} placeholder="Hard money from ABC Capital, bridge loan..." /></Field>
+      <Field label="Notes"><textarea style={{ ...inp, minHeight:52, resize:'vertical' }} value={form.notes} onChange={set('notes')} /></Field>
 
       <div style={{ display:'flex', justifyContent:'space-between', paddingTop:8 }}>
         {!isNew && <Btn variant="danger" onClick={()=>onDelete(loan.id)}>Delete Loan</Btn>}
@@ -435,3 +435,4 @@ export default function LoanTracker({ propertyId, propertyAddress, open, onClose
     </Modal>
   )
 }
+

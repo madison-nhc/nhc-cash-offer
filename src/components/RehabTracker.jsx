@@ -139,7 +139,6 @@ export default function RehabTracker({ property, repairItems = [], onChange }) {
               type="number"
               value={budget}
               onChange={e => saveBudget(e.target.value)}
-              placeholder="0"
             />
           </div>
         </div>
@@ -212,7 +211,6 @@ export default function RehabTracker({ property, repairItems = [], onChange }) {
                 style={{ ...inp, fontSize: 12, padding: '4px 6px', marginRight: 6 }}
                 value={item.name}
                 onChange={e => updateItem(item.id, 'name', e.target.value)}
-                placeholder="Item name"
               />
               {/* Status */}
               <select
@@ -236,7 +234,6 @@ export default function RehabTracker({ property, repairItems = [], onChange }) {
                   onChange={e => { updateItem(item.id, 'vendor', e.target.value); setActiveVendorId(item.id) }}
                   onBlur={() => setTimeout(() => setActiveVendorId(null), 150)}
                   onFocus={() => setActiveVendorId(item.id)}
-                  placeholder="Vendor"
                 />
                 {activeVendorId === item.id && vendors.filter(v =>
                   v.toLowerCase().includes((item.vendor || '').toLowerCase()) && v !== item.vendor
@@ -270,7 +267,6 @@ export default function RehabTracker({ property, repairItems = [], onChange }) {
                 type="number"
                 value={item.actual_cost !== null && item.actual_cost !== undefined ? item.actual_cost : ''}
                 onChange={e => updateItem(item.id, 'actual_cost', e.target.value === '' ? null : parseFloat(e.target.value) || 0)}
-                placeholder="$"
               />
               {/* Delete */}
               <button
@@ -292,3 +288,4 @@ export default function RehabTracker({ property, repairItems = [], onChange }) {
     </div>
   )
 }
+
