@@ -4,6 +4,7 @@ import { supabase } from './lib/supabase.js'
 import Analyzer from './pages/Analyzer.jsx'
 import PropertyDrawer from './components/PropertyDrawer.jsx'
 import Rehabs from './pages/Rehabs.jsx'
+import Supplies from './pages/Supplies.jsx'
 import Listings from './pages/Listings.jsx'
 import Holds from './pages/Holds.jsx'
 import Wholesale from './pages/Wholesale.jsx'
@@ -84,6 +85,7 @@ function GlobalSearch({ onSelect, mobile }) {
 const TABS = [
   { id:'analyzer',   label:'Analyzer',        short:'Analyze',   path:'/analyzer' },
   { id:'rehabs',     label:'Rehabs',           short:'Rehabs',    path:'/rehabs' },
+  { id:'supplies',   label:'Supplies',         short:'Supplies',  path:'/supplies' },
   { id:'holds',      label:'Holds',            short:'Holds',     path:'/holds' },
   { id:'listings',   label:'Listings',         short:'Listings',  path:'/listings' },
   { id:'wholesale',  label:'Wholesale',        short:'Wholesale', path:'/wholesale' },
@@ -144,6 +146,7 @@ export default function App() {
   const pages = {
     analyzer:  <Analyzer openPropertyId={targetProperty?.id} openInPackage={!!targetProperty?.package_id} onOpenedTarget={() => setTargetProperty(null)} onOpenNew={() => setNewPropertyOpen(true)} />,
     rehabs:    <Rehabs />,
+    supplies:  <Supplies />,
     listings:  <Listings />,
     holds:     <Holds />,
     wholesale: <Wholesale />,

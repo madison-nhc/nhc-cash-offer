@@ -6,6 +6,9 @@ import AddressInput from './AddressInput.jsx'
 import RehabTracker from './RehabTracker.jsx'
 import LoanTracker from './LoanTracker.jsx'
 import RentTracker from './RentTracker.jsx'
+import LoanOverview from './LoanOverview.jsx'
+import RentOverview from './RentOverview.jsx'
+import SuppliesTracker from './SuppliesTracker.jsx'
 
 // ── Type options (primary) ────────────────────────────────────────────────────
 const TYPE_OPTIONS = [
@@ -133,6 +136,7 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
   const [rehabCost, setRehabCost] = useState(null)
   const [loanOpen, setLoanOpen] = useState(false)
   const [rentOpen, setRentOpen] = useState(false)
+  const [suppliesOpen, setSuppliesOpen] = useState(false)
 
   const isNew   = !form.id
   const type       = form.type || 'Analyzing'
@@ -253,9 +257,19 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
     onSave(); onClose()
   }
 
+  const showLoanTab = type==='Flip' || type==='Hold' || form.acquisition_type==='Pre-Owned'
+  const showRentTab = type==='Hold'
+
+  useEffect(() => {
+    if (tab==='loan' && !showLoanTab) setTab('analyzer')
+    if (tab==='rent' && !showRentTab) setTab('analyzer')
+  }, [showLoanTab, showRentTab]) // eslint-disable-line react-hooks/exhaustive-deps
+
   const TABS = [
     { key:'analyzer',    label:'Analyzer' },
     { key:'rehab',       label:'Rehab' },
+    ...(showLoanTab ? [{ key:'loan', label:'Loan' }] : []),
+    ...(showRentTab ? [{ key:'rent', label:'Rent' }] : []),
     { key:'disposition', label:'Disposition' },
   ]
 
@@ -449,11 +463,44 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
             </div>
           </div>
 
-          {form.id ? (
+          {form.id ? (<>
             <RehabTracker property={form} repairItems={repairs} onChange={total=>setRehabCost(total)} />
-          ) : (
+            <button onClick={()=>setSuppliesOpen(true)} style={{ width:'100%', background:'#fff', border:'1.5px solid #B8892A', borderRadius:8, padding:'12px 16px', cursor:'pointer', fontFamily:'inherit', display:'flex', alignItems:'center', justifyContent:'space-between', marginTop:4 }}>
+              <div style={{ textAlign:'left' }}>
+                <div style={{ fontSize:13, fontWeight:700, color:'#B8892A' }}>Supplies</div>
+                <div style={{ fontSize:11, color:'#9ca3af', marginTop:2 }}>Materials purchased — cost, vendor, status</div>
+              </div>
+              <span style={{ fontSize:18, color:'#B8892A' }}>→</span>
+            </button>
+          </>) : (
             <div style={{ background:'#F0EDE6', borderRadius:8, padding:'14px', textAlign:'center', fontSize:12, color:'#9ca3af' }}>
               Save the property first to track rehab line items.
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ══════════════ LOAN TAB ══════════════ */}
+      {tab==='loan' && (
+        <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
+          {form.id ? (
+            <LoanOverview propertyId={form.id} onOpenFull={()=>setLoanOpen(true)} />
+          ) : (
+            <div style={{ background:'#F0EDE6', borderRadius:8, padding:'14px', textAlign:'center', fontSize:12, color:'#9ca3af' }}>
+              Save the property first to add loan details.
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ══════════════ RENT TAB ══════════════ */}
+      {tab==='rent' && (
+        <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
+          {form.id ? (
+            <RentOverview propertyId={form.id} onOpenFull={()=>setRentOpen(true)} />
+          ) : (
+            <div style={{ background:'#F0EDE6', borderRadius:8, padding:'14px', textAlign:'center', fontSize:12, color:'#9ca3af' }}>
+              Save the property first to add lease details.
             </div>
           )}
         </div>
@@ -556,18 +603,6 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
               <Field label="Minimum ($)"><input style={monoInp} type="number" value={form.commission_min||5000} onChange={set('commission_min')} /></Field>
             </FieldRow>
             <Field label="Commission Earned ($)"><input style={monoInp} type="number" value={form.commission_earned||''} onChange={set('commission_earned')} /></Field>
-            <div className="drawer-section">Loan</div>
-            {form.id ? (
-              <button onClick={()=>setLoanOpen(true)} style={{ width:'100%', background:'#fff', border:'1.5px solid #2D6FAF', borderRadius:8, padding:'12px 16px', cursor:'pointer', fontFamily:'inherit', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
-                <div style={{ textAlign:'left' }}>
-                  <div style={{ fontSize:13, fontWeight:700, color:'#2D6FAF' }}>View Loan Details</div>
-                  <div style={{ fontSize:11, color:'#9ca3af', marginTop:2 }}>Amortization schedule, refi history, current balance</div>
-                </div>
-                <span style={{ fontSize:18, color:'#2D6FAF' }}>→</span>
-              </button>
-            ) : (
-              <div style={{ background:'#F0EDE6', borderRadius:8, padding:'12px 14px', fontSize:12, color:'#9ca3af', textAlign:'center' }}>Save property first to add loan details.</div>
-            )}
             <div className="drawer-section">Resale</div>
             <FieldRow>
               <Field label="Sale Price ($)"><input style={monoInp} type="number" value={form.sale_price||''} onChange={set('sale_price')} /></Field>
@@ -600,30 +635,6 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
               </Field>
               <Field label="Commission Earned ($)"><input style={monoInp} type="number" value={form.commission_earned||''} onChange={set('commission_earned')} /></Field>
             </FieldRow>
-            <div className="drawer-section">Loan</div>
-            {form.id ? (
-              <button onClick={()=>setLoanOpen(true)} style={{ width:'100%', background:'#fff', border:'1.5px solid #2D6FAF', borderRadius:8, padding:'12px 16px', cursor:'pointer', fontFamily:'inherit', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
-                <div style={{ textAlign:'left' }}>
-                  <div style={{ fontSize:13, fontWeight:700, color:'#2D6FAF' }}>View Loan Details</div>
-                  <div style={{ fontSize:11, color:'#9ca3af', marginTop:2 }}>Amortization schedule, refi history, current balance</div>
-                </div>
-                <span style={{ fontSize:18, color:'#2D6FAF' }}>→</span>
-              </button>
-            ) : (
-              <div style={{ background:'#F0EDE6', borderRadius:8, padding:'12px 14px', fontSize:12, color:'#9ca3af', textAlign:'center' }}>Save property first to add loan details.</div>
-            )}
-            <div className="drawer-section">Rent</div>
-            {form.id ? (
-              <button onClick={()=>setRentOpen(true)} style={{ width:'100%', background:'#fff', border:'1.5px solid #3B6D11', borderRadius:8, padding:'12px 16px', cursor:'pointer', fontFamily:'inherit', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
-                <div style={{ textAlign:'left' }}>
-                  <div style={{ fontSize:13, fontWeight:700, color:'#3B6D11' }}>View Rent & Leases</div>
-                  <div style={{ fontSize:11, color:'#9ca3af', marginTop:2 }}>Lease terms, monthly payment log, collected vs expected</div>
-                </div>
-                <span style={{ fontSize:18, color:'#3B6D11' }}>→</span>
-              </button>
-            ) : (
-              <div style={{ background:'#F0EDE6', borderRadius:8, padding:'12px 14px', fontSize:12, color:'#9ca3af', textAlign:'center' }}>Save property first to add lease details.</div>
-            )}
             <div className="drawer-section">Sale</div>
             <div style={{ background:'#FAFAF8', borderRadius:8, padding:'12px 14px', border:'0.5px solid #D6D2CA' }}>
               {stage==='Sold' ? (<>
@@ -679,6 +690,14 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
         open={rentOpen}
         onClose={()=>setRentOpen(false)}
         onRentChange={()=>onSave()}
+      />
+
+      {/* Supplies Tracker modal */}
+      <SuppliesTracker
+        propertyId={form.id}
+        propertyAddress={form.address}
+        open={suppliesOpen}
+        onClose={()=>setSuppliesOpen(false)}
       />
 
       <div style={{ display:'flex', justifyContent:'space-between', marginTop:20, paddingTop:16, borderTop:'1px solid #F0EDE6' }}>
