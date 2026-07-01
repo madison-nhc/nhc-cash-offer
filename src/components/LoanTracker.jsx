@@ -202,7 +202,7 @@ function LoanForm({ loan, onSave, onCancel, onDelete }) {
         <Field label="Term (months)"><input style={monoInp} type="number" value={form.loan_term_months} onChange={set('loan_term_months')} /></Field>
       </FieldRow>
       <Field label="Monthly Payment Override ($)">
-        <input style={monoInp} type="number" value={form.monthly_payment} onChange={set('monthly_payment')}` : 'Auto'} />
+        <input style={monoInp} type="number" value={form.monthly_payment} onChange={set('monthly_payment')} />
       </Field>
 
       {/* Live summary */}
@@ -435,4 +435,5 @@ export default function LoanTracker({ propertyId, propertyAddress, open, onClose
     </Modal>
   )
 }
+
 
