@@ -1,40 +1,21 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase.js'
 import { useIsMobile } from '../hooks/useIsMobile.js'
-import { PageWrap, SectionBar, Card, Btn, Badge, EmptyState, LoadingSpinner, fmt, useSort, SortTh } from '../components/ui.jsx'
+import { PageWrap, SectionBar, Card, Btn, EmptyState, LoadingSpinner, fmt, useSort, SortTh } from '../components/ui.jsx'
 import PropertyDrawer from '../components/PropertyDrawer.jsx'
 import ProposalModal from '../components/ProposalModal.jsx'
 import PackageDeals from './PackageDeals.jsx'
 import MobileCard, { CardRow, CardLabel, CardValue } from '../components/MobileCard.jsx'
 
-const DISP_COLOR = { listing:'#3B6D11', wholesale:'#6b21a8', flip:'#D97825', hold:'#B8892A', lost:'#9ca3af' }
-const DISP_LABEL = { listing:'Listing', wholesale:'Wholesale', flip:'Flip', hold:'Hold', lost:'Lost' }
-
 function calcCashOffer(p) {
-  const arv = parseFloat(p.arv)||0
+  const arv = parseFloat(p.arv) || 0
   if (!arv) return null
-  const reno = (p.repair_items||[]).reduce((s,r)=>s+(parseFloat(r.cost)||0),0)
-  const commCash = (parseFloat(p.comm_cash_pct)||9)/100
-  const profitPct = (parseFloat(p.profit_margin)||15)/100
-  const profit = p.profit_override ? parseFloat(p.profit_override) : arv*profitPct
-  const cashHold = (parseFloat(p.hold_cash_pct)||0.75)/100*(parseFloat(p.hold_cash_months)||6)*arv
-  return p.cash_offer_override ? parseFloat(p.cash_offer_override) : arv-reno-(commCash*arv)-cashHold-profit
-}
-
-const DISP_FILTERS = [
-  { key:'all',       label:'All' },
-  { key:'analyzing', label:'Analyzing' },
-  { key:'listing',   label:'Listings' },
-  { key:'flip',      label:'Flips' },
-  { key:'hold',      label:'Holds' },
-  { key:'wholesale', label:'Wholesale' },
-  { key:'lost',      label:'Lost / Passed' },
-]
-
-function matchesDispFilter(p, key) {
-  if (key === 'all') return true
-  if (key === 'analyzing') return !p.disposition
-  return p.disposition === key
+  const reno = (p.repair_items || []).reduce((s, r) => s + (parseFloat(r.cost) || 0), 0)
+  const commCash = (parseFloat(p.comm_cash_pct) || 9) / 100
+  const profitPct = (parseFloat(p.profit_margin) || 15) / 100
+  const profit = p.profit_override ? parseFloat(p.profit_override) : arv * profitPct
+  const cashHold = (parseFloat(p.hold_cash_pct) || 0.75) / 100 * (parseFloat(p.hold_cash_months) || 6) * arv
+  return p.cash_offer_override ? parseFloat(p.cash_offer_override) : arv - reno - (commCash * arv) - cashHold - profit
 }
 
 export default function Analyzer({ openPropertyId, openInPackage, onOpenedTarget } = {}) {
@@ -44,18 +25,12 @@ export default function Analyzer({ openPropertyId, openInPackage, onOpenedTarget
   const [loading, setLoading] = useState(true)
   const [drawer, setDrawer] = useState(null)
   const [proposal, setProposal] = useState(null)
-  const [filter, setFilter] = useState('analyzing')
   const [search, setSearch] = useState('')
   const [packageTargetId, setPackageTargetId] = useState(null)
   const mobile = useIsMobile()
 
   useEffect(() => { load() }, [])
 
-  // A property picked from the global search arrives here as an id. If it's
-  // a standalone property, open its drawer directly. If it's nested inside
-  // a package, this page doesn't normally load package properties at all
-  // (see load() below), so fetch it on its own and hand off to the
-  // Package Deals tab, which owns that property's actual drawer.
   useEffect(() => {
     if (!openPropertyId) return
     if (openInPackage) {
@@ -74,26 +49,33 @@ export default function Analyzer({ openPropertyId, openInPackage, onOpenedTarget
 
   async function load() {
     setLoading(true)
-    const [{ data:p }, { data:m }] = await Promise.all([
-      supabase.from('cashoffer_properties').select('*').is('package_id',null).order('updated_at',{ascending:false}),
-      supabase.from('cashoffer_mailings').select('id,campaign_name,drop_date').order('drop_date',{ascending:false}),
+    const [{ data: p }, { data: m }] = await Promise.all([
+      // Analyzer only shows properties that haven't been given a disposition yet
+      supabase.from('cashoffer_properties').select('*')
+        .is('package_id', null)
+        .is('disposition', null)
+        .order('updated_at', { ascending: false }),
+      supabase.from('cashoffer_mailings').select('id,campaign_name,drop_date').order('drop_date', { ascending: false }),
     ])
-    setProperties(p||[])
-    setMailings(m||[])
+    setProperties(p || [])
+    setMailings(m || [])
     setLoading(false)
   }
 
-  const EMPTY = { address:'', status:'analyzing', arv:'', asis_pct:50, profit_margin:15, comm_cash_pct:9, comm_list_pct:6, hold_cash_pct:0.75, hold_cash_months:6, hold_opt2_pct:0.5, hold_opt2_months:3, hold_opt3_pct:0.5, hold_opt3_months:6, repair_items:[] }
+  const EMPTY = {
+    address: '', arv: '', asis_pct: 50, profit_margin: 15,
+    comm_cash_pct: 9, comm_list_pct: 6, hold_cash_pct: 0.75, hold_cash_months: 6,
+    hold_opt2_pct: 0.5, hold_opt2_months: 3, hold_opt3_pct: 0.5, hold_opt3_months: 6,
+    repair_items: []
+  }
 
-  const filtered = properties.filter(p => {
-    const matchFilter = matchesDispFilter(p, filter)
-    const matchSearch = !search || p.address?.toLowerCase().includes(search.toLowerCase())
-    return matchFilter && matchSearch
-  })
+  const filtered = properties.filter(p =>
+    !search || p.address?.toLowerCase().includes(search.toLowerCase())
+  )
 
   const { sorted, sortKey, sortDir, toggleSort } = useSort(filtered, 'updated_at', 'desc', {
     cash_offer: p => calcCashOffer(p),
-    rehab: p => (p.repair_items||[]).reduce((s,r)=>s+(parseFloat(r.cost)||0),0),
+    rehab: p => (p.repair_items || []).reduce((s, r) => s + (parseFloat(r.cost) || 0), 0),
   })
 
   if (loading) return <LoadingSpinner />
@@ -102,108 +84,106 @@ export default function Analyzer({ openPropertyId, openInPackage, onOpenedTarget
     <PageWrap>
       <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:16 }}>
         <div>
-          <h1 style={{ fontSize:mobile?18:20, fontWeight:700, color:'#2C2C2C' }}>Property Analyzer</h1>
-          <p style={{ fontSize:12, color:'#6b7280', marginTop:2 }}>Single properties and package deals</p>
+          <h1 style={{ fontSize: mobile ? 18 : 20, fontWeight:700, color:'#2C2C2C' }}>Property Analyzer</h1>
+          <p style={{ fontSize:12, color:'#6b7280', marginTop:2 }}>Properties being evaluated · no disposition yet</p>
         </div>
-        {tab==='properties' && <Btn onClick={()=>setDrawer({...EMPTY})} style={{ fontSize:12, padding:'7px 14px' }}>+ New</Btn>}
+        {tab === 'properties' && <Btn onClick={() => setDrawer({ ...EMPTY })} style={{ fontSize:12, padding:'7px 14px' }}>+ New Property</Btn>}
       </div>
 
       {/* Page tabs */}
       <div style={{ display:'flex', gap:2, marginBottom:16 }}>
-        {[['properties','Single Properties'],['packages','Package Deals']].map(([t,l])=>(
-          <button key={t} onClick={()=>setTab(t)} style={{ padding:'7px 16px', border:'none', borderRadius:6, cursor:'pointer', background:tab===t?'#2C2C2C':'#F0EDE6', color:tab===t?'#fff':'#6b7280', fontSize:12, fontWeight:tab===t?700:400, fontFamily:'inherit' }}>{l}</button>
+        {[['properties', 'Single Properties'], ['packages', 'Package Deals']].map(([t, l]) => (
+          <button key={t} onClick={() => setTab(t)} style={{ padding:'7px 16px', border:'none', borderRadius:6, cursor:'pointer', background: tab === t ? '#2C2C2C' : '#F0EDE6', color: tab === t ? '#fff' : '#6b7280', fontSize:12, fontWeight: tab === t ? 700 : 400, fontFamily:'inherit' }}>{l}</button>
         ))}
       </div>
 
-      {tab==='packages' && <PackageDeals embedded openPropertyId={packageTargetId} onOpenedTarget={()=>setPackageTargetId(null)} />}
+      {tab === 'packages' && <PackageDeals embedded openPropertyId={packageTargetId} onOpenedTarget={() => setPackageTargetId(null)} />}
 
-      {tab==='properties' && (<>
-        {/* Filters */}
-        <div style={{ display:'flex', gap:8, marginBottom:14, alignItems:'center', flexWrap:'wrap' }}>
-          <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search address..." style={{ padding:'6px 12px', border:'1px solid #D6D2CA', borderRadius:6, fontSize:13, fontFamily:'inherit', outline:'none', flex:1, minWidth:140 }} />
-          <div style={{ display:'flex', gap:4, flexWrap:'wrap' }}>
-            {DISP_FILTERS.map(({key,label})=>{
-              const count = properties.filter(p=>matchesDispFilter(p,key)).length
-              return (
-                <button key={key} onClick={()=>setFilter(key)} style={{ padding:'6px 14px', border:'none', borderRadius:6, cursor:'pointer', background:filter===key?'#2C2C2C':'#F0EDE6', color:filter===key?'#fff':'#6b7280', fontSize:12, fontWeight:filter===key?700:400, fontFamily:'inherit', whiteSpace:'nowrap' }}>{label} ({count})</button>
-              )
-            })}
+      {tab === 'properties' && (
+        <>
+          {/* Search */}
+          <div style={{ marginBottom:14 }}>
+            <input
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="Search address..."
+              style={{ padding:'6px 12px', border:'1px solid #D6D2CA', borderRadius:6, fontSize:13, fontFamily:'inherit', outline:'none', width:'100%', maxWidth:360 }}
+            />
           </div>
-        </div>
 
-        <SectionBar>Properties ({filtered.length})</SectionBar>
+          <SectionBar>Analyzing ({filtered.length})</SectionBar>
 
-        {filtered.length===0 ? <EmptyState icon="○" text="No properties here yet." /> : mobile ? (
-          <div style={{ marginTop:8 }}>
-            {filtered.map(p=>{
-              const cashOffer = calcCashOffer(p)
-              return (
-                <MobileCard key={p.id} onClick={()=>setDrawer(p)} accent={p.disposition?DISP_COLOR[p.disposition]:'#B8892A'}>
-                  <CardRow>
-                    <span style={{ fontSize:14, fontWeight:700, color:'#2C2C2C', flex:1, marginRight:8 }}>{p.address}</span>
-                    {p.disposition
-                      ? <Badge color={DISP_COLOR[p.disposition]}>{DISP_LABEL[p.disposition]}</Badge>
-                      : <span style={{ fontSize:10, color:'#B8892A', fontWeight:600 }}>Analyzing</span>}
-                  </CardRow>
-                  <CardRow style={{ marginTop:6 }}>
-                    {p.arv && <div><CardLabel>ARV</CardLabel><CardValue mono>{fmt(p.arv)}</CardValue></div>}
-                    {cashOffer && <div><CardLabel>Cash Offer</CardLabel><CardValue mono color="#3B6D11">{fmt(cashOffer)}</CardValue></div>}
-                  </CardRow>
-                </MobileCard>
-              )
-            })}
-          </div>
-        ) : (
-          <Card style={{ padding:0 }}>
-            <table style={{ width:'100%', borderCollapse:'collapse' }}>
-              <thead>
-                <tr style={{ background:'#F0EDE6' }}>
-                  <SortTh sortKeyName="address" {...{sortKey,sortDir,toggleSort}}>Address</SortTh>
-                  <SortTh sortKeyName="cash_offer" {...{sortKey,sortDir,toggleSort}}>Cash Offer</SortTh>
-                  <SortTh sortKeyName="rehab" {...{sortKey,sortDir,toggleSort}}>Est. Rehab</SortTh>
-                  <SortTh sortKeyName="arv" {...{sortKey,sortDir,toggleSort}}>ARV</SortTh>
-                  <SortTh sortKeyName="disposition" {...{sortKey,sortDir,toggleSort}}>Disposition</SortTh>
-                  <SortTh sortKeyName="updated_at" {...{sortKey,sortDir,toggleSort}}>Updated</SortTh>
-                  <th style={{ padding:'8px 14px' }}></th>
-                </tr>
-              </thead>
-              <tbody>
-                {sorted.map((p,i)=>{
-                  const cashOffer = calcCashOffer(p)
-                  return (
-                    <tr key={p.id} onClick={()=>setDrawer(p)}
-                      style={{ background:i%2===0?'#fff':'#FAFAF8', borderTop:'0.5px solid #F0EDE6', cursor:'pointer' }}
-                      onMouseEnter={e=>e.currentTarget.style.background='#fef9f0'}
-                      onMouseLeave={e=>e.currentTarget.style.background=i%2===0?'#fff':'#FAFAF8'}>
-                      <td style={{ padding:'10px 14px' }}>
-                        <div style={{ fontSize:13, fontWeight:600 }}>{p.address}</div>
-                        <div style={{ fontSize:11, color:'#9ca3af', marginTop:1 }}>
-                          {[p.unit_count>1&&`${p.unit_count} units`,p.beds&&`${p.beds}bd`,p.baths&&`${p.baths}ba`,p.sqft&&`${parseInt(p.sqft).toLocaleString()}sf`].filter(Boolean).join(' · ')}
-                        </div>
-                      </td>
-                      <td style={{ padding:'10px 14px', fontSize:13, fontFamily:'monospace', color:'#3B6D11', fontWeight:600 }}>{cashOffer?fmt(cashOffer):'—'}</td>
-                      <td style={{ padding:'10px 14px', fontSize:13, fontFamily:'monospace', color:'#6b7280' }}>{(p.repair_items||[]).reduce((s,r)=>s+(parseFloat(r.cost)||0),0)>0?fmt((p.repair_items||[]).reduce((s,r)=>s+(parseFloat(r.cost)||0),0)):'—'}</td>
-                      <td style={{ padding:'10px 14px', fontSize:13, fontFamily:'monospace', fontWeight:700 }}>{fmt(p.arv)||'—'}</td>
-                      <td style={{ padding:'10px 14px' }}>
-                        {p.disposition
-                          ? <Badge color={DISP_COLOR[p.disposition]}>{DISP_LABEL[p.disposition]}</Badge>
-                          : <span style={{ fontSize:11, color:'#B8892A', fontWeight:600 }}>Analyzing</span>}
-                      </td>
-                      <td style={{ padding:'10px 14px', fontSize:11, color:'#9ca3af' }}>{new Date(p.updated_at).toLocaleDateString()}</td>
-                      <td style={{ padding:'10px 10px' }} onClick={e=>e.stopPropagation()}>
-                        {p.arv && <button onClick={()=>setProposal(p)} style={{ background:'#2D6FAF', color:'#fff', border:'none', borderRadius:4, padding:'4px 10px', fontSize:11, fontWeight:600, cursor:'pointer', fontFamily:'inherit', whiteSpace:'nowrap' }}>Offer PDF</button>}
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-          </Card>
-        )}
-      </>)}
+          {filtered.length === 0 ? (
+            <EmptyState icon="○" text="No properties being analyzed. Click + New Property to add one." />
+          ) : mobile ? (
+            <div style={{ marginTop:8 }}>
+              {filtered.map(p => {
+                const cashOffer = calcCashOffer(p)
+                return (
+                  <MobileCard key={p.id} onClick={() => setDrawer(p)} accent="#B8892A">
+                    <CardRow>
+                      <span style={{ fontSize:14, fontWeight:700, color:'#2C2C2C', flex:1, marginRight:8 }}>{p.address}</span>
+                      <span style={{ fontSize:10, color:'#B8892A', fontWeight:600 }}>Analyzing</span>
+                    </CardRow>
+                    <CardRow style={{ marginTop:6 }}>
+                      {p.arv && <div><CardLabel>ARV</CardLabel><CardValue mono>{fmt(p.arv)}</CardValue></div>}
+                      {cashOffer && <div><CardLabel>Cash Offer</CardLabel><CardValue mono color="#3B6D11">{fmt(cashOffer)}</CardValue></div>}
+                    </CardRow>
+                  </MobileCard>
+                )
+              })}
+            </div>
+          ) : (
+            <Card style={{ padding:0 }}>
+              <table style={{ width:'100%', borderCollapse:'collapse' }}>
+                <thead>
+                  <tr style={{ background:'#F0EDE6' }}>
+                    <SortTh sortKeyName="address"    {...{sortKey,sortDir,toggleSort}}>Address</SortTh>
+                    <SortTh sortKeyName="cash_offer" {...{sortKey,sortDir,toggleSort}}>Cash Offer</SortTh>
+                    <SortTh sortKeyName="rehab"      {...{sortKey,sortDir,toggleSort}}>Est. Rehab</SortTh>
+                    <SortTh sortKeyName="arv"        {...{sortKey,sortDir,toggleSort}}>ARV</SortTh>
+                    <SortTh sortKeyName="updated_at" {...{sortKey,sortDir,toggleSort}}>Updated</SortTh>
+                    <th style={{ padding:'8px 14px' }}></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {sorted.map((p, i) => {
+                    const cashOffer = calcCashOffer(p)
+                    const rehabTotal = (p.repair_items || []).reduce((s, r) => s + (parseFloat(r.cost) || 0), 0)
+                    return (
+                      <tr key={p.id} onClick={() => setDrawer(p)}
+                        style={{ background: i % 2 === 0 ? '#fff' : '#FAFAF8', borderTop:'0.5px solid #F0EDE6', cursor:'pointer' }}
+                        onMouseEnter={e => e.currentTarget.style.background = '#fef9f0'}
+                        onMouseLeave={e => e.currentTarget.style.background = i % 2 === 0 ? '#fff' : '#FAFAF8'}>
+                        <td style={{ padding:'10px 14px' }}>
+                          <div style={{ fontSize:13, fontWeight:600 }}>{p.address}</div>
+                          <div style={{ fontSize:11, color:'#9ca3af', marginTop:1 }}>
+                            {[p.unit_count > 1 && `${p.unit_count} units`, p.beds && `${p.beds}bd`, p.baths && `${p.baths}ba`, p.sqft && `${parseInt(p.sqft).toLocaleString()}sf`].filter(Boolean).join(' · ')}
+                          </div>
+                        </td>
+                        <td style={{ padding:'10px 14px', fontSize:13, fontFamily:'monospace', color:'#3B6D11', fontWeight:600 }}>{cashOffer ? fmt(cashOffer) : '—'}</td>
+                        <td style={{ padding:'10px 14px', fontSize:13, fontFamily:'monospace', color:'#6b7280' }}>{rehabTotal > 0 ? fmt(rehabTotal) : '—'}</td>
+                        <td style={{ padding:'10px 14px', fontSize:13, fontFamily:'monospace', fontWeight:700 }}>{fmt(p.arv) || '—'}</td>
+                        <td style={{ padding:'10px 14px', fontSize:11, color:'#9ca3af' }}>{new Date(p.updated_at).toLocaleDateString()}</td>
+                        <td style={{ padding:'10px 10px' }} onClick={e => e.stopPropagation()}>
+                          {p.arv && (
+                            <button onClick={() => setProposal(p)} style={{ background:'#2D6FAF', color:'#fff', border:'none', borderRadius:4, padding:'4px 10px', fontSize:11, fontWeight:600, cursor:'pointer', fontFamily:'inherit', whiteSpace:'nowrap' }}>
+                              Offer PDF
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </Card>
+          )}
+        </>
+      )}
 
-      <PropertyDrawer property={drawer} open={!!drawer} onClose={()=>setDrawer(null)} onSave={()=>load()} mailings={mailings} onViewOffer={p=>setProposal(p)} />
-      {proposal && <ProposalModal property={proposal} onClose={()=>setProposal(null)} />}
+      <PropertyDrawer property={drawer} open={!!drawer} onClose={() => setDrawer(null)} onSave={() => load()} mailings={mailings} onViewOffer={p => setProposal(p)} />
+      {proposal && <ProposalModal property={proposal} onClose={() => setProposal(null)} />}
     </PageWrap>
   )
 }

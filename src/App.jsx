@@ -83,8 +83,8 @@ function GlobalSearch({ onSelect, mobile }) {
 const TABS = [
   { id:'analyzer',   label:'Analyzer',        short:'Analyze',   path:'/analyzer' },
   { id:'rehabs',     label:'Rehabs',           short:'Rehabs',    path:'/rehabs' },
-  { id:'listings',   label:'Listings',         short:'Listings',  path:'/listings' },
   { id:'holds',      label:'Holds',            short:'Holds',     path:'/holds' },
+  { id:'listings',   label:'Listings',         short:'Listings',  path:'/listings' },
   { id:'wholesale',  label:'Wholesale',        short:'Wholesale', path:'/wholesale' },
   { id:'sold',       label:'Sold',             short:'Sold',      path:'/sold' },
   { id:'mailings',   label:'Mailing Tracker',  short:'Mailers',   path:'/mailings' },
