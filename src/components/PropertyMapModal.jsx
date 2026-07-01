@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, useCallback } from 'react'
 import PropertyDrawer from './PropertyDrawer.jsx'
 import { supabase } from '../lib/supabase.js'
 
-const GMAPS_API_KEY = 'AIzaSyD1t3hw0au4bO6byD5y6bW0YvpyWb4f1nI'
+const GMAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_KEY
 
 const CITY_COLORS = {
   'Lancaster':     '#E63946',
@@ -383,3 +383,4 @@ export default function PropertyMapModal({ properties: initialProperties, packag
     </div>
   )
 }
+
