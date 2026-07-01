@@ -53,10 +53,19 @@ export default function SuppliesTracker({ propertyId, propertyAddress, open, onC
           </div>
         </div>
         <table style={{ width:'100%', borderCollapse:'collapse' }}>
+          <colgroup>
+            <col style={{ width:'28%' }} />
+            <col style={{ width:'10%' }} />
+            <col style={{ width:'16%' }} />
+            <col style={{ width:'14%' }} />
+            <col style={{ width:'20%' }} />
+            <col style={{ width:'14%' }} />
+            <col style={{ width:'24px' }} />
+          </colgroup>
           <thead>
             <tr>
               {['Name','Qty','Unit Cost','Total','Vendor/Store','Status',''].map((h,i)=>(
-                <th key={h} style={{ textAlign:i>0&&i<6?'right':'left', fontSize:10, color:'#9ca3af', fontWeight:600, textTransform:'uppercase', letterSpacing:0.5, paddingBottom:6 }}>{h}</th>
+                <th key={h} style={{ textAlign:i>0&&i<6?'right':'left', fontSize:10, color:'#9ca3af', fontWeight:600, textTransform:'uppercase', letterSpacing:0.5, paddingBottom:6, paddingRight:i>0&&i<6?10:0 }}>{h}</th>
               ))}
             </tr>
           </thead>
