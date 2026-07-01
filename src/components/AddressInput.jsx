@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { inp } from './ui.jsx'
 
-const GMAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_KEY
+const GMAPS_API_KEY = import.meta.env.VITE_GOOGLE_PLACES_KEY
 
 // Shared loader — reuses script if already injected (e.g. by PropertyMapModal)
 let placesLoading = null
