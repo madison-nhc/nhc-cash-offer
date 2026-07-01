@@ -55,7 +55,7 @@ function calcOffers(p, repairs) {
   }
 }
 
-export default function PropertyDrawer({ property, open, onClose, onSave, mailings=[], onViewOffer }) {
+export default function PropertyDrawer({ property, open, onClose, onSave, mailings=[], onViewOffer, inlineMode=false }) {
   const [form, setForm] = useState({})
   const [repairs, setRepairs] = useState([])
   const [income, setIncome] = useState([])
@@ -193,19 +193,7 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
 
   if (!property) return null
 
-  return (
-    <Drawer open={open} onClose={handleClose} width={580}
-      title={form.address||'New Property'}
-      subtitle={
-        <div style={{ display:'flex', alignItems:'center', gap:8, marginTop:4 }}>
-          {dispLabel && (
-            <span style={{ background:dispColor+'20', color:dispColor, border:`1px solid ${dispColor}40`, borderRadius:4, padding:'2px 8px', fontSize:11, fontWeight:700, textTransform:'uppercase', letterSpacing:0.8 }}>
-              {dispLabel}
-            </span>
-          )}
-          {!dispLabel && <span style={{ fontSize:11, color:'#9ca3af' }}>Analyzing</span>}
-        </div>
-      }>
+  const innerContent = (
 
       {/* Tab switcher */}
       <div style={{ display:'flex', gap:0, borderBottom:'2px solid #F0EDE6', marginBottom:16, marginTop:8 }}>
@@ -566,7 +554,28 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
         {!isNew && <Btn variant="danger" onClick={del}>Delete</Btn>}
         <Btn variant="outline" onClick={handleClose} style={{ marginLeft:'auto' }}>Close</Btn>
       </div>
+  )
+
+  if (inlineMode) {
+    return <div style={{ padding:'0 16px 24px' }}>{innerContent}</div>
+  }
+
+  return (
+    <Drawer open={open} onClose={handleClose} width={580}
+      title={form.address||'New Property'}
+      subtitle={
+        <div style={{ display:'flex', alignItems:'center', gap:8, marginTop:4 }}>
+          {dispLabel && (
+            <span style={{ background:dispColor+'20', color:dispColor, border:`1px solid ${dispColor}40`, borderRadius:4, padding:'2px 8px', fontSize:11, fontWeight:700, textTransform:'uppercase', letterSpacing:0.8 }}>
+              {dispLabel}
+            </span>
+          )}
+          {!dispLabel && <span style={{ fontSize:11, color:'#9ca3af' }}>Analyzing</span>}
+        </div>
+      }>
+      {innerContent}
     </Drawer>
   )
 }
+
 
