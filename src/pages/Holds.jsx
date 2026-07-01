@@ -1,37 +1,70 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase.js'
 import { useIsMobile } from '../hooks/useIsMobile.js'
-import { PageWrap, SectionBar, Card, EmptyState, LoadingSpinner, StatCard, fmt, fmtK } from '../components/ui.jsx'
+import { PageWrap, SectionBar, Card, Badge, EmptyState, LoadingSpinner, fmt, fmtK, useSort, SortTh } from '../components/ui.jsx'
 import PropertyDrawer from '../components/PropertyDrawer.jsx'
+
+function MiniStat({ label, value, sub, color = '#2C2C2C' }) {
+  return (
+    <div style={{ display:'flex', flexDirection:'column', gap:2 }}>
+      <div style={{ fontSize:10, color:'#9ca3af', textTransform:'uppercase', letterSpacing:0.7 }}>{label}</div>
+      <div style={{ fontSize:22, fontWeight:700, fontFamily:'monospace', color }}>{value ?? '—'}</div>
+      {sub && <div style={{ fontSize:10, color:'#9ca3af' }}>{sub}</div>}
+    </div>
+  )
+}
 
 export default function Holds() {
   const mobile = useIsMobile()
   const [properties, setProperties] = useState([])
-  const [income, setIncome] = useState([])
+  const [leases, setLeases] = useState([])
+  const [loans, setLoans] = useState([])
   const [mailings, setMailings] = useState([])
   const [loading, setLoading] = useState(true)
   const [drawer, setDrawer] = useState(null)
+  const [filter, setFilter] = useState('active')
 
   useEffect(() => { load() }, [])
 
   async function load() {
     setLoading(true)
-    const [{ data:p }, { data:i }, { data:m }] = await Promise.all([
-      supabase.from('cashoffer_properties').select('*').eq('investment_type','hold').order('purchase_date',{ascending:false}),
-      supabase.from('cashoffer_property_income').select('*').order('income_month',{ascending:false}),
-      supabase.from('cashoffer_mailings').select('id,campaign_name,drop_date'),
+    const [{ data: p }, { data: l }, { data: ln }, { data: m }] = await Promise.all([
+      supabase.from('cashoffer_properties').select('*').eq('disposition', 'hold').order('purchase_date', { ascending: false }),
+      supabase.from('cashoffer_leases').select('*').eq('status', 'Active'),
+      supabase.from('cashoffer_loans').select('*').eq('is_active', true),
+      supabase.from('cashoffer_mailings').select('id,campaign_name,drop_date').order('drop_date', { ascending: false }),
     ])
-    setProperties(p||[])
-    setIncome(i||[])
-    setMailings(m||[])
+    setProperties(p || [])
+    setLeases(l || [])
+    setLoans(ln || [])
+    setMailings(m || [])
     setLoading(false)
   }
 
-  const totalRent   = income.reduce((s,i)=>s+(parseFloat(i.rent_received)||0),0)
-  const totalExp    = income.reduce((s,i)=>s+(parseFloat(i.expenses)||0),0)
-  const netIncome   = totalRent - totalExp
-  const totalEquity = properties.reduce((s,p)=>s+Math.max(0,(parseFloat(p.arv)||0)-(parseFloat(p.mortgage_amount)||0)),0)
-  const totalMortgage = properties.reduce((s,p)=>s+(parseFloat(p.monthly_payment)||0),0)
+  const active    = properties.filter(p => !p.converted_to_sale)
+  const converted = properties.filter(p =>  p.converted_to_sale)
+
+  // Monthly rent = sum of all active leases for a property
+  function monthlyRent(propId) {
+    return leases.filter(l => l.property_id === propId).reduce((s, l) => s + (parseFloat(l.rent_amount) || 0), 0)
+  }
+  // Active loan monthly payment
+  function loanPayment(propId) {
+    const loan = loans.find(l => l.property_id === propId)
+    return loan ? (parseFloat(loan.monthly_payment) || 0) : 0
+  }
+
+  const totalMonthlyRent    = active.reduce((s, p) => s + monthlyRent(p.id), 0)
+  const totalLoanPayments   = active.reduce((s, p) => s + loanPayment(p.id), 0)
+  const totalMonthlyCashFlow = totalMonthlyRent - totalLoanPayments
+
+  const filtered = filter === 'active' ? active : filter === 'converted' ? converted : properties
+
+  const { sorted, sortKey, sortDir, toggleSort } = useSort(filtered, 'purchase_date', 'desc', {
+    rent: p => monthlyRent(p.id),
+    payment: p => loanPayment(p.id),
+    cashflow: p => monthlyRent(p.id) - loanPayment(p.id),
+  })
 
   if (loading) return <LoadingSpinner />
 
@@ -40,96 +73,83 @@ export default function Holds() {
       <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:20 }}>
         <div>
           <h1 style={{ fontSize:20, fontWeight:700, color:'#2C2C2C' }}>Holds</h1>
-          <p style={{ fontSize:12, color:'#6b7280', marginTop:2 }}>BE Property Ventures · rental income and equity tracking</p>
+          <p style={{ fontSize:12, color:'#6b7280', marginTop:2 }}>Rental properties · loan and rent tracking</p>
         </div>
       </div>
 
-      {/* Reporting */}
-      <div style={{ display:'grid', gridTemplateColumns: mobile ? 'repeat(2,1fr)' : 'repeat(5,1fr)', gap:12, marginBottom:20 }}>
-        <StatCard label="Active Holds" value={properties.filter(p=>p.status==='active').length} topColor="#2D6FAF" />
-        <StatCard label="Total Rent Collected" value={fmtK(totalRent)} sub="all time" topColor="#3B6D11" />
-        <StatCard label="Total Expenses" value={fmtK(totalExp)} sub="all time" topColor="#D97825" />
-        <StatCard label="Net Income" value={fmtK(netIncome)} sub="rent minus expenses" topColor={netIncome>=0?'#3B6D11':'#B91C1C'} />
-        <StatCard label="Est. Total Equity" value={fmtK(totalEquity)} sub="ARV minus mortgage" topColor="#B8892A" />
+      {/* Stat cards */}
+      <div style={{ display:'grid', gridTemplateColumns: mobile ? '1fr 1fr' : 'repeat(4,1fr)', gap:12, marginBottom:24 }}>
+        {[
+          { label:'Active Holds',     value: active.length,                                                              color:'#B8892A' },
+          { label:'Monthly Rent',     value: totalMonthlyRent > 0 ? fmtK(totalMonthlyRent) : '—',                        color:'#3B6D11' },
+          { label:'Loan Payments',    value: totalLoanPayments > 0 ? fmtK(totalLoanPayments) : '—',                      color:'#D97825' },
+          { label:'Monthly Cash Flow',value: totalMonthlyCashFlow !== 0 ? fmtK(totalMonthlyCashFlow) : '—',              color: totalMonthlyCashFlow >= 0 ? '#3B6D11' : '#B91C1C' },
+        ].map(({ label, value, color }) => (
+          <div key={label} style={{ background:'#fff', border:'0.5px solid #D6D2CA', borderRadius:8, borderTop:`3px solid ${color}`, padding:'12px 16px' }}>
+            <div style={{ fontSize:10, color:'#9ca3af', textTransform:'uppercase', letterSpacing:0.8, marginBottom:6 }}>{label}</div>
+            <div style={{ fontSize:24, fontWeight:700, color, fontFamily:'monospace' }}>{value}</div>
+          </div>
+        ))}
       </div>
 
-      <SectionBar>Hold Properties ({properties.length})</SectionBar>
+      {/* Filter pills */}
+      <div style={{ display:'flex', gap:4, marginBottom:14 }}>
+        {[['active',`Active (${active.length})`],['converted',`Converted to Sale (${converted.length})`],['all',`All (${properties.length})`]].map(([f,l])=>(
+          <button key={f} onClick={()=>setFilter(f)} style={{ padding:'5px 14px', border:'none', borderRadius:4, cursor:'pointer', background:filter===f?'#2C2C2C':'#F0EDE6', color:filter===f?'#fff':'#6b7280', fontSize:11, fontWeight:filter===f?700:400, fontFamily:'inherit', whiteSpace:'nowrap' }}>{l}</button>
+        ))}
+      </div>
 
-      {properties.length===0 ? <EmptyState icon="⌂" text="No hold properties yet. Add one in the Analyzer and set Investment Type to Hold." /> : (
-        properties.map((p,i)=>{
-          const propIncome = income.filter(inc=>inc.property_id===p.id)
-          const propRent   = propIncome.reduce((s,inc)=>s+(parseFloat(inc.rent_received)||0),0)
-          const propExp    = propIncome.reduce((s,inc)=>s+(parseFloat(inc.expenses)||0),0)
-          const propNet    = propRent - propExp
-          const equity     = Math.max(0,(parseFloat(p.arv)||0)-(parseFloat(p.mortgage_amount)||0))
+      <SectionBar>Hold Properties ({filtered.length})</SectionBar>
 
-          return (
-            <Card key={p.id} style={{ marginTop:10, padding:0, overflow:'hidden' }}>
-              {/* Property header */}
-              <div onClick={()=>setDrawer(p)} style={{ display:'flex', alignItems:'center', gap:12, padding:'13px 16px', cursor:'pointer', background:'#fff', transition:'background 0.12s' }}
-                onMouseEnter={e=>e.currentTarget.style.background='#fef9f0'}
-                onMouseLeave={e=>e.currentTarget.style.background='#fff'}>
-                <div style={{ flex:1 }}>
-                  <div style={{ fontWeight:700, fontSize:14, color:'#2C2C2C' }}>{p.address}</div>
-                  <div style={{ fontSize:11, color:'#6b7280', marginTop:2, display:'flex', gap:12 }}>
-                    {p.purchase_date && <span>Purchased {new Date(p.purchase_date+'T12:00:00').toLocaleDateString()}</span>}
-                    {p.monthly_payment && <span>{fmt(p.monthly_payment)}/mo mortgage</span>}
-                    <span>{propIncome.length} months recorded</span>
-                  </div>
-                </div>
-                <div style={{ textAlign:'right' }}>
-                  <div style={{ fontSize:13, fontFamily:'monospace', fontWeight:700, color:propNet>=0?'#3B6D11':'#B91C1C' }}>{propNet>=0?'+':''}{fmt(propNet)}</div>
-                  <div style={{ fontSize:11, color:'#6b7280' }}>net income</div>
-                </div>
-                <div style={{ textAlign:'right', marginLeft:16 }}>
-                  <div style={{ fontSize:13, fontFamily:'monospace', fontWeight:700 }}>{fmt(equity)}</div>
-                  <div style={{ fontSize:11, color:'#6b7280' }}>equity</div>
-                </div>
-                <div style={{ fontSize:18, color:'#D6D2CA', marginLeft:8 }}>›</div>
-              </div>
-
-              {/* Income history */}
-              {propIncome.length>0 && (
-                <div style={{ borderTop:'1px solid #F0EDE6' }}>
-                  <table style={{ width:'100%', borderCollapse:'collapse', minWidth: mobile ? 0 : 600 }}>
-                    <thead><tr style={{ background:'#F0EDE6' }}>
-                      {['Month','Rent','Expenses','Net','Notes'].map(h=><th key={h} style={{ padding:'5px 14px', textAlign:'left', fontSize:10, fontWeight:600, color:'#9ca3af', textTransform:'uppercase' }}>{h}</th>)}
-                    </tr></thead>
-                    <tbody>
-                      {propIncome.map((inc,j)=>{
-                        const net=(parseFloat(inc.rent_received)||0)-(parseFloat(inc.expenses)||0)
-                        return (
-                          <tr key={inc.id} style={{ background:j%2===0?'#fff':'#FAFAF8', borderTop:'0.5px solid #F0EDE6' }}>
-                            <td style={{ padding:'7px 14px', fontSize:13 }}>{inc.income_month?new Date(inc.income_month+'-01').toLocaleDateString('en-US',{month:'short',year:'numeric'}):'—'}</td>
-                            <td style={{ padding:'7px 14px', fontSize:13, fontFamily:'monospace', color:'#3B6D11' }}>{fmt(inc.rent_received)}</td>
-                            <td style={{ padding:'7px 14px', fontSize:13, fontFamily:'monospace', color:'#B91C1C' }}>{fmt(inc.expenses)}</td>
-                            <td style={{ padding:'7px 14px', fontSize:13, fontFamily:'monospace', fontWeight:700, color:net>=0?'#3B6D11':'#B91C1C' }}>{net>=0?'+':''}{fmt(net)}</td>
-                            <td style={{ padding:'7px 14px', fontSize:12, color:'#6b7280' }}>{inc.notes||'—'}</td>
-                          </tr>
-                        )
-                      })}
-                    </tbody>
-                    <tfoot><tr style={{ borderTop:'2px solid #D6D2CA', background:'#F0EDE6' }}>
-                      <td style={{ padding:'7px 14px', fontSize:11, fontWeight:700 }}>TOTAL</td>
-                      <td style={{ padding:'7px 14px', fontSize:13, fontFamily:'monospace', fontWeight:700, color:'#3B6D11' }}>{fmt(propRent)}</td>
-                      <td style={{ padding:'7px 14px', fontSize:13, fontFamily:'monospace', fontWeight:700, color:'#B91C1C' }}>{fmt(propExp)}</td>
-                      <td style={{ padding:'7px 14px', fontSize:13, fontFamily:'monospace', fontWeight:700, color:propNet>=0?'#3B6D11':'#B91C1C' }}>{propNet>=0?'+':''}{fmt(propNet)}</td>
-                      <td />
-                    </tr></tfoot>
-                  </table>
-                </div>
-              )}
-              {propIncome.length===0 && (
-                <div style={{ borderTop:'1px solid #F0EDE6', padding:'10px 16px', background:'#FAFAF8', fontSize:12, color:'#9ca3af' }}>
-                  No income recorded yet — open the property and add months in the Investment tab.
-                </div>
-              )}
-            </Card>
-          )
-        })
+      {filtered.length === 0 ? (
+        <EmptyState icon="○" text="No hold properties yet. Set disposition to Hold on a property in the Analyzer." />
+      ) : (
+        <Card style={{ padding:0 }}>
+          <table style={{ width:'100%', borderCollapse:'collapse' }}>
+            <thead>
+              <tr style={{ background:'#F0EDE6' }}>
+                <SortTh sortKeyName="address"       {...{sortKey,sortDir,toggleSort}}>Address</SortTh>
+                <SortTh sortKeyName="owner"         {...{sortKey,sortDir,toggleSort}}>Owner</SortTh>
+                <SortTh sortKeyName="purchase_price"  {...{sortKey,sortDir,toggleSort}}>Purchase</SortTh>
+                <SortTh sortKeyName="rent"          {...{sortKey,sortDir,toggleSort}}>Monthly Rent</SortTh>
+                <SortTh sortKeyName="payment"       {...{sortKey,sortDir,toggleSort}}>Loan Pmt</SortTh>
+                <SortTh sortKeyName="cashflow"      {...{sortKey,sortDir,toggleSort}}>Cash Flow</SortTh>
+                <SortTh sortKeyName="purchase_date" {...{sortKey,sortDir,toggleSort}}>Purchased</SortTh>
+              </tr>
+            </thead>
+            <tbody>
+              {sorted.map((p, i) => {
+                const rent      = monthlyRent(p.id)
+                const payment   = loanPayment(p.id)
+                const cashflow  = rent - payment
+                return (
+                  <tr key={p.id} onClick={() => setDrawer(p)}
+                    style={{ background:i%2===0?'#fff':'#FAFAF8', borderTop:'0.5px solid #F0EDE6', cursor:'pointer' }}
+                    onMouseEnter={e=>e.currentTarget.style.background='#fef9f0'}
+                    onMouseLeave={e=>e.currentTarget.style.background=i%2===0?'#fff':'#FAFAF8'}>
+                    <td style={{ padding:'10px 14px', fontSize:13, fontWeight:600 }}>
+                      <div>{p.address}</div>
+                      {p.converted_to_sale && <div style={{ fontSize:10, color:'#9ca3af', marginTop:2 }}>Converted to Sale</div>}
+                    </td>
+                    <td style={{ padding:'10px 14px', fontSize:12, color:'#6b7280' }}>{p.owner || 'BPV'}</td>
+                    <td style={{ padding:'10px 14px', fontSize:13, fontFamily:'monospace' }}>{fmt(p.purchase_price) || '—'}</td>
+                    <td style={{ padding:'10px 14px', fontSize:13, fontFamily:'monospace', color:'#3B6D11', fontWeight: rent > 0 ? 700 : 400 }}>{rent > 0 ? fmt(rent) : '—'}</td>
+                    <td style={{ padding:'10px 14px', fontSize:13, fontFamily:'monospace', color:'#D97825' }}>{payment > 0 ? fmt(payment) : '—'}</td>
+                    <td style={{ padding:'10px 14px', fontSize:13, fontFamily:'monospace', fontWeight:700, color: cashflow >= 0 ? '#3B6D11' : '#B91C1C' }}>
+                      {rent > 0 || payment > 0 ? `${cashflow >= 0 ? '+' : ''}${fmt(cashflow)}` : '—'}
+                    </td>
+                    <td style={{ padding:'10px 14px', fontSize:12, color:'#9ca3af' }}>
+                      {p.purchase_date ? new Date(p.purchase_date+'T12:00:00').toLocaleDateString() : '—'}
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </Card>
       )}
 
-      <PropertyDrawer property={drawer} open={!!drawer} onClose={()=>setDrawer(null)} onSave={()=>{ load() }} mailings={mailings} />
+      <PropertyDrawer property={drawer} open={!!drawer} onClose={() => setDrawer(null)} onSave={() => load()} mailings={mailings} />
     </PageWrap>
   )
 }

@@ -1,10 +1,12 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useIsMobile } from './hooks/useIsMobile.js'
 import { supabase } from './lib/supabase.js'
-import Dashboard from './pages/Dashboard.jsx'
 import Analyzer from './pages/Analyzer.jsx'
-import NHCDeals from './pages/NHCDeals.jsx'
-import BPVInvestments from './pages/BPVInvestments.jsx'
+import Rehabs from './pages/Rehabs.jsx'
+import Listings from './pages/Listings.jsx'
+import Holds from './pages/Holds.jsx'
+import Wholesale from './pages/Wholesale.jsx'
+import Sold from './pages/Sold.jsx'
 import MailingTracker from './pages/MailingTracker.jsx'
 
 function GlobalSearch({ onSelect, mobile }) {
@@ -20,18 +22,17 @@ function GlobalSearch({ onSelect, mobile }) {
     const timer = setTimeout(async () => {
       const { data } = await supabase
         .from('cashoffer_properties')
-        .select('id,address,disposition,package_id,arv')
+        .select('id,address,disposition,package_id,arv,rehab_active')
         .ilike('address', `%${query.trim()}%`)
-        .order('updated_at', { ascending:false })
+        .order('updated_at', { ascending: false })
         .limit(8)
       setResults(data || [])
       setOpen(true)
       setLoading(false)
-    }, 250) // debounce so we don't fire a query on every keystroke
+    }, 250)
     return () => clearTimeout(timer)
   }, [query])
 
-  // Close the results dropdown on outside click
   useEffect(() => {
     function onClick(e) { if (boxRef.current && !boxRef.current.contains(e.target)) setOpen(false) }
     window.addEventListener('mousedown', onClick)
@@ -51,24 +52,26 @@ function GlobalSearch({ onSelect, mobile }) {
     <div ref={boxRef} style={{ position:'relative', width: mobile ? '100%' : 220, marginLeft: mobile ? 0 : 'auto' }}>
       <input
         value={query}
-        onChange={e=>setQuery(e.target.value)}
-        onFocus={()=>{ if (results.length) setOpen(true) }}
+        onChange={e => setQuery(e.target.value)}
+        onFocus={() => { if (results.length) setOpen(true) }}
         placeholder="Search deals..."
         style={{ width:'100%', padding:'6px 10px', border:'1px solid #D6D2CA', borderRadius:6, fontSize:12, fontFamily:'inherit', outline:'none', background:'#FAFAF8' }}
       />
       {open && (
         <div style={{ position:'absolute', top:'calc(100% + 4px)', right:0, width: mobile ? '100%' : 320, maxHeight:320, overflowY:'auto', background:'#fff', border:'1px solid #D6D2CA', borderRadius:8, boxShadow:'0 4px 16px rgba(0,0,0,0.12)', zIndex:300 }}>
-          {loading && <div style={{ padding:'10px 14px', fontSize:12, color:'#9ca3af' }}>Searching…</div>}
-          {!loading && results.length===0 && <div style={{ padding:'10px 14px', fontSize:12, color:'#9ca3af' }}>No matching properties</div>}
-          {!loading && results.map(p=>(
-            <div key={p.id} onClick={()=>pick(p)} style={{ padding:'9px 14px', cursor:'pointer', borderBottom:'1px solid #F0EDE6', display:'flex', alignItems:'center', justifyContent:'space-between', gap:8 }}
-              onMouseEnter={e=>e.currentTarget.style.background='#fef9f0'}
-              onMouseLeave={e=>e.currentTarget.style.background='#fff'}>
+          {loading && <div style={{ padding:'10px 14px', fontSize:12, color:'#9ca3af' }}>Searching...</div>}
+          {!loading && results.length === 0 && <div style={{ padding:'10px 14px', fontSize:12, color:'#9ca3af' }}>No matching properties</div>}
+          {!loading && results.map(p => (
+            <div key={p.id} onClick={() => pick(p)} style={{ padding:'9px 14px', cursor:'pointer', borderBottom:'1px solid #F0EDE6', display:'flex', alignItems:'center', justifyContent:'space-between', gap:8 }}
+              onMouseEnter={e => e.currentTarget.style.background='#fef9f0'}
+              onMouseLeave={e => e.currentTarget.style.background='#fff'}>
               <div style={{ minWidth:0 }}>
                 <div style={{ fontSize:13, fontWeight:600, color:'#2C2C2C', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{p.address}</div>
-                {p.package_id && <div style={{ fontSize:10, color:'#6b21a8', marginTop:1 }}>In package</div>}
+                {p.rehab_active && <div style={{ fontSize:10, color:'#D97825', marginTop:1 }}>Active Rehab</div>}
               </div>
-              <span style={{ fontSize:10, color:'#B8892A', fontWeight:600, whiteSpace:'nowrap', flexShrink:0 }}>{p.disposition ? DISP_LABEL[p.disposition] : 'Analyzing'}</span>
+              <span style={{ fontSize:10, color:'#B8892A', fontWeight:600, whiteSpace:'nowrap', flexShrink:0 }}>
+                {p.disposition ? DISP_LABEL[p.disposition] : 'Analyzing'}
+              </span>
             </div>
           ))}
         </div>
@@ -78,11 +81,13 @@ function GlobalSearch({ onSelect, mobile }) {
 }
 
 const TABS = [
-  { id:'dashboard',    label:'Dashboard',        short:'Home',    path:'/' },
-  { id:'analyzer',     label:'Analyzer',          short:'Analyze', path:'/analyzer' },
-  { id:'nhc',          label:'NHC Deals',         short:'NHC',     path:'/nhc' },
-  { id:'bpv',          label:'BPV Investments',   short:'BPV',     path:'/bpv' },
-  { id:'mailings',     label:'Mailing Tracker',   short:'Mailers', path:'/mailings' },
+  { id:'analyzer',   label:'Analyzer',        short:'Analyze',   path:'/analyzer' },
+  { id:'rehabs',     label:'Rehabs',           short:'Rehabs',    path:'/rehabs' },
+  { id:'listings',   label:'Listings',         short:'Listings',  path:'/listings' },
+  { id:'holds',      label:'Holds',            short:'Holds',     path:'/holds' },
+  { id:'wholesale',  label:'Wholesale',        short:'Wholesale', path:'/wholesale' },
+  { id:'sold',       label:'Sold',             short:'Sold',      path:'/sold' },
+  { id:'mailings',   label:'Mailing Tracker',  short:'Mailers',   path:'/mailings' },
 ]
 
 function tabForPath(pathname) {
@@ -91,14 +96,11 @@ function tabForPath(pathname) {
 }
 
 function pathForTab(tab) {
-  return TABS.find(t => t.id === tab)?.path || '/'
+  return TABS.find(t => t.id === tab)?.path || '/analyzer'
 }
 
-// Resolve the initial tab from the URL first (so a refresh or a bookmarked
-// link lands on the right page), falling back to the old localStorage value
-// for anyone who had a tab open before this routing existed, then dashboard.
 function initialTab() {
-  return tabForPath(window.location.pathname) || localStorage.getItem('nhc_hub_tab') || 'dashboard'
+  return tabForPath(window.location.pathname) || localStorage.getItem('nhc_hub_tab') || 'analyzer'
 }
 
 export default function App() {
@@ -106,9 +108,6 @@ export default function App() {
   const [targetProperty, setTargetProperty] = useState(null)
   const mobile = useIsMobile()
 
-  // navigate() is called from clicks inside the app — it pushes a new
-  // history entry so the browser's back/forward buttons have something
-  // real to move between, instead of every tab sharing the same URL.
   const navigate = useCallback((tab) => {
     localStorage.setItem('nhc_hub_tab', tab)
     const path = pathForTab(tab)
@@ -118,12 +117,9 @@ export default function App() {
     setActive(tab)
   }, [])
 
-  // popstate fires when the user clicks the browser's back/forward
-  // buttons — sync React state to whatever the URL now is rather than
-  // letting the browser navigate to a path the SPA never registered.
   useEffect(() => {
     function onPopState() {
-      const tab = tabForPath(window.location.pathname) || 'dashboard'
+      const tab = tabForPath(window.location.pathname) || 'analyzer'
       localStorage.setItem('nhc_hub_tab', tab)
       setActive(tab)
     }
@@ -131,29 +127,25 @@ export default function App() {
     return () => window.removeEventListener('popstate', onPopState)
   }, [])
 
-  // If we landed here via the localStorage fallback (URL didn't match a
-  // known tab — e.g. first load after this update), normalize the URL to
-  // match so subsequent back/forward behaves correctly from this point on.
   useEffect(() => {
     const path = pathForTab(active)
     if (window.location.pathname !== path) {
       window.history.replaceState({ tab: active }, '', path)
     }
-  }, [])
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Search results jump straight into the Analyzer with that property's
-  // drawer pre-opened, regardless of whether it's a standalone property
-  // or one nested inside a package deal.
   const handleSearchSelect = useCallback((property) => {
     setTargetProperty(property)
     navigate('analyzer')
   }, [navigate])
 
   const pages = {
-    dashboard: <Dashboard onNavigate={navigate} />,
-    analyzer:  <Analyzer openPropertyId={targetProperty?.id} openInPackage={!!targetProperty?.package_id} onOpenedTarget={()=>setTargetProperty(null)} />,
-    nhc:       <NHCDeals />,
-    bpv:       <BPVInvestments />,
+    analyzer:  <Analyzer openPropertyId={targetProperty?.id} openInPackage={!!targetProperty?.package_id} onOpenedTarget={() => setTargetProperty(null)} />,
+    rehabs:    <Rehabs />,
+    listings:  <Listings />,
+    holds:     <Holds />,
+    wholesale: <Wholesale />,
+    sold:      <Sold />,
     mailings:  <MailingTracker />,
   }
 
@@ -171,8 +163,14 @@ export default function App() {
 
           {!mobile && (
             <div style={{ display:'flex', gap:2, marginLeft:16 }}>
-              {TABS.map(t=>(
-                <button key={t.id} onClick={()=>navigate(t.id)} style={{ background:active===t.id?'#B8892A':'transparent', color:active===t.id?'#fff':'#6b7280', border:'none', borderRadius:4, padding:'5px 12px', cursor:'pointer', fontSize:12, fontWeight:active===t.id?700:400, letterSpacing:0.3, whiteSpace:'nowrap', fontFamily:'inherit', transition:'all 0.15s' }}>
+              {TABS.map(t => (
+                <button key={t.id} onClick={() => navigate(t.id)} style={{
+                  background: active === t.id ? '#B8892A' : 'transparent',
+                  color: active === t.id ? '#fff' : '#6b7280',
+                  border:'none', borderRadius:4, padding:'5px 12px',
+                  cursor:'pointer', fontSize:12, fontWeight: active === t.id ? 700 : 400,
+                  letterSpacing:0.3, whiteSpace:'nowrap', fontFamily:'inherit', transition:'all 0.15s'
+                }}>
                   {t.label}
                 </button>
               ))}
@@ -183,21 +181,20 @@ export default function App() {
 
           {mobile && (
             <span style={{ fontSize:13, fontWeight:700, color:'#2C2C2C', flex:1, textAlign:'center' }}>
-              {TABS.find(t=>t.id===active)?.label||''}
+              {TABS.find(t => t.id === active)?.label || ''}
             </span>
           )}
         </div>
 
         {mobile && (
           <div style={{ display:'flex', overflowX:'auto', padding:'0 8px 8px', gap:6, WebkitOverflowScrolling:'touch', scrollbarWidth:'none' }}>
-            {TABS.map(t=>(
-              <button key={t.id} onClick={()=>navigate(t.id)} style={{
-                background:active===t.id?'#B8892A':'#F0EDE6',
-                color:active===t.id?'#fff':'#6b7280',
+            {TABS.map(t => (
+              <button key={t.id} onClick={() => navigate(t.id)} style={{
+                background: active === t.id ? '#B8892A' : '#F0EDE6',
+                color: active === t.id ? '#fff' : '#6b7280',
                 border:'none', borderRadius:20, padding:'5px 14px',
-                cursor:'pointer', fontSize:12, fontWeight:active===t.id?700:500,
-                whiteSpace:'nowrap', fontFamily:'inherit', flexShrink:0,
-                transition:'all 0.15s'
+                cursor:'pointer', fontSize:12, fontWeight: active === t.id ? 700 : 500,
+                whiteSpace:'nowrap', fontFamily:'inherit', flexShrink:0, transition:'all 0.15s'
               }}>{t.short}</button>
             ))}
           </div>
