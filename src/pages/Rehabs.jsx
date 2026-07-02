@@ -49,8 +49,6 @@ export default function Rehabs({ onOpenSupplies }) {
     return est > 0 ? Math.min(100, Math.round((done/est)*100)) : 0
   }
 
-  const totalEstBudget = properties.reduce((s,p) => s+estCost(p.id), 0)
-  const totalActual    = properties.reduce((s,p) => s+actCost(p.id), 0)
   const byRehabStage   = {}
   REHAB_STAGES.forEach(st => { byRehabStage[st] = properties.filter(p=>(p.rehab_stage||'Not Started')===st).length })
 
@@ -81,12 +79,11 @@ export default function Rehabs({ onOpenSupplies }) {
       </div>
 
       {/* Stat cards */}
-      <div style={{ display:'grid', gridTemplateColumns:mobile?'1fr 1fr':'repeat(4,1fr)', gap:12, marginBottom:24 }}>
+      <div style={{ display:'grid', gridTemplateColumns:mobile?'1fr 1fr':'repeat(3,1fr)', gap:12, marginBottom:24 }}>
         {[
-          { label:'Active Rehabs',  value:properties.length,                                                      color:'#D97825' },
-          { label:'Est. Budget',    value:totalEstBudget>0?fmtK(totalEstBudget):'—',                              color:'#2C2C2C' },
-          { label:'Actual Spend',   value:totalActual>0?fmtK(totalActual):'—',                                    color:totalActual>totalEstBudget?'#B91C1C':'#3B6D11' },
+          { label:'Not Started',    value:byRehabStage['Not Started']||0,                                         color:'#9ca3af' },
           { label:'In Progress',    value:properties.filter(p=>p.rehab_stage&&p.rehab_stage!=='Not Started'&&p.rehab_stage!=='Complete').length, color:'#B8892A' },
+          { label:'Completed',      value:byRehabStage['Complete']||0,                                            color:'#3B6D11' },
         ].map(({label,value,color})=>(
           <div key={label} style={{ background:'#fff', border:'0.5px solid #D6D2CA', borderRadius:8, borderTop:`3px solid ${color}`, padding:'12px 16px' }}>
             <div style={{ fontSize:10, color:'#9ca3af', textTransform:'uppercase', letterSpacing:0.8, marginBottom:6 }}>{label}</div>
