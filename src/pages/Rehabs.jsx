@@ -52,7 +52,9 @@ export default function Rehabs({ onOpenSupplies }) {
   const byRehabStage   = {}
   REHAB_STAGES.forEach(st => { byRehabStage[st] = properties.filter(p=>(p.rehab_stage||'Not Started')===st).length })
 
-  const filtered = stageFilter==='all' ? properties : properties.filter(p=>(p.rehab_stage||'Not Started')===stageFilter)
+  const filtered = stageFilter==='all' ? properties
+    : stageFilter==='in_progress' ? properties.filter(p=>{ const st=p.rehab_stage||'Not Started'; return st!=='Not Started' && st!=='Complete' })
+    : properties.filter(p=>(p.rehab_stage||'Not Started')===stageFilter)
 
   const { sorted, sortKey, sortDir, toggleSort } = useSort(filtered, 'rehab_start_date', 'desc', {
     stage:       p => REHAB_STAGES.indexOf(p.rehab_stage||'Not Started'),
@@ -81,15 +83,25 @@ export default function Rehabs({ onOpenSupplies }) {
       {/* Stat cards */}
       <div style={{ display:'grid', gridTemplateColumns:mobile?'1fr 1fr':'repeat(3,1fr)', gap:12, marginBottom:24 }}>
         {[
-          { label:'Not Started',    value:byRehabStage['Not Started']||0,                                         color:'#9ca3af' },
-          { label:'In Progress',    value:properties.filter(p=>p.rehab_stage&&p.rehab_stage!=='Not Started'&&p.rehab_stage!=='Complete').length, color:'#B8892A' },
-          { label:'Completed',      value:byRehabStage['Complete']||0,                                            color:'#3B6D11' },
-        ].map(({label,value,color})=>(
-          <div key={label} style={{ background:'#fff', border:'0.5px solid #D6D2CA', borderRadius:8, borderTop:`3px solid ${color}`, padding:'12px 16px' }}>
-            <div style={{ fontSize:10, color:'#9ca3af', textTransform:'uppercase', letterSpacing:0.8, marginBottom:6 }}>{label}</div>
-            <div style={{ fontSize:24, fontWeight:700, color, fontFamily:'monospace' }}>{value}</div>
-          </div>
-        ))}
+          { label:'Not Started',    value:byRehabStage['Not Started']||0,                                         color:'#9ca3af', filterVal:'Not Started' },
+          { label:'In Progress',    value:properties.filter(p=>p.rehab_stage&&p.rehab_stage!=='Not Started'&&p.rehab_stage!=='Complete').length, color:'#B8892A', filterVal:'in_progress' },
+          { label:'Completed',      value:byRehabStage['Complete']||0,                                            color:'#3B6D11', filterVal:'Complete' },
+        ].map(({label,value,color,filterVal})=>{
+          const active = stageFilter===filterVal
+          return (
+            <button key={label}
+              onClick={()=>setStageFilter(active ? 'all' : filterVal)}
+              style={{
+                background: active ? color+'12' : '#fff',
+                border: active ? `1.5px solid ${color}` : '0.5px solid #D6D2CA',
+                borderTop:`3px solid ${color}`, borderRadius:8, padding:'12px 16px',
+                cursor:'pointer', textAlign:'left', fontFamily:'inherit',
+              }}>
+              <div style={{ fontSize:10, color:'#9ca3af', textTransform:'uppercase', letterSpacing:0.8, marginBottom:6 }}>{label}</div>
+              <div style={{ fontSize:24, fontWeight:700, color, fontFamily:'monospace' }}>{value}</div>
+            </button>
+          )
+        })}
       </div>
 
       {/* Rehab stage filter pills */}
