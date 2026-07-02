@@ -65,6 +65,11 @@ const DEFAULT_REPAIRS = [
 ]
 
 // Truncate "123 Main Street, Lexington, KY 40502" → "123 Main Street"
+function zillowUrl(address) {
+  if (!address || !address.trim()) return null
+  return `https://www.zillow.com/homes/${address.trim().replace(/\s+/g,'-')}_rb/`
+}
+
 function driveFolderId(link) {
   if (!link) return null
   const trimmed = link.trim()
@@ -320,6 +325,17 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
           <Field label="Address">
             <AddressInput value={form.address||''} onChange={v=>setForm(f=>({...f,address:v}))} />
           </Field>
+          {zillowUrl(form.address) && (
+            <button
+              onClick={() => window.open(zillowUrl(form.address), 'nhc_zillow', 'width=1400,height=950,noopener,noreferrer')}
+              style={{
+                width:'100%', background:'#fff', border:'1.5px solid #2D6FAF', borderRadius:8, padding:'8px 16px',
+                cursor:'pointer', fontFamily:'inherit', display:'flex', alignItems:'center', justifyContent:'space-between',
+              }}>
+              <div style={{ fontSize:12, fontWeight:700, color:'#2D6FAF' }}>View on Zillow</div>
+              <span style={{ fontSize:16, color:'#2D6FAF' }}>↗</span>
+            </button>
+          )}
           {driveFolderId(form.photos_drive_link) && !editingPhotosLink ? (
             <div style={{ display:'flex', gap:6, alignItems:'stretch' }}>
               <button
