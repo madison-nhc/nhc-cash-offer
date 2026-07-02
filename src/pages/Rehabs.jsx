@@ -76,7 +76,7 @@ export default function Rehabs({ onOpenSupplies }) {
           <button onClick={onOpenSupplies} style={{
             background:'#B8892A', color:'#fff', border:'none', borderRadius:6, padding:'8px 16px',
             cursor:'pointer', fontSize:12, fontWeight:700, fontFamily:'inherit', whiteSpace:'nowrap',
-          }}>Supplies</button>
+          }}>Supplies List</button>
         )}
       </div>
 
