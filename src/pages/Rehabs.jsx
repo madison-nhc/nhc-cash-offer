@@ -157,7 +157,10 @@ export default function Rehabs({ onOpenSupplies }) {
                       <span style={{ background:stageColor+'18', color:stageColor, fontSize:11, fontWeight:700, padding:'3px 8px', borderRadius:4, whiteSpace:'nowrap' }}>{rehabStage}</span>
                     </td>
                     <td style={{ padding:'10px 14px', fontSize:12, color:'#6b7280', whiteSpace:'nowrap' }}>
-                      {p.rehab_start_date ? new Date(p.rehab_start_date).toLocaleDateString('en-US',{month:'numeric',day:'numeric',year:'numeric'}) : '—'}
+                      {p.rehab_start_date ? (() => {
+                        const [y,m,d] = p.rehab_start_date.split('-')
+                        return `${parseInt(m)}/${parseInt(d)}/${y}`
+                      })() : '—'}
                     </td>
                     <td style={{ padding:'10px 14px', minWidth:100 }}>
                       <div style={{ display:'flex', alignItems:'center', gap:8 }}>
