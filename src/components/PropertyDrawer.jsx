@@ -326,7 +326,23 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
               onChange={set('photos_drive_link')}
             />
           </Field>
-          {driveFolderId(form.photos_drive_link) && (
+          {driveFolderId(form.photos_drive_link) && (<>
+            <button
+              onClick={() => window.open(
+                `https://drive.google.com/drive/folders/${driveFolderId(form.photos_drive_link)}`,
+                'nhc_photos',
+                'width=1400,height=950,noopener,noreferrer'
+              )}
+              style={{
+                width:'100%', background:'#fff', border:'1.5px solid #B8892A', borderRadius:8, padding:'10px 16px',
+                cursor:'pointer', fontFamily:'inherit', display:'flex', alignItems:'center', justifyContent:'space-between',
+              }}>
+              <div style={{ textAlign:'left' }}>
+                <div style={{ fontSize:13, fontWeight:700, color:'#B8892A' }}>Open Photos — Large View</div>
+                <div style={{ fontSize:11, color:'#9ca3af', marginTop:2 }}>Opens the full Drive folder in a larger window</div>
+              </div>
+              <span style={{ fontSize:18, color:'#B8892A' }}>↗</span>
+            </button>
             <div style={{ borderRadius:8, overflow:'hidden', border:'0.5px solid #D6D2CA' }}>
               <iframe
                 src={`https://drive.google.com/embeddedfolderview?id=${driveFolderId(form.photos_drive_link)}#grid`}
@@ -335,7 +351,7 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
                 title="Property Photos"
               />
             </div>
-          )}
+          </>)}
           {form.photos_drive_link && !driveFolderId(form.photos_drive_link) && (
             <div style={{ fontSize:11, color:'#B91C1C', marginTop:-8 }}>
               Couldn't read a folder ID from that link — paste the full Drive folder URL.
