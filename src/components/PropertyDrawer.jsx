@@ -262,14 +262,24 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
       converted_to_sale:form.converted_to_sale||false,
       conversion_date:form.conversion_date||null,
       conversion_disposition:form.conversion_disposition||null,
-      entity:'NHC',
     }
-    if (isNew) await supabase.from('cashoffer_properties').insert(payload)
-    else await supabase.from('cashoffer_properties').update(payload).eq('id',form.id)
+    const { error } = isNew
+      ? await supabase.from('cashoffer_properties').insert(payload)
+      : await supabase.from('cashoffer_properties').update(payload).eq('id',form.id)
+    if (error) {
+      alert(`Couldn't save this property.\n\n${error.message}\n\nYour changes are still in the form — please try again or let Madison know if this keeps happening.`)
+      return false
+    }
     onSave()
+    return true
   }
 
-  async function handleClose() { if (form.address) await save(); onClose() }
+  async function handleClose() {
+    if (!form.address) { onClose(); return }
+    const ok = await save()
+    if (ok) onClose()
+    // if save failed, keep the drawer open so nothing is lost
+  }
   async function del() {
     if (!confirm('Delete this property?')) return
     await supabase.from('cashoffer_properties').delete().eq('id',form.id)

@@ -35,9 +35,11 @@ function PackageFormDrawer({ pkg, open, onClose, onSave }) {
     if (!form.deal_name) return
     setSaving(true)
     const payload = { deal_name: form.deal_name, notes: form.notes || null, status: form.status || 'analyzing', entity: 'BPV' }
-    if (isNew) await supabase.from('cashoffer_package_deals').insert(payload)
-    else await supabase.from('cashoffer_package_deals').update(payload).eq('id', form.id)
+    const { error } = isNew
+      ? await supabase.from('cashoffer_package_deals').insert(payload)
+      : await supabase.from('cashoffer_package_deals').update(payload).eq('id', form.id)
     setSaving(false)
+    if (error) { alert(`Couldn't save this package.\n\n${error.message}`); return }
     onSave()
   }
 
@@ -86,12 +88,12 @@ function AddPropertyDrawer({ packageId, open, onClose, onSave }) {
   async function save() {
     if (!address || !packageId) return
     setSaving(true)
-    await supabase.from('cashoffer_properties').insert({
+    const { error } = await supabase.from('cashoffer_properties').insert({
       address, package_id: packageId,
-      status: 'analyzing', entity: 'BPV',
-      investment_type: 'hold',
+      type: 'Analyzing',
     })
     setSaving(false)
+    if (error) { alert(`Couldn't add this property.\n\n${error.message}`); return }
     setAddress('')
     onSave()
   }
