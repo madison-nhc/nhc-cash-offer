@@ -4,7 +4,7 @@ import { PageWrap, SectionBar, StatCard, EmptyState, useSort, SortTh, fmt, Loadi
 
 const STATUS_COLORS = { Ordered:'#D97825', Received:'#3B6D11' }
 
-export default function Supplies() {
+export default function Supplies({ onBack }) {
   const [items, setItems]       = useState([])
   const [loading, setLoading]   = useState(true)
   const [statusFilter, setStatusFilter] = useState('all')
@@ -40,6 +40,11 @@ export default function Supplies() {
 
   return (
     <PageWrap>
+      {onBack && (
+        <button onClick={onBack} style={{ background:'none', border:'none', color:'#B8892A', fontSize:12, fontWeight:600, cursor:'pointer', fontFamily:'inherit', padding:0, marginBottom:12 }}>
+          ← Back to Rehabs
+        </button>
+      )}
       <div style={{ marginBottom:20 }}>
         <div style={{ fontSize:22, fontWeight:700, color:'#2C2C2C' }}>Supplies</div>
         <div style={{ fontSize:13, color:'#9ca3af', marginTop:2 }}>All supply purchases across properties</div>

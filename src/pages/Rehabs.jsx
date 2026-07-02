@@ -13,7 +13,7 @@ const REHAB_STAGES = ['Not Started','Demo','Rough Work','Inspections','Finishes'
 const DISP_LABEL = { listing:'Listing', wholesale:'Wholesale', flip:'Flip', hold:'Hold' }
 const DISP_COLOR = { listing:'#3B6D11', wholesale:'#6b21a8', flip:'#D97825', hold:'#B8892A' }
 
-export default function Rehabs() {
+export default function Rehabs({ onOpenSupplies }) {
   const mobile = useIsMobile()
   const [properties, setProperties] = useState([])
   const [rehabItems, setRehabItems] = useState([])
@@ -72,6 +72,12 @@ export default function Rehabs() {
           <h1 style={{ fontSize:20, fontWeight:700, color:'#2C2C2C' }}>Rehabs</h1>
           <p style={{ fontSize:12, color:'#6b7280', marginTop:2 }}>Active rehab projects · all entities</p>
         </div>
+        {onOpenSupplies && (
+          <button onClick={onOpenSupplies} style={{
+            background:'#B8892A', color:'#fff', border:'none', borderRadius:6, padding:'8px 16px',
+            cursor:'pointer', fontSize:12, fontWeight:700, fontFamily:'inherit', whiteSpace:'nowrap',
+          }}>Supplies</button>
+        )}
       </div>
 
       {/* Stat cards */}

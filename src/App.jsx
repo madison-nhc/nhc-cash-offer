@@ -87,7 +87,6 @@ const TABS = [
   { id:'mailings',   label:'Mailing Tracker',  short:'Mailers',   path:'/mailings' },
   { id:'analyzer',   label:'Analyzer',        short:'Analyze',   path:'/analyzer' },
   { id:'rehabs',     label:'Rehabs',           short:'Rehabs',    path:'/rehabs' },
-  { id:'supplies',   label:'Supplies',         short:'Supplies',  path:'/supplies' },
   { id:'holds',      label:'Holds',            short:'Holds',     path:'/holds' },
   { id:'listings',   label:'Listings',         short:'Listings',  path:'/listings' },
   { id:'wholesale',  label:'Wholesale',        short:'Wholesale', path:'/wholesale' },
@@ -95,13 +94,19 @@ const TABS = [
   { id:'vendors',    label:'Vendors',          short:'Vendors',   path:'/vendors' },
 ]
 
+// Routes reachable but not shown as a top-level nav tab (e.g. accessed via a button elsewhere)
+const HIDDEN_ROUTES = [
+  { id:'supplies', label:'Supplies', path:'/supplies' },
+]
+const ALL_ROUTES = [...TABS, ...HIDDEN_ROUTES]
+
 function tabForPath(pathname) {
-  const match = TABS.find(t => t.path === pathname)
+  const match = ALL_ROUTES.find(t => t.path === pathname)
   return match ? match.id : null
 }
 
 function pathForTab(tab) {
-  return TABS.find(t => t.id === tab)?.path || '/analyzer'
+  return ALL_ROUTES.find(t => t.id === tab)?.path || '/analyzer'
 }
 
 function initialTab() {
@@ -147,8 +152,8 @@ export default function App() {
 
   const pages = {
     analyzer:  <Analyzer openPropertyId={targetProperty?.id} openInPackage={!!targetProperty?.package_id} onOpenedTarget={() => setTargetProperty(null)} onOpenNew={() => setNewPropertyOpen(true)} />,
-    rehabs:    <Rehabs />,
-    supplies:  <Supplies />,
+    rehabs:    <Rehabs onOpenSupplies={() => navigate('supplies')} />,
+    supplies:  <Supplies onBack={() => navigate('rehabs')} />,
     listings:  <Listings />,
     holds:     <Holds />,
     wholesale: <Wholesale />,
@@ -199,7 +204,7 @@ export default function App() {
 
           {mobile && (
             <span style={{ fontSize:13, fontWeight:700, color:'#2C2C2C', flex:1, textAlign:'center' }}>
-              {TABS.find(t => t.id === active)?.label || ''}
+              {ALL_ROUTES.find(t => t.id === active)?.label || ''}
             </span>
           )}
           {mobile && (
