@@ -190,17 +190,18 @@ export default function App() {
             </div>
           )}
 
+          {!mobile && <GlobalSearch onSelect={handleSearchSelect} mobile={false} />}
+
           {/* Global Add Property button */}
           <button
             onClick={() => setNewPropertyOpen(true)}
             style={{
-              marginLeft:'auto', background:'#B8892A', color:'#fff', border:'none',
+              background:'#B8892A', color:'#fff', border:'none',
               borderRadius:6, padding:'6px 14px', cursor:'pointer', fontSize:12,
               fontWeight:700, fontFamily:'inherit', whiteSpace:'nowrap', flexShrink:0,
             }}>
             + Add Property
           </button>
-          {!mobile && <GlobalSearch onSelect={handleSearchSelect} mobile={false} />}
 
           {mobile && (
             <span style={{ fontSize:13, fontWeight:700, color:'#2C2C2C', flex:1, textAlign:'center' }}>
