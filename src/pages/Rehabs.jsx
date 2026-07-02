@@ -122,6 +122,7 @@ export default function Rehabs({ onOpenSupplies }) {
                 <SortTh sortKeyName="owner"       {...{sortKey,sortDir,toggleSort}}>Owner</SortTh>
                 <SortTh sortKeyName="disposition" {...{sortKey,sortDir,toggleSort}}>Type</SortTh>
                 <SortTh sortKeyName="stage"       {...{sortKey,sortDir,toggleSort}}>Rehab Stage</SortTh>
+                <SortTh sortKeyName="rehab_start_date" {...{sortKey,sortDir,toggleSort}}>Start Date</SortTh>
                 <SortTh sortKeyName="pct"         {...{sortKey,sortDir,toggleSort}}>Progress</SortTh>
                 <SortTh sortKeyName="est_cost"    {...{sortKey,sortDir,toggleSort}}>Budget</SortTh>
                 <SortTh sortKeyName="days_active" {...{sortKey,sortDir,toggleSort}}>Days</SortTh>
@@ -155,6 +156,9 @@ export default function Rehabs({ onOpenSupplies }) {
                     <td style={{ padding:'10px 14px' }}>
                       <span style={{ background:stageColor+'18', color:stageColor, fontSize:11, fontWeight:700, padding:'3px 8px', borderRadius:4, whiteSpace:'nowrap' }}>{rehabStage}</span>
                     </td>
+                    <td style={{ padding:'10px 14px', fontSize:12, color:'#6b7280', whiteSpace:'nowrap' }}>
+                      {p.rehab_start_date ? new Date(p.rehab_start_date).toLocaleDateString('en-US',{month:'numeric',day:'numeric',year:'numeric'}) : '—'}
+                    </td>
                     <td style={{ padding:'10px 14px', minWidth:100 }}>
                       <div style={{ display:'flex', alignItems:'center', gap:8 }}>
                         <div style={{ flex:1, height:5, background:'#E5E1DB', borderRadius:99, overflow:'hidden' }}>
@@ -180,7 +184,7 @@ export default function Rehabs({ onOpenSupplies }) {
         </Card>
       )}
 
-      <PropertyDrawer property={drawer} open={!!drawer} onClose={()=>setDrawer(null)} onSave={()=>load()} mailings={mailings} />
+      <PropertyDrawer property={drawer} open={!!drawer} onClose={()=>setDrawer(null)} onSave={()=>load()} mailings={mailings} initialTab="rehab" />
     </PageWrap>
   )
 }

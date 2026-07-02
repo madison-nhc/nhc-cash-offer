@@ -145,7 +145,7 @@ function Toggle({ on, onToggle, label, sub }) {
   )
 }
 
-export default function PropertyDrawer({ property, open, onClose, onSave, mailings=[], onViewOffer, inlineMode=false }) {
+export default function PropertyDrawer({ property, open, onClose, onSave, mailings=[], onViewOffer, inlineMode=false, initialTab='analyzer' }) {
   const [form, setForm]           = useState({})
   const [repairs, setRepairs]     = useState([])
   const [tab, setTab]             = useState('analyzer')
@@ -176,10 +176,10 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
           : DEFAULT_REPAIRS.map((r,i)=>({...r,id:i}))
       )
       setRehabCost(null)
-      setTab('analyzer')
+      setTab(initialTab)
       setEditingPhotosLink(false)
     }
-  }, [property])
+  }, [property]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // When type or listing_type changes, snap stage to the first valid stage for the new scope
   function setType(newType) {
@@ -803,51 +803,60 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
 
   return (
     <Drawer open={open} onClose={handleClose} width={580}
-      title={shortAddress(form.address)}
+      title={form.address || 'New Property'}
       subtitle={
-        <div style={{ display:'flex', alignItems:'center', gap:8, marginTop:6, flexWrap:'wrap' }}>
+        <div style={{ display:'flex', alignItems:'flex-end', gap:10, marginTop:8, flexWrap:'wrap' }}>
           {/* Type dropdown — primary */}
-          <select
-            value={type}
-            onChange={e=>setType(e.target.value)}
-            onClick={e=>e.stopPropagation()}
-            style={{
-              border:`1.5px solid ${typeColor}`, borderRadius:6, padding:'3px 8px',
-              fontSize:11, fontWeight:700, fontFamily:'inherit',
-              color:typeColor, background:typeColor+'12', cursor:'pointer', outline:'none',
-            }}>
-            {TYPE_OPTIONS.map(t=><option key={t.value} value={t.value}>{t.value}</option>)}
-          </select>
+          <div style={{ display:'flex', flexDirection:'column', gap:2 }}>
+            <span style={{ fontSize:9, fontWeight:700, color:'#9ca3af', textTransform:'uppercase', letterSpacing:0.6 }}>Deal Type</span>
+            <select
+              value={type}
+              onChange={e=>setType(e.target.value)}
+              onClick={e=>e.stopPropagation()}
+              style={{
+                border:`1.5px solid ${typeColor}`, borderRadius:6, padding:'3px 8px',
+                fontSize:11, fontWeight:700, fontFamily:'inherit',
+                color:typeColor, background:typeColor+'12', cursor:'pointer', outline:'none',
+              }}>
+              {TYPE_OPTIONS.map(t=><option key={t.value} value={t.value}>{t.value}</option>)}
+            </select>
+          </div>
 
           {/* As-Is / Reno toggle — Retail Listing only */}
           {type==='Retail Listing' && (
-            <select
-              value={listingType}
-              onChange={e=>setListingType(e.target.value)}
-              onClick={e=>e.stopPropagation()}
-              style={{
-                border:'1.5px solid #D6D2CA', borderRadius:6, padding:'3px 8px',
-                fontSize:11, fontWeight:600, fontFamily:'inherit', color:'#6b7280', background:'#fff',
-                cursor:'pointer', outline:'none',
-              }}>
-              <option value="As-Is">As-Is</option>
-              <option value="Reno">Reno</option>
-            </select>
+            <div style={{ display:'flex', flexDirection:'column', gap:2 }}>
+              <span style={{ fontSize:9, fontWeight:700, color:'#9ca3af', textTransform:'uppercase', letterSpacing:0.6 }}>Listing Type</span>
+              <select
+                value={listingType}
+                onChange={e=>setListingType(e.target.value)}
+                onClick={e=>e.stopPropagation()}
+                style={{
+                  border:'1.5px solid #D6D2CA', borderRadius:6, padding:'3px 8px',
+                  fontSize:11, fontWeight:600, fontFamily:'inherit', color:'#6b7280', background:'#fff',
+                  cursor:'pointer', outline:'none',
+                }}>
+                <option value="As-Is">As-Is</option>
+                <option value="Reno">Reno</option>
+              </select>
+            </div>
           )}
 
           {/* Scoped stage dropdown — hidden for Analyzing/Lost which have no stages */}
           {scopedStages.length>0 && (
-            <select
-              value={stage||''}
-              onChange={e=>setVal('stage',e.target.value)}
-              onClick={e=>e.stopPropagation()}
-              style={{
-                border:`1.5px solid ${stageColor}`, borderRadius:6, padding:'3px 8px',
-                fontSize:11, fontWeight:700, fontFamily:'inherit',
-                color:stageColor, background:stageColor+'12', cursor:'pointer', outline:'none',
-              }}>
-              {scopedStages.map(s=><option key={s} value={s}>{s}</option>)}
-            </select>
+            <div style={{ display:'flex', flexDirection:'column', gap:2 }}>
+              <span style={{ fontSize:9, fontWeight:700, color:'#9ca3af', textTransform:'uppercase', letterSpacing:0.6 }}>Deal Stage</span>
+              <select
+                value={stage||''}
+                onChange={e=>setVal('stage',e.target.value)}
+                onClick={e=>e.stopPropagation()}
+                style={{
+                  border:`1.5px solid ${stageColor}`, borderRadius:6, padding:'3px 8px',
+                  fontSize:11, fontWeight:700, fontFamily:'inherit',
+                  color:stageColor, background:stageColor+'12', cursor:'pointer', outline:'none',
+                }}>
+                {scopedStages.map(s=><option key={s} value={s}>{s}</option>)}
+              </select>
+            </div>
           )}
         </div>
       }>
