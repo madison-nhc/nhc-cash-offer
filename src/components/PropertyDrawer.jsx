@@ -65,6 +65,17 @@ const DEFAULT_REPAIRS = [
 ]
 
 // Truncate "123 Main Street, Lexington, KY 40502" → "123 Main Street"
+function driveFolderId(link) {
+  if (!link) return null
+  const trimmed = link.trim()
+  const folderMatch = trimmed.match(/folders\/([a-zA-Z0-9_-]+)/)
+  if (folderMatch) return folderMatch[1]
+  const idParamMatch = trimmed.match(/[?&]id=([a-zA-Z0-9_-]+)/)
+  if (idParamMatch) return idParamMatch[1]
+  if (/^[a-zA-Z0-9_-]{10,}$/.test(trimmed)) return trimmed // pasted raw ID
+  return null
+}
+
 function shortAddress(addr) {
   if (!addr) return 'New Property'
   const parts = addr.split(',')
@@ -203,6 +214,7 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
     const rehab = rehabCost !== null ? rehabCost : (form.rehab_cost||null)
     const payload = {
       address:form.address, beds:form.beds||null, baths:form.baths||null,
+      photos_drive_link:form.photos_drive_link||null,
       sqft:form.sqft||null, unit_count:parseInt(form.unit_count)||null,
       arv:form.arv||null, asis_pct:form.asis_pct||50, asis_override:form.asis_override||null,
       profit_margin:form.profit_margin||15, profit_override:form.profit_override||null,
@@ -306,6 +318,29 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
           <Field label="Address">
             <AddressInput value={form.address||''} onChange={v=>setForm(f=>({...f,address:v}))} />
           </Field>
+          <Field label="Photos (Google Drive folder link)">
+            <input
+              style={inp}
+              placeholder="Paste a shared Drive folder link — set to 'Anyone with the link'"
+              value={form.photos_drive_link||''}
+              onChange={set('photos_drive_link')}
+            />
+          </Field>
+          {driveFolderId(form.photos_drive_link) && (
+            <div style={{ borderRadius:8, overflow:'hidden', border:'0.5px solid #D6D2CA' }}>
+              <iframe
+                src={`https://drive.google.com/embeddedfolderview?id=${driveFolderId(form.photos_drive_link)}#grid`}
+                style={{ width:'100%', height:320, border:'none', display:'block' }}
+                loading="lazy"
+                title="Property Photos"
+              />
+            </div>
+          )}
+          {form.photos_drive_link && !driveFolderId(form.photos_drive_link) && (
+            <div style={{ fontSize:11, color:'#B91C1C', marginTop:-8 }}>
+              Couldn't read a folder ID from that link — paste the full Drive folder URL.
+            </div>
+          )}
           <FieldRow>
             <Field label="Beds"><input style={monoInp} type="number" value={form.beds||''} onChange={set('beds')} /></Field>
             <Field label="Baths"><input style={monoInp} type="number" value={form.baths||''} onChange={set('baths')} /></Field>
