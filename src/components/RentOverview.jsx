@@ -38,6 +38,13 @@ export default function RentOverview({ propertyId, onOpenFull }) {
     )
   }
 
+  async function deleteLease(e) {
+    e.stopPropagation()
+    if (!confirm('Delete this lease record? This cannot be undone.')) return
+    await supabase.from('cashoffer_leases').delete().eq('id', lease.id)
+    setLease(null)
+  }
+
   const rows = [
     { label:'Tenant',       value: lease.tenant_name || '—' },
     { label:'Status',       value: lease.status || '—' },
@@ -63,7 +70,15 @@ export default function RentOverview({ propertyId, onOpenFull }) {
         <div style={{ fontSize:14, fontWeight:700, color:'#2C2C2C' }}>
           {lease.tenant_name || 'Unnamed Tenant'}
         </div>
-        <span style={{ fontSize:16, color:'#3B6D11' }}>→</span>
+        <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+          <button onClick={deleteLease} title="Delete lease" style={{
+            background:'none', border:'1px solid #B91C1C', color:'#B91C1C', borderRadius:6,
+            fontSize:10, fontWeight:700, padding:'3px 8px', cursor:'pointer', fontFamily:'inherit',
+          }}>
+            Delete
+          </button>
+          <span style={{ fontSize:16, color:'#3B6D11' }}>→</span>
+        </div>
       </div>
       <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
         {rows.map(({ label, value }) => (

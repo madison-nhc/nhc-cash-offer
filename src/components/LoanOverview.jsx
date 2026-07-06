@@ -38,6 +38,13 @@ export default function LoanOverview({ propertyId, onOpenFull }) {
     )
   }
 
+  async function deleteLoan(e) {
+    e.stopPropagation()
+    if (!confirm('Delete this loan record? This cannot be undone.')) return
+    await supabase.from('cashoffer_loans').delete().eq('id', loan.id)
+    setLoan(null)
+  }
+
   const rows = [
     { label:'Lender',          value: loan.lender_name || loan.bank || '—' },
     { label:'Loan Type',       value: loan.loan_type || '—' },
@@ -64,7 +71,15 @@ export default function LoanOverview({ propertyId, onOpenFull }) {
         <div style={{ fontSize:14, fontWeight:700, color:'#2C2C2C' }}>
           {loan.lender_name || loan.bank || 'Unnamed Lender'}
         </div>
-        <span style={{ fontSize:16, color:'#2D6FAF' }}>→</span>
+        <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+          <button onClick={deleteLoan} title="Delete loan" style={{
+            background:'none', border:'1px solid #B91C1C', color:'#B91C1C', borderRadius:6,
+            fontSize:10, fontWeight:700, padding:'3px 8px', cursor:'pointer', fontFamily:'inherit',
+          }}>
+            Delete
+          </button>
+          <span style={{ fontSize:16, color:'#2D6FAF' }}>→</span>
+        </div>
       </div>
       <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
         {rows.map(({ label, value }) => (

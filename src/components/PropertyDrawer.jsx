@@ -794,11 +794,11 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
 
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginTop:20, paddingTop:16, borderTop:'1px solid #F0EDE6' }}>
         {inlineMode && !isNew ? (
-          <button onClick={del} style={{ background:'none', border:'none', color:'#9ca3af', fontSize:11, cursor:'pointer', fontFamily:'inherit', textDecoration:'underline', padding:0 }}>
-            Delete Deal
+          <button onClick={del} style={{ background:'none', border:'1px solid #B91C1C', color:'#B91C1C', fontSize:11, fontWeight:700, cursor:'pointer', fontFamily:'inherit', borderRadius:6, padding:'6px 12px' }}>
+            Delete Property
           </button>
         ) : <span />}
-        <Btn variant="outline" onClick={handleClose}>Close</Btn>
+        <Btn onClick={handleClose}>Save</Btn>
       </div>
     </>
   )
@@ -809,8 +809,8 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
     <Drawer open={open} onClose={handleClose} width={580}
       title={form.address || 'New Property'}
       headerActions={!isNew && (
-        <button onClick={del} style={{ background:'none', border:'none', color:'#B91C1C', fontSize:11, fontWeight:600, cursor:'pointer', fontFamily:'inherit' }}>
-          Delete Deal
+        <button onClick={del} style={{ background:'none', border:'1px solid #B91C1C', color:'#B91C1C', fontSize:11, fontWeight:700, cursor:'pointer', fontFamily:'inherit', borderRadius:6, padding:'5px 10px' }}>
+          Delete Property
         </button>
       )}
       subtitle={
