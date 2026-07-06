@@ -298,7 +298,7 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
     { key:'analyzer',    label:'Analyzer' },
     { key:'rehab',       label:'Rehab' },
     ...(showLoanTab ? [{ key:'loan', label:'Loan' }] : []),
-    ...(showRentTab ? [{ key:'rent', label:'Rent' }] : []),
+    ...(showRentTab ? [{ key:'rent', label:'Lease' }] : []),
     { key:'disposition', label:'Disposition' },
   ]
 
