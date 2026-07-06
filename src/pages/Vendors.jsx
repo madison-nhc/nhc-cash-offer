@@ -226,28 +226,32 @@ function VendorDetailModal({ vendor, onClose, onUpdated, onDeleted }) {
                   style={{ ...inp, resize: 'vertical', fontFamily: 'inherit', marginBottom: 10 }}
                 />
               </Field>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 10, flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 20, marginBottom: 12, flexWrap: 'wrap' }}>
                 <div>
                   <div style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 4 }}>Rating</div>
                   <StarRating value={noteForm.rating} onChange={r => setNoteForm(f => ({ ...f, rating: r }))} />
                 </div>
+                <div>
+                  <div style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 4 }}>Would Use Again</div>
+                  <select value={noteForm.would_use_again} onChange={e => setNoteForm(f => ({ ...f, would_use_again: e.target.value }))} style={{ ...inp, width: 'auto' }}>
+                    <option value="Yes">Yes</option>
+                    <option value="No">No</option>
+                    <option value="Depends">Depends</option>
+                  </select>
+                </div>
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <select value={noteForm.would_use_again} onChange={e => setNoteForm(f => ({ ...f, would_use_again: e.target.value }))} style={{ ...inp, width: 'auto' }}>
-                  <option value="Yes">Would use again: Yes</option>
-                  <option value="No">Would use again: No</option>
-                  <option value="Depends">Would use again: Depends</option>
-                </select>
+              <div style={{ textAlign: 'right' }}>
                 <Btn onClick={addNote} disabled={addingNote}>{addingNote ? 'Saving…' : 'Log Note'}</Btn>
               </div>
             </div>
           </div>
         </>)}
 
-        <div style={{ borderTop: '1px solid #F0EDE6', paddingTop: 14 }}>
+        <div style={{ borderTop: '1px solid #F0EDE6', paddingTop: 14, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <button onClick={deleteVendor} style={{ background: 'none', border: '1px solid #B91C1C', color: '#B91C1C', fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', borderRadius: 6, padding: '6px 12px' }}>
             Delete Vendor
           </button>
+          <Btn onClick={onClose}>Save</Btn>
         </div>
       </div>
     </Modal>
