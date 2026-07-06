@@ -281,7 +281,7 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
     // if save failed, keep the drawer open so nothing is lost
   }
   async function del() {
-    if (!confirm('Delete this property?')) return
+    if (!confirm('Delete this deal? This cannot be undone.')) return
     await supabase.from('cashoffer_properties').delete().eq('id',form.id)
     onSave(); onClose()
   }
@@ -792,9 +792,13 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
         onClose={()=>setSuppliesOpen(false)}
       />
 
-      <div style={{ display:'flex', justifyContent:'space-between', marginTop:20, paddingTop:16, borderTop:'1px solid #F0EDE6' }}>
-        {!isNew && <Btn variant="danger" onClick={del}>Delete</Btn>}
-        <Btn variant="outline" onClick={handleClose} style={{ marginLeft:'auto' }}>Close</Btn>
+      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginTop:20, paddingTop:16, borderTop:'1px solid #F0EDE6' }}>
+        {inlineMode && !isNew ? (
+          <button onClick={del} style={{ background:'none', border:'none', color:'#9ca3af', fontSize:11, cursor:'pointer', fontFamily:'inherit', textDecoration:'underline', padding:0 }}>
+            Delete Deal
+          </button>
+        ) : <span />}
+        <Btn variant="outline" onClick={handleClose}>Close</Btn>
       </div>
     </>
   )
@@ -804,6 +808,11 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
   return (
     <Drawer open={open} onClose={handleClose} width={580}
       title={form.address || 'New Property'}
+      headerActions={!isNew && (
+        <button onClick={del} style={{ background:'none', border:'none', color:'#B91C1C', fontSize:11, fontWeight:600, cursor:'pointer', fontFamily:'inherit' }}>
+          Delete Deal
+        </button>
+      )}
       subtitle={
         <div style={{ display:'flex', alignItems:'flex-end', gap:10, marginTop:8, flexWrap:'wrap' }}>
           {/* Type dropdown — primary */}
