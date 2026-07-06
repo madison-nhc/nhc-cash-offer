@@ -793,7 +793,7 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
       />
 
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginTop:20, paddingTop:16, borderTop:'1px solid #F0EDE6' }}>
-        {inlineMode && !isNew ? (
+        {!isNew ? (
           <button onClick={del} style={{ background:'none', border:'1px solid #B91C1C', color:'#B91C1C', fontSize:11, fontWeight:700, cursor:'pointer', fontFamily:'inherit', borderRadius:6, padding:'6px 12px' }}>
             Delete Property
           </button>
@@ -808,11 +808,7 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
   return (
     <Drawer open={open} onClose={handleClose} width={580}
       title={form.address || 'New Property'}
-      headerActions={!isNew && (
-        <button onClick={del} style={{ background:'none', border:'1px solid #B91C1C', color:'#B91C1C', fontSize:11, fontWeight:700, cursor:'pointer', fontFamily:'inherit', borderRadius:6, padding:'5px 10px' }}>
-          Delete Property
-        </button>
-      )}
+      headerActions={null}
       subtitle={
         <div style={{ display:'flex', alignItems:'flex-end', gap:10, marginTop:8, flexWrap:'wrap' }}>
           {/* Type dropdown — primary */}
