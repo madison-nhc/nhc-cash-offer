@@ -28,8 +28,17 @@ export default function LoanOverview({ propertyId, onOpenFull }) {
   }
 
   async function addLoan() {
-    const payload = { property_id: propertyId, lender_name: '', loan_amount: 0, interest_rate: 0, loan_term_months: 0, is_active: true, loan_type: 'Conventional' }
-    const { data } = await supabase.from('cashoffer_loans').insert(payload).select().single()
+    const payload = {
+      property_id: propertyId, lender_name: '', loan_amount: 0, interest_rate: 0,
+      loan_term_months: 0, loan_start_date: new Date().toISOString().slice(0, 10),
+      is_active: true, loan_type: 'Conventional',
+    }
+    const { data, error } = await supabase.from('cashoffer_loans').insert(payload).select().single()
+    if (error) {
+      console.error('Failed to add loan:', error)
+      alert('Could not add loan: ' + error.message)
+      return
+    }
     setLoan(data)
   }
 
