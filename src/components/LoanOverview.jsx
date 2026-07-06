@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase.js'
-import { Field, FieldRow, inp, monoInp, Btn } from './ui.jsx'
+import { fmt } from './ui.jsx'
 
 export default function LoanOverview({ propertyId, onOpenFull }) {
   const [loan, setLoan]       = useState(null)
@@ -21,67 +21,58 @@ export default function LoanOverview({ propertyId, onOpenFull }) {
     setLoading(false)
   }
 
-  async function update(field, value) {
-    if (!loan) return
-    setLoan(l => ({ ...l, [field]: value }))
-    await supabase.from('cashoffer_loans').update({ [field]: value }).eq('id', loan.id)
-  }
-
-  async function addLoan() {
-    const payload = {
-      property_id: propertyId, lender_name: '', loan_amount: 0, interest_rate: 0,
-      loan_term_months: 0, loan_start_date: new Date().toISOString().slice(0, 10),
-      is_active: true, loan_type: 'Conventional',
-    }
-    const { data, error } = await supabase.from('cashoffer_loans').insert(payload).select().single()
-    if (error) {
-      console.error('Failed to add loan:', error)
-      alert('Could not add loan: ' + error.message)
-      return
-    }
-    setLoan(data)
-  }
-
   if (loading) return <div style={{ textAlign:'center', padding:20, color:'#9ca3af', fontSize:12 }}>Loading…</div>
 
-  return (
-    <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
-      {!loan ? (
-        <div style={{ background:'#F0EDE6', borderRadius:8, padding:20, textAlign:'center' }}>
-          <div style={{ fontSize:13, color:'#6b7280', marginBottom:8 }}>No loan recorded for this property.</div>
-          <Btn onClick={addLoan}>+ Add Loan</Btn>
-        </div>
-      ) : (<>
-        <FieldRow>
-          <Field label="Lender">
-            <input style={inp} value={loan.lender_name||''} onChange={e=>update('lender_name', e.target.value)} />
-          </Field>
-          <Field label="Loan Amount ($)">
-            <input style={monoInp} type="number" value={loan.loan_amount||''} onChange={e=>update('loan_amount', parseFloat(e.target.value)||0)} />
-          </Field>
-        </FieldRow>
-        <FieldRow>
-          <Field label="Interest Rate (%)">
-            <input style={monoInp} type="number" step="0.01" value={loan.interest_rate||''} onChange={e=>update('interest_rate', parseFloat(e.target.value)||0)} />
-          </Field>
-          <Field label="Monthly Payment ($)">
-            <input style={monoInp} type="number" value={loan.monthly_payment||''} onChange={e=>update('monthly_payment', e.target.value===''?null:parseFloat(e.target.value)||0)} />
-          </Field>
-        </FieldRow>
-        <Field label="Start Date">
-          <input style={inp} type="date" value={loan.loan_start_date||''} onChange={e=>update('loan_start_date', e.target.value)} />
-        </Field>
+  if (!loan) {
+    return (
+      <div style={{ background:'#F0EDE6', borderRadius:8, padding:20, textAlign:'center' }}>
+        <div style={{ fontSize:13, color:'#6b7280', marginBottom:12 }}>No loan recorded for this property.</div>
         <button onClick={onOpenFull} style={{
-          width:'100%', background:'#fff', border:'1.5px solid #2D6FAF', borderRadius:8, padding:'12px 16px',
-          cursor:'pointer', fontFamily:'inherit', display:'flex', alignItems:'center', justifyContent:'space-between', marginTop:4,
+          background:'#2D6FAF', color:'#fff', border:'none', borderRadius:8, padding:'10px 18px',
+          fontSize:13, fontWeight:700, cursor:'pointer', fontFamily:'inherit',
         }}>
-          <div style={{ textAlign:'left' }}>
-            <div style={{ fontSize:13, fontWeight:700, color:'#2D6FAF' }}>View Full Loan Tracker</div>
-            <div style={{ fontSize:11, color:'#9ca3af', marginTop:2 }}>Amortization schedule, refi history, current balance</div>
-          </div>
-          <span style={{ fontSize:18, color:'#2D6FAF' }}>→</span>
+          + Add Loan
         </button>
-      </>)}
+      </div>
+    )
+  }
+
+  const rows = [
+    { label:'Lender',          value: loan.lender_name || loan.bank || '—' },
+    { label:'Loan Type',       value: loan.loan_type || '—' },
+    { label:'Loan Amount',     value: fmt(loan.loan_amount) || '—' },
+    { label:'Interest Rate',   value: loan.interest_rate != null ? `${loan.interest_rate}%` : '—' },
+    { label:'Term',            value: loan.loan_term_months ? `${loan.loan_term_months / 12} yr` : '—' },
+    { label:'Start Date',      value: loan.loan_start_date ? new Date(loan.loan_start_date+'T12:00:00').toLocaleDateString('en-US',{month:'short', day:'numeric', year:'numeric'}) : '—' },
+    { label:'Monthly Payment', value: loan.monthly_payment ? fmt(loan.monthly_payment) : '—' },
+  ]
+
+  return (
+    <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
+      <div style={{ background:'#FAFAF8', border:'0.5px solid #D6D2CA', borderRadius:8, padding:'14px 16px' }}>
+        <div style={{ fontSize:14, fontWeight:700, color:'#2C2C2C', marginBottom:10 }}>
+          {loan.lender_name || loan.bank || 'Unnamed Lender'}
+        </div>
+        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
+          {rows.map(({ label, value }) => (
+            <div key={label}>
+              <div style={{ fontSize:9, color:'#9ca3af', textTransform:'uppercase', letterSpacing:0.7, marginBottom:2 }}>{label}</div>
+              <div style={{ fontSize:13, fontWeight:600, color:'#2C2C2C', fontFamily: label==='Lender' || label==='Loan Type' ? 'inherit' : 'monospace' }}>{value}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <button onClick={onOpenFull} style={{
+        width:'100%', background:'#fff', border:'1.5px solid #2D6FAF', borderRadius:8, padding:'12px 16px',
+        cursor:'pointer', fontFamily:'inherit', display:'flex', alignItems:'center', justifyContent:'space-between',
+      }}>
+        <div style={{ textAlign:'left' }}>
+          <div style={{ fontSize:13, fontWeight:700, color:'#2D6FAF' }}>View Full Loan Tracker</div>
+          <div style={{ fontSize:11, color:'#9ca3af', marginTop:2 }}>Amortization schedule, refi history, current balance</div>
+        </div>
+        <span style={{ fontSize:18, color:'#2D6FAF' }}>→</span>
+      </button>
     </div>
   )
 }
