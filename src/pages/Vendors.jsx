@@ -4,7 +4,7 @@ import { PageWrap, SectionBar, EmptyState, Field, FieldRow, inp, Btn, Badge, Mod
 
 const USE_AGAIN_COLOR = { Yes: '#3B6D11', No: '#B91C1C', Depends: '#D97825' }
 
-const JOB_TYPES = [
+const SERVICE_TYPES = [
   'General Contractor', 'Electrical', 'Plumbing', 'HVAC', 'Roofing', 'Framing',
   'Drywall', 'Painting', 'Flooring', 'Foundation', 'Concrete', 'Masonry',
   'Carpentry', 'Cabinetry', 'Countertops', 'Tile', 'Windows & Doors', 'Siding',
@@ -12,7 +12,7 @@ const JOB_TYPES = [
   'Cleaning', 'Locksmith', 'Appliances', 'Pool', 'Septic', 'Well', 'Solar', 'Other',
 ]
 
-function JobTypeMultiSelect({ value = [], onChange }) {
+function ServiceMultiSelect({ value = [], onChange }) {
   const [open, setOpen] = useState(false)
   function toggle(type) {
     onChange(value.includes(type) ? value.filter(t => t !== type) : [...value, type])
@@ -24,7 +24,7 @@ function JobTypeMultiSelect({ value = [], onChange }) {
         style={{ ...inp, cursor: 'pointer', minHeight: 38, display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 4 }}
       >
         {value.length === 0 ? (
-          <span style={{ color: '#9ca3af' }}>Select job types…</span>
+          <span style={{ color: '#9ca3af' }}>Select services…</span>
         ) : value.map(t => <Badge key={t}>{t}</Badge>)}
       </div>
       {open && (
@@ -33,7 +33,7 @@ function JobTypeMultiSelect({ value = [], onChange }) {
           background: '#fff', border: '1px solid #D6D2CA', borderRadius: 8,
           boxShadow: '0 4px 16px rgba(0,0,0,0.12)', maxHeight: 260, overflowY: 'auto', padding: 8,
         }}>
-          {JOB_TYPES.map(t => (
+          {SERVICE_TYPES.map(t => (
             <label key={t} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 8px', fontSize: 12, color: '#2C2C2C', cursor: 'pointer', borderRadius: 5 }}
               onMouseEnter={e => e.currentTarget.style.background = '#FAFAF8'}
               onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
@@ -126,8 +126,8 @@ function VendorDetailModal({ vendor, onClose, onUpdated, onDeleted }) {
           <Field label="Company Name">
             <input style={inp} value={form.company_name || ''} onChange={e => saveField('company_name', e.target.value)} />
           </Field>
-          <Field label="Job Types">
-            <JobTypeMultiSelect value={form.job_types || []} onChange={types => saveField('job_types', types)} />
+          <Field label="Services">
+            <ServiceMultiSelect value={form.services || []} onChange={types => saveField('services', types)} />
           </Field>
         </FieldRow>
         <FieldRow>
@@ -241,11 +241,11 @@ export default function Vendors() {
   }
 
   const services = useMemo(() => {
-    const s = new Set(vendors.flatMap(v => v.job_types || []))
+    const s = new Set(vendors.flatMap(v => v.services || []))
     return ['All', ...Array.from(s).sort()]
   }, [vendors])
 
-  const filtered = sortService === 'All' ? vendors : vendors.filter(v => (v.job_types || []).includes(sortService))
+  const filtered = sortService === 'All' ? vendors : vendors.filter(v => (v.services || []).includes(sortService))
 
   if (loading) return <PageWrap><LoadingSpinner /></PageWrap>
 
@@ -287,9 +287,9 @@ export default function Vendors() {
               onMouseLeave={e => e.currentTarget.style.borderColor = '#D6D2CA'}
             >
               <div style={{ fontSize: 14, fontWeight: 700, color: '#2C2C2C', marginBottom: 6 }}>{v.company_name || 'Unnamed Vendor'}</div>
-              {(v.job_types || []).length > 0 && (
+              {(v.services || []).length > 0 && (
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 4 }}>
-                  {v.job_types.map(t => <Badge key={t}>{t}</Badge>)}
+                  {v.services.map(t => <Badge key={t}>{t}</Badge>)}
                 </div>
               )}
               <div style={{ fontSize: 12, color: '#6b7280', marginTop: 8 }}>{v.contact_person || '—'}</div>
