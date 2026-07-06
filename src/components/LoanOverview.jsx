@@ -5,6 +5,7 @@ import { fmt } from './ui.jsx'
 export default function LoanOverview({ propertyId, onOpenFull }) {
   const [loan, setLoan]       = useState(null)
   const [loading, setLoading] = useState(true)
+  const [hover, setHover]     = useState(false)
 
   useEffect(() => { if (propertyId) load() }, [propertyId])
 
@@ -48,31 +49,34 @@ export default function LoanOverview({ propertyId, onOpenFull }) {
   ]
 
   return (
-    <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
-      <div style={{ background:'#FAFAF8', border:'0.5px solid #D6D2CA', borderRadius:8, padding:'14px 16px' }}>
-        <div style={{ fontSize:14, fontWeight:700, color:'#2C2C2C', marginBottom:10 }}>
+    <div
+      onClick={onOpenFull}
+      onMouseEnter={()=>setHover(true)}
+      onMouseLeave={()=>setHover(false)}
+      style={{
+        background:'#FAFAF8',
+        border: hover ? '1.5px solid #2D6FAF' : '0.5px solid #D6D2CA',
+        borderRadius:8, padding:'14px 16px', cursor:'pointer',
+        transition:'border-color 0.15s',
+      }}
+    >
+      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:10 }}>
+        <div style={{ fontSize:14, fontWeight:700, color:'#2C2C2C' }}>
           {loan.lender_name || loan.bank || 'Unnamed Lender'}
         </div>
-        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
-          {rows.map(({ label, value }) => (
-            <div key={label}>
-              <div style={{ fontSize:9, color:'#9ca3af', textTransform:'uppercase', letterSpacing:0.7, marginBottom:2 }}>{label}</div>
-              <div style={{ fontSize:13, fontWeight:600, color:'#2C2C2C', fontFamily: label==='Lender' || label==='Loan Type' ? 'inherit' : 'monospace' }}>{value}</div>
-            </div>
-          ))}
-        </div>
+        <span style={{ fontSize:16, color:'#2D6FAF' }}>→</span>
       </div>
-
-      <button onClick={onOpenFull} style={{
-        width:'100%', background:'#fff', border:'1.5px solid #2D6FAF', borderRadius:8, padding:'12px 16px',
-        cursor:'pointer', fontFamily:'inherit', display:'flex', alignItems:'center', justifyContent:'space-between',
-      }}>
-        <div style={{ textAlign:'left' }}>
-          <div style={{ fontSize:13, fontWeight:700, color:'#2D6FAF' }}>View Full Loan Tracker</div>
-          <div style={{ fontSize:11, color:'#9ca3af', marginTop:2 }}>Amortization schedule, refi history, current balance</div>
-        </div>
-        <span style={{ fontSize:18, color:'#2D6FAF' }}>→</span>
-      </button>
+      <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
+        {rows.map(({ label, value }) => (
+          <div key={label}>
+            <div style={{ fontSize:9, color:'#9ca3af', textTransform:'uppercase', letterSpacing:0.7, marginBottom:2 }}>{label}</div>
+            <div style={{ fontSize:13, fontWeight:600, color:'#2C2C2C', fontFamily: label==='Lender' || label==='Loan Type' ? 'inherit' : 'monospace' }}>{value}</div>
+          </div>
+        ))}
+      </div>
+      <div style={{ fontSize:11, color:'#9ca3af', marginTop:10, textAlign:'right' }}>
+        Click for amortization schedule, refi history & current balance
+      </div>
     </div>
   )
 }
