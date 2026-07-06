@@ -14,39 +14,67 @@ const SERVICE_TYPES = [
 
 function ServiceMultiSelect({ value = [], onChange }) {
   const [open, setOpen] = useState(false)
+  const [query, setQuery] = useState('')
   function toggle(type) {
     onChange(value.includes(type) ? value.filter(t => t !== type) : [...value, type])
+    setQuery('')
   }
+  const matches = SERVICE_TYPES.filter(t => t.toLowerCase().includes(query.toLowerCase()))
   return (
     <div style={{ position: 'relative' }}>
-      <div
-        onClick={() => setOpen(o => !o)}
-        style={{ ...inp, cursor: 'pointer', minHeight: 38, display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 4 }}
-      >
-        {value.length === 0 ? (
-          <span style={{ color: '#9ca3af' }}>Select services…</span>
-        ) : value.map(t => <Badge key={t}>{t}</Badge>)}
+      <div style={{ ...inp, minHeight: 38, display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 4, padding: '4px 8px' }}>
+        {value.map(t => (
+          <Badge key={t}>
+            {t} <span onClick={() => toggle(t)} style={{ cursor: 'pointer', marginLeft: 4 }}>×</span>
+          </Badge>
+        ))}
+        <input
+          value={query}
+          onChange={e => { setQuery(e.target.value); setOpen(true) }}
+          onFocus={() => setOpen(true)}
+          placeholder={value.length === 0 ? 'Type to search services…' : ''}
+          style={{ border: 'none', outline: 'none', background: 'transparent', fontSize: 13, fontFamily: 'inherit', flex: 1, minWidth: 90, padding: '4px 0' }}
+        />
       </div>
       {open && (
         <div style={{
           position: 'absolute', top: 'calc(100% + 4px)', left: 0, right: 0, zIndex: 50,
           background: '#fff', border: '1px solid #D6D2CA', borderRadius: 8,
-          boxShadow: '0 4px 16px rgba(0,0,0,0.12)', maxHeight: 260, overflowY: 'auto', padding: 8,
-        }}>
-          {SERVICE_TYPES.map(t => (
-            <label key={t} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 8px', fontSize: 12, color: '#2C2C2C', cursor: 'pointer', borderRadius: 5 }}
+          boxShadow: '0 4px 16px rgba(0,0,0,0.12)', maxHeight: 220, overflowY: 'auto', padding: 6,
+        }} onMouseLeave={() => setOpen(false)}>
+          {matches.length === 0 ? (
+            <div style={{ fontSize: 12, color: '#9ca3af', padding: '6px 8px' }}>No matching services</div>
+          ) : matches.map(t => (
+            <div key={t} onClick={() => toggle(t)} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 8px', fontSize: 12, color: '#2C2C2C', cursor: 'pointer', borderRadius: 5, background: value.includes(t) ? '#FAFAF8' : 'transparent' }}
               onMouseEnter={e => e.currentTarget.style.background = '#FAFAF8'}
-              onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+              onMouseLeave={e => e.currentTarget.style.background = value.includes(t) ? '#FAFAF8' : 'transparent'}
             >
-              <input type="checkbox" checked={value.includes(t)} onChange={() => toggle(t)} />
+              <input type="checkbox" checked={value.includes(t)} readOnly />
               {t}
-            </label>
+            </div>
           ))}
-          <div style={{ textAlign: 'right', paddingTop: 6 }}>
-            <button onClick={() => setOpen(false)} style={{ background: '#2C2C2C', color: '#fff', border: 'none', borderRadius: 6, padding: '5px 12px', fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>Done</button>
-          </div>
         </div>
       )}
+    </div>
+  )
+}
+
+function StarRating({ value = 0, onChange, size = 18, readOnly = false }) {
+  const [hover, setHover] = useState(0)
+  return (
+    <div style={{ display: 'inline-flex', gap: 2 }}>
+      {[1, 2, 3, 4, 5].map(n => (
+        <span
+          key={n}
+          onClick={() => !readOnly && onChange && onChange(n)}
+          onMouseEnter={() => !readOnly && setHover(n)}
+          onMouseLeave={() => !readOnly && setHover(0)}
+          style={{
+            fontSize: size, lineHeight: 1, cursor: readOnly ? 'default' : 'pointer',
+            color: n <= (hover || value) ? '#B8892A' : '#D6D2CA',
+          }}
+        >★</span>
+      ))}
     </div>
   )
 }
@@ -56,7 +84,7 @@ function VendorDetailModal({ vendor, onClose, onUpdated, onDeleted }) {
   const [notes, setNotes]         = useState([])
   const [properties, setProperties] = useState([])
   const [loading, setLoading]     = useState(true)
-  const [noteForm, setNoteForm]   = useState({ what_happened: '', would_use_again: 'Yes' })
+  const [noteForm, setNoteForm]   = useState({ what_happened: '', would_use_again: 'Yes', rating: 0 })
   const [addingNote, setAddingNote] = useState(false)
 
   useEffect(() => { load() }, [vendor.id])
@@ -103,11 +131,12 @@ function VendorDetailModal({ vendor, onClose, onUpdated, onDeleted }) {
       vendor_id: vendor.id,
       what_happened: noteForm.what_happened.trim(),
       would_use_again: noteForm.would_use_again,
+      rating: noteForm.rating || null,
       source: 'vendors_page',
     })
     setAddingNote(false)
     if (error) { alert('Could not save note: ' + error.message); return }
-    setNoteForm({ what_happened: '', would_use_again: 'Yes' })
+    setNoteForm({ what_happened: '', would_use_again: 'Yes', rating: 0 })
     load()
   }
 
@@ -174,7 +203,10 @@ function VendorDetailModal({ vendor, onClose, onUpdated, onDeleted }) {
                 {notes.map(n => (
                   <div key={n.id} style={{ background: '#FAFAF8', border: '0.5px solid #D6D2CA', borderRadius: 6, padding: '10px 12px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-                      {n.would_use_again && <Badge color={USE_AGAIN_COLOR[n.would_use_again]}>Use again: {n.would_use_again}</Badge>}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        {n.would_use_again && <Badge color={USE_AGAIN_COLOR[n.would_use_again]}>Use again: {n.would_use_again}</Badge>}
+                        {n.rating && <StarRating value={n.rating} readOnly size={13} />}
+                      </div>
                       <span style={{ fontSize: 10, color: '#9ca3af' }}>{new Date(n.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
                     </div>
                     <div style={{ fontSize: 12, color: '#2C2C2C' }}>{n.what_happened}</div>
@@ -194,6 +226,12 @@ function VendorDetailModal({ vendor, onClose, onUpdated, onDeleted }) {
                   style={{ ...inp, resize: 'vertical', fontFamily: 'inherit', marginBottom: 10 }}
                 />
               </Field>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 10, flexWrap: 'wrap' }}>
+                <div>
+                  <div style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 4 }}>Rating</div>
+                  <StarRating value={noteForm.rating} onChange={r => setNoteForm(f => ({ ...f, rating: r }))} />
+                </div>
+              </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                 <select value={noteForm.would_use_again} onChange={e => setNoteForm(f => ({ ...f, would_use_again: e.target.value }))} style={{ ...inp, width: 'auto' }}>
                   <option value="Yes">Would use again: Yes</option>
@@ -218,6 +256,7 @@ function VendorDetailModal({ vendor, onClose, onUpdated, onDeleted }) {
 
 export default function Vendors() {
   const [vendors, setVendors] = useState([])
+  const [ratings, setRatings] = useState({})
   const [loading, setLoading] = useState(true)
   const [sortService, setSortService] = useState('All')
   const [activeVendor, setActiveVendor] = useState(null)
@@ -226,11 +265,21 @@ export default function Vendors() {
 
   async function load() {
     setLoading(true)
-    const { data } = await supabase
-      .from('cashoffer_vendors')
-      .select('*')
-      .order('company_name', { ascending: true })
-    setVendors(data || [])
+    const [vendorsRes, notesRes] = await Promise.all([
+      supabase.from('cashoffer_vendors').select('*').order('company_name', { ascending: true }),
+      supabase.from('cashoffer_vendor_notes').select('vendor_id, rating').not('rating', 'is', null),
+    ])
+    setVendors(vendorsRes.data || [])
+    const byVendor = {}
+    for (const n of notesRes.data || []) {
+      if (!byVendor[n.vendor_id]) byVendor[n.vendor_id] = []
+      byVendor[n.vendor_id].push(n.rating)
+    }
+    const avgs = {}
+    for (const [id, list] of Object.entries(byVendor)) {
+      avgs[id] = list.reduce((a, b) => a + b, 0) / list.length
+    }
+    setRatings(avgs)
     setLoading(false)
   }
 
@@ -287,6 +336,7 @@ export default function Vendors() {
               onMouseLeave={e => e.currentTarget.style.borderColor = '#D6D2CA'}
             >
               <div style={{ fontSize: 14, fontWeight: 700, color: '#2C2C2C', marginBottom: 6 }}>{v.company_name || 'Unnamed Vendor'}</div>
+              {ratings[v.id] && <div style={{ marginBottom: 6 }}><StarRating value={Math.round(ratings[v.id])} readOnly size={13} /></div>}
               {(v.services || []).length > 0 && (
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 4 }}>
                   {v.services.map(t => <Badge key={t}>{t}</Badge>)}
