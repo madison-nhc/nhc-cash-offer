@@ -11,6 +11,7 @@ import Wholesale from './pages/Wholesale.jsx'
 import Sold from './pages/Sold.jsx'
 import MailingTracker from './pages/MailingTracker.jsx'
 import Vendors from './pages/Vendors.jsx'
+import OpsLog from './pages/OpsLog.jsx'
 
 function GlobalSearch({ onSelect, mobile }) {
   const [query, setQuery] = useState('')
@@ -92,6 +93,7 @@ const TABS = [
   { id:'wholesale',  label:'Wholesale',        short:'Wholesale', path:'/wholesale' },
   { id:'sold',       label:'Sold',             short:'Sold',      path:'/sold' },
   { id:'vendors',    label:'Vendors',          short:'Vendors',   path:'/vendors' },
+  { id:'opslog',     label:'Things We Could Do Better', short:'Ops Log', path:'/ops-log' },
 ]
 
 // Routes reachable but not shown as a top-level nav tab (e.g. accessed via a button elsewhere)
@@ -160,6 +162,7 @@ export default function App() {
     sold:      <Sold />,
     mailings:  <MailingTracker />,
     vendors:   <Vendors />,
+    opslog:    <OpsLog />,
   }
 
   return (
