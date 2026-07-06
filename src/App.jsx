@@ -93,7 +93,7 @@ const TABS = [
   { id:'wholesale',  label:'Wholesale',        short:'Wholesale', path:'/wholesale' },
   { id:'sold',       label:'Sold',             short:'Sold',      path:'/sold' },
   { id:'vendors',    label:'Vendors',          short:'Vendors',   path:'/vendors' },
-  { id:'opslog',     label:'Things We Could Do Better', short:'Ops Log', path:'/ops-log' },
+  { id:'opslog',     label:'Improvements',     short:'Improvements', path:'/ops-log' },
 ]
 
 // Routes reachable but not shown as a top-level nav tab (e.g. accessed via a button elsewhere)
