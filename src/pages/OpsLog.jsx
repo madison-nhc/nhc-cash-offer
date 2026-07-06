@@ -115,7 +115,7 @@ export default function OpsLog() {
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           {confirmMsg && <span style={{ fontSize: 12, color: '#3B6D11', fontWeight: 700 }}>Logged. On the review list.</span>}
-          <Btn onClick={() => setFormOpen(o => !o)}>{formOpen ? 'Cancel' : '+ Log an Issue'}</Btn>
+          <Btn onClick={() => setFormOpen(o => !o)}>{formOpen ? 'Cancel' : '+ Suggest an Improvement'}</Btn>
         </div>
       </div>
 
