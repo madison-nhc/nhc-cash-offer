@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react'
 import { supabase } from '../lib/supabase.js'
 import { PageWrap, SectionBar, EmptyState, Field, FieldRow, inp, Btn, Badge, Modal, LoadingSpinner } from '../components/ui.jsx'
 
-const USE_AGAIN_COLOR = { Yes: '#3B6D11', No: '#B91C1C', Depends: '#D97825' }
+const USE_AGAIN_COLOR = { Yes: '#3B6D11', No: '#B91C1C', Maybe: '#D97825' }
 
 const SERVICE_TYPES = [
   'General Contractor', 'Electrical', 'Plumbing', 'HVAC', 'Roofing', 'Framing',
@@ -226,7 +226,7 @@ function VendorDetailModal({ vendor, onClose, onUpdated, onDeleted }) {
                   style={{ ...inp, resize: 'vertical', fontFamily: 'inherit', marginBottom: 10 }}
                 />
               </Field>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 20, marginBottom: 12, flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
                 <div>
                   <div style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 4 }}>Rating</div>
                   <StarRating value={noteForm.rating} onChange={r => setNoteForm(f => ({ ...f, rating: r }))} />
@@ -236,12 +236,12 @@ function VendorDetailModal({ vendor, onClose, onUpdated, onDeleted }) {
                   <select value={noteForm.would_use_again} onChange={e => setNoteForm(f => ({ ...f, would_use_again: e.target.value }))} style={{ ...inp, width: 'auto' }}>
                     <option value="Yes">Yes</option>
                     <option value="No">No</option>
-                    <option value="Depends">Depends</option>
+                    <option value="Maybe">Maybe</option>
                   </select>
                 </div>
-              </div>
-              <div style={{ textAlign: 'right' }}>
-                <Btn onClick={addNote} disabled={addingNote}>{addingNote ? 'Saving…' : 'Log Note'}</Btn>
+                <div>
+                  <Btn onClick={addNote} disabled={addingNote}>{addingNote ? 'Saving…' : 'Log Note'}</Btn>
+                </div>
               </div>
             </div>
           </div>
