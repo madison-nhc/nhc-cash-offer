@@ -159,9 +159,12 @@ function ItemDetailModal({ item, onClose, onUpdated, onDeleted }) {
   }
 
   async function saveField(field, value) {
-    setForm(f => ({ ...f, [field]: value }))
+    setForm(f => {
+      const updated = { ...f, [field]: value }
+      onUpdated(updated)
+      return updated
+    })
     await supabase.from('cashoffer_inventory_items').update({ [field]: value }).eq('id', item.id)
-    onUpdated({ ...form, [field]: value })
   }
 
   async function deleteItem() {
