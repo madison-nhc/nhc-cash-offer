@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase.js'
-import { Modal, Field, inp, monoInp, fmt, DatePicker } from './ui.jsx'
+import { Modal, Field, inp, monoInp, fmt, DatePicker, Btn } from './ui.jsx'
 
 const STATUS_OPTIONS = ['Scheduled', 'In Progress', 'Completed']
 const STATUS_COLORS  = { 'Scheduled':'#9ca3af', 'In Progress':'#D97825', 'Completed':'#3B6D11' }
