@@ -1,6 +1,9 @@
 import { useState, useEffect, useMemo } from 'react'
 import { supabase } from '../lib/supabase.js'
-import { Modal, Field, FieldRow, inp, monoInp, Btn, fmt, fmtK, DatePicker } from './ui.jsx'
+import { Modal, Field, FieldRow, inp, monoInp, Btn, fmt, fmtK, DatePicker, PAID_BY_OPTIONS, PARTNERS, PartnerLedger, NoPartnerCells } from './ui.jsx'
+
+const TURN_STATUS_OPTIONS = ['Scheduled', 'In Progress', 'Completed']
+const TURN_STATUS_COLORS  = { 'Scheduled':'#9ca3af', 'In Progress':'#D97825', 'Completed':'#3B6D11' }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function firstOfMonth(date) {
@@ -280,18 +283,60 @@ export default function RentTracker({ propertyId, propertyAddress, open, onClose
   const [leases, setLeases]   = useState([])
   const [loading, setLoading] = useState(true)
   const [editing, setEditing] = useState(null)  // null | 'new' | lease obj
+  const [expenses, setExpenses]           = useState([])
+  const [deletedExpenseIds, setDeletedExpenseIds] = useState([])
+  const [expensesSaving, setExpensesSaving] = useState(false)
+  const closingDate = null // turn expenses don't have a natural "closing" cutoff like a sale does
 
   useEffect(() => { if (open && propertyId) load() }, [open, propertyId])
 
   async function load() {
     setLoading(true)
-    const { data } = await supabase
-      .from('cashoffer_leases')
-      .select('*')
-      .eq('property_id', propertyId)
-      .order('lease_start', { ascending: false })
-    setLeases(data || [])
+    const [leasesRes, expensesRes] = await Promise.all([
+      supabase.from('cashoffer_leases').select('*').eq('property_id', propertyId).order('lease_start', { ascending: false }),
+      supabase.from('cashoffer_turn_expenses').select('*').eq('property_id', propertyId).order('created_at', { ascending: true }),
+    ])
+    setLeases(leasesRes.data || [])
+    setExpenses(expensesRes.data || [])
+    setDeletedExpenseIds([])
     setLoading(false)
+  }
+
+  // Turn expenses — local drafts, committed only on Save (same pattern as Rehab)
+  function addExpense() {
+    setExpenses(p => [...p, {
+      id: `new-${Date.now()}-${Math.random().toString(36).slice(2)}`, _isNew: true,
+      property_id: propertyId, name: '', amount: 0, vendor: '', status: 'Scheduled',
+    }])
+  }
+  function updateExpense(id, field, value) {
+    setExpenses(p => p.map(e => e.id===id ? {...e,[field]:value} : e))
+  }
+  function removeExpense(id) {
+    const e = expenses.find(x => x.id === id)
+    if (e && !e._isNew) setDeletedExpenseIds(d => [...d, id])
+    setExpenses(p => p.filter(e => e.id!==id))
+  }
+  async function handleSaveExpenses() {
+    setExpensesSaving(true)
+    try {
+      if (deletedExpenseIds.length) await supabase.from('cashoffer_turn_expenses').delete().in('id', deletedExpenseIds)
+      const newOnes = expenses.filter(e => e._isNew).map(({ id, _isNew, ...rest }) => rest)
+      const existing = expenses.filter(e => !e._isNew)
+      if (newOnes.length) await supabase.from('cashoffer_turn_expenses').insert(newOnes)
+      await Promise.all(existing.map(({ id, ...rest }) => supabase.from('cashoffer_turn_expenses').update(rest).eq('id', id)))
+      const { data } = await supabase.from('cashoffer_turn_expenses').select('*').eq('property_id', propertyId).order('created_at', { ascending: true })
+      setExpenses(data || [])
+      setDeletedExpenseIds([])
+      onRentChange && onRentChange()
+    } catch (err) {
+      alert('Something went wrong saving turn expenses: ' + err.message)
+    }
+    setExpensesSaving(false)
+  }
+  function handleCancelExpenses() {
+    supabase.from('cashoffer_turn_expenses').select('*').eq('property_id', propertyId).order('created_at', { ascending: true })
+      .then(({ data }) => { setExpenses(data || []); setDeletedExpenseIds([]) })
   }
 
   async function saveLease(form) {
@@ -428,8 +473,54 @@ export default function RentTracker({ propertyId, propertyAddress, open, onClose
               </span>
             </div>
           )}
+
+          {/* Turn Expenses */}
+          <div style={{ marginTop:24, paddingTop:16, borderTop:'1px solid #F0EDE6' }}>
+            <div style={{ fontSize:13, fontWeight:700, color:'#2C2C2C', marginBottom:4 }}>Turn Expenses</div>
+            <div style={{ fontSize:11, color:'#9ca3af', marginBottom:8 }}>Turnover/make-ready costs between tenants — cleaning, repairs, touch-up paint, etc.</div>
+            {expenses.length > 0 && (
+              <div style={{ border:'0.5px solid #D6D2CA', borderRadius:8, overflow:'hidden', marginBottom:8 }}>
+                <div style={{ display:'grid', gridTemplateColumns:'2fr 150px 90px 85px 90px 115px 90px 28px', background:'#F0EDE6', padding:'6px 10px' }}>
+                  {['Name','Vendor','Status','Amount','Paid By','Date Paid','Interest',''].map(h=><div key={h} style={{ fontSize:10, fontWeight:600, color:'#6b7280', textTransform:'uppercase' }}>{h}</div>)}
+                </div>
+                {expenses.map((e,i) => (
+                  <div key={e.id} style={{ display:'grid', gridTemplateColumns:'2fr 150px 90px 85px 90px 115px 90px 28px', padding:'6px 10px', alignItems:'center', background:i%2===0?'#fff':'#FAFAF8', borderTop:i>0?'0.5px solid #F0EDE6':'none' }}>
+                    <input style={{ ...inp, fontSize:12, padding:'4px 6px', marginRight:6 }} value={e.name||''} onChange={ev=>updateExpense(e.id,'name',ev.target.value)} />
+                    <input style={{ ...inp, fontSize:12, padding:'4px 6px', marginRight:6 }} value={e.vendor||''} onChange={ev=>updateExpense(e.id,'vendor',ev.target.value)} />
+                    <select style={{ border:'0.5px solid #D6D2CA', borderRadius:4, padding:'4px 6px', fontSize:11, color:TURN_STATUS_COLORS[e.status], fontWeight:700, marginRight:6, background:'#fff' }} value={e.status||'Scheduled'} onChange={ev=>updateExpense(e.id,'status',ev.target.value)}>
+                      {TURN_STATUS_OPTIONS.map(s=><option key={s} value={s}>{s}</option>)}
+                    </select>
+                    <div style={{ position:'relative', marginRight:6 }}>
+                      <span style={{ position:'absolute', left:6, top:'50%', transform:'translateY(-50%)', fontSize:12, color:'#9ca3af', fontFamily:'monospace', pointerEvents:'none' }}>$</span>
+                      <input style={{ ...monoInp, fontSize:12, padding:'4px 6px 4px 16px', textAlign:'right', width:'100%' }} type="number" value={e.amount??''} onChange={ev=>updateExpense(e.id,'amount', ev.target.value===''?null:parseFloat(ev.target.value)||0)} />
+                    </div>
+                    <select value={e.paid_by||''} onChange={ev=>updateExpense(e.id,'paid_by',ev.target.value||null)} style={{ border:'0.5px solid #D6D2CA', borderRadius:4, padding:'4px 6px', fontSize:11, fontFamily:'inherit', background:'#fff', cursor:'pointer', marginRight:6 }}>
+                      <option value="">—</option>
+                      {PAID_BY_OPTIONS.map(p=><option key={p} value={p}>{p}</option>)}
+                    </select>
+                    {PARTNERS.includes(e.paid_by) ? (
+                      <PartnerLedger
+                        sourceType="turn_expense" sourceId={e.id}
+                        originalAmount={e.amount}
+                        datePaid={e.date_paid}
+                        onDatePaidChange={v=>updateExpense(e.id,'date_paid',v)}
+                        closingDate={closingDate}
+                      />
+                    ) : <NoPartnerCells />}
+                    <button onClick={()=>removeExpense(e.id)} style={{ background:'none', border:'none', color:'#D6D2CA', cursor:'pointer', fontSize:18, padding:0 }}>×</button>
+                  </div>
+                ))}
+              </div>
+            )}
+            <button onClick={addExpense} style={{ background:'transparent', border:'1px dashed #D6D2CA', borderRadius:6, padding:'7px', color:'#9ca3af', fontSize:12, cursor:'pointer', fontFamily:'inherit', width:'100%', marginBottom:12 }}>+ Add Expense</button>
+            <div style={{ display:'flex', justifyContent:'flex-end', gap:8 }}>
+              <Btn variant="outline" onClick={handleCancelExpenses}>Cancel</Btn>
+              <Btn onClick={handleSaveExpenses} disabled={expensesSaving}>{expensesSaving ? 'Saving…' : 'Save'}</Btn>
+            </div>
+          </div>
         </>
       )}
     </Modal>
   )
 }
+
