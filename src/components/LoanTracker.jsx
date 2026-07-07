@@ -68,6 +68,7 @@ const EMPTY_LOAN = {
   loan_start_date: '', monthly_payment: '', notes: '',
 }
 const LOAN_TYPES = ['Hard Money', 'Conventional', 'Private', 'HELOC', 'Other']
+const FUNDED_BY_OPTIONS = ['BPV', 'Bob', 'Eric']
 const TYPE_COLOR  = {
   'Hard Money':'#B91C1C', 'Conventional':'#2D6FAF',
   'Private':'#6b21a8', 'HELOC':'#D97825', 'Other':'#9ca3af',
@@ -188,6 +189,14 @@ function LoanForm({ loan, onSave, onCancel, onDelete }) {
         <Field label="Lender Name"><input style={inp} value={form.lender_name} onChange={set('lender_name')} /></Field>
         <Field label="Bank / Institution"><input style={inp} value={form.bank} onChange={set('bank')} /></Field>
       </FieldRow>
+      <Field label="Funded By">
+        <select style={inp} value={form.funded_by||'BPV'} onChange={set('funded_by')}>
+          {FUNDED_BY_OPTIONS.map(p=><option key={p} value={p}>{p}</option>)}
+        </select>
+        <div style={{ fontSize:10, color:'#9ca3af', marginTop:4 }}>
+          BPV = company money. If Bob or Eric personally funded this loan, the principal is owed back to them at payoff, same as the interest.
+        </div>
+      </Field>
       <FieldRow>
         <Field label="Loan Type">
           <select style={inp} value={form.loan_type} onChange={set('loan_type')}>
@@ -361,6 +370,9 @@ export default function LoanTracker({ propertyId, propertyAddress, open, onClose
               <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:4 }}>
                 <span style={{ fontSize:14, fontWeight:700, color:'#2C2C2C' }}>{focusLoan.lender_name || focusLoan.bank || 'Unnamed Lender'}</span>
                 <span style={{ background:TYPE_COLOR[focusLoan.loan_type]+'18', color:TYPE_COLOR[focusLoan.loan_type], border:`1px solid ${TYPE_COLOR[focusLoan.loan_type]}40`, borderRadius:4, padding:'2px 8px', fontSize:10, fontWeight:700 }}>{focusLoan.loan_type}</span>
+                {focusLoan.funded_by && focusLoan.funded_by !== 'BPV' && (
+                  <span style={{ background:'#B8892A18', color:'#B8892A', border:'1px solid #B8892A40', borderRadius:4, padding:'2px 8px', fontSize:10, fontWeight:700 }}>Funded by {focusLoan.funded_by}</span>
+                )}
                 {!focusLoan.is_active && (
                   <span style={{ background:'#9ca3af18', color:'#6b7280', border:'1px solid #9ca3af40', borderRadius:4, padding:'2px 8px', fontSize:10, fontWeight:700 }}>{focusLoan.closed_reason || 'Closed'}</span>
                 )}
@@ -401,7 +413,25 @@ export default function LoanTracker({ propertyId, propertyAddress, open, onClose
             {!focusLoan.is_active && (focusLoan.closed_reason === 'Refinanced'
               ? <div style={{ fontSize:11, color:'#9ca3af', marginTop:10 }}>Refinanced {focusLoan.refinanced_date ? new Date(focusLoan.refinanced_date+'T12:00:00').toLocaleDateString('en-US',{month:'short',year:'numeric'}) : ''}</div>
               : focusLoan.closed_reason === 'Paid Off'
-                ? <div style={{ fontSize:11, color:'#9ca3af', marginTop:10 }}>Paid Off {focusLoan.paid_off_date ? new Date(focusLoan.paid_off_date+'T12:00:00').toLocaleDateString('en-US',{month:'short',year:'numeric'}) : ''} · Total Interest Paid: {fmt(focusLoan.total_interest_paid)}</div>
+                ? (
+                  focusLoan.funded_by && focusLoan.funded_by !== 'BPV' ? (
+                    <div style={{ background:'#fef9ee', border:'1px solid #B8892A40', borderRadius:6, padding:'8px 12px', marginTop:10 }}>
+                      <div style={{ fontSize:10, fontWeight:700, color:'#B8892A', textTransform:'uppercase', letterSpacing:0.6, marginBottom:4 }}>
+                        Owed back to {focusLoan.funded_by} at closing
+                      </div>
+                      <div style={{ fontSize:11, color:'#6b7280' }}>
+                        Principal Returned: <strong style={{ color:'#2C2C2C' }}>{fmt(focusLoan.loan_amount)}</strong>
+                        {'  ·  '}Interest Paid: <strong style={{ color:'#2C2C2C' }}>{fmt(focusLoan.total_interest_paid)}</strong>
+                        {'  ·  '}Total: <strong style={{ color:'#2C2C2C' }}>{fmt((parseFloat(focusLoan.loan_amount)||0)+(parseFloat(focusLoan.total_interest_paid)||0))}</strong>
+                      </div>
+                      <div style={{ fontSize:10, color:'#9ca3af', marginTop:2 }}>
+                        Paid Off {focusLoan.paid_off_date ? new Date(focusLoan.paid_off_date+'T12:00:00').toLocaleDateString('en-US',{month:'short',year:'numeric'}) : ''}
+                      </div>
+                    </div>
+                  ) : (
+                    <div style={{ fontSize:11, color:'#9ca3af', marginTop:10 }}>Paid Off {focusLoan.paid_off_date ? new Date(focusLoan.paid_off_date+'T12:00:00').toLocaleDateString('en-US',{month:'short',year:'numeric'}) : ''} · Total Interest Paid: {fmt(focusLoan.total_interest_paid)}</div>
+                  )
+                )
                 : null)}
           </div>
 

@@ -2,6 +2,7 @@
 import { useState, useMemo, useRef, useEffect } from 'react'
 import { DayPicker } from 'react-day-picker'
 import 'react-day-picker/dist/style.css'
+import { supabase } from '../lib/supabase.js'
 
 export function Card({ children, style = {}, topColor = '#B8892A' }) {
   return (
@@ -354,5 +355,68 @@ export function LoadingSpinner() {
     </div>
   )
 }
+
+// ── Shared partner-funding ledger (used by Rehab and Rent turn expenses) ─────
+export const PAID_BY_OPTIONS = ['BPV', 'Bob', 'Eric']
+export const PARTNERS = ['Bob', 'Eric'] // BPV = company money, no interest owed to itself
+
+// Declining-balance simple interest at 10%/yr. Each payment first clears accrued
+// interest, then reduces principal — interest going forward accrues only on what's left.
+export function calcOwed(originalAmount, datePaid, repayments, asOf = new Date()) {
+  const principal0 = parseFloat(originalAmount) || 0
+  if (!datePaid || principal0 <= 0) return { balance: principal0, accruedInterest: 0, totalOwed: principal0, totalRepaid: 0 }
+  const RATE = 0.10
+  const sorted = [...repayments].sort((a,b) => new Date(a.payment_date) - new Date(b.payment_date))
+  let balance = principal0
+  let accrued = 0
+  let lastDate = new Date(datePaid + 'T12:00:00')
+  let totalRepaid = 0
+  for (const p of sorted) {
+    const pd = new Date(p.payment_date + 'T12:00:00')
+    const days = Math.max(0, (pd - lastDate) / 86400000)
+    accrued += balance * RATE * (days / 365)
+    let remaining = parseFloat(p.amount) || 0
+    totalRepaid += remaining
+    if (remaining <= accrued) { accrued -= remaining }
+    else { remaining -= accrued; accrued = 0; balance = Math.max(0, balance - remaining) }
+    lastDate = pd
+  }
+  const daysSince = Math.max(0, (asOf - lastDate) / 86400000)
+  accrued += balance * RATE * (daysSince / 365)
+  return { balance, accruedInterest: accrued, totalOwed: balance + accrued, totalRepaid }
+}
+
+export function PartnerLedger({ sourceType, sourceId, originalAmount, datePaid, onDatePaidChange, closingDate }) {
+  const [payments, setPayments] = useState([])
+
+  useEffect(() => {
+    supabase.from('cashoffer_partner_repayments').select('*')
+      .eq('source_type', sourceType).eq('source_id', sourceId).order('payment_date', { ascending: true })
+      .then(({ data }) => setPayments(data || []))
+  }, [sourceId])
+
+  const today = new Date()
+  const asOf = closingDate ? new Date(Math.min(today, new Date(closingDate + 'T12:00:00'))) : today
+  const { accruedInterest } = calcOwed(originalAmount, datePaid, payments, asOf)
+
+  return (
+    <div style={{ display:'contents' }}>
+      <DatePicker value={datePaid||''} onChange={e=>onDatePaidChange(e.target.value)} style={{ fontSize:11, padding:'4px 6px', marginRight:6 }} />
+      <div style={{ fontSize:12, fontWeight:700, fontFamily:'monospace', color:'#B8892A', textAlign:'right', marginRight:6, whiteSpace:'nowrap' }}>
+        {fmt(accruedInterest)}
+      </div>
+    </div>
+  )
+}
+
+export function NoPartnerCells() {
+  return (
+    <div style={{ display:'contents' }}>
+      <div style={{ fontSize:12, color:'#D6D2CA', textAlign:'center' }}>—</div>
+      <div style={{ fontSize:12, color:'#D6D2CA', textAlign:'right', marginRight:6 }}>—</div>
+    </div>
+  )
+}
+
 
 

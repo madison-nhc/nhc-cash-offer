@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase.js'
-import { Field, FieldRow, inp, monoInp, Btn, fmt, fmtK, DatePicker } from './ui.jsx'
+import { Field, FieldRow, inp, monoInp, Btn, fmt, fmtK, DatePicker, PAID_BY_OPTIONS, PARTNERS } from './ui.jsx'
 import Drawer from './Drawer.jsx'
 import AddressInput from './AddressInput.jsx'
 import RehabRoundTracker from './RehabRoundTracker.jsx'
@@ -240,6 +240,7 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
       commission_min:form.commission_min||5000,
       nhc_notes:form.nhc_notes||null,
       purchase_price:form.purchase_price||null, closing_costs:form.closing_costs||null,
+      closing_costs_paid_by:form.closing_costs_paid_by||null, closing_costs_date_paid:form.closing_costs_date_paid||null,
       rehab_cost:rehab, sale_price:form.sale_price||null, sale_date:form.sale_date||null,
       days_on_market:form.days_on_market||null, bpv_notes:form.bpv_notes||null,
       purchase_date:form.purchase_date||null, sold_date:form.sold_date||null,
@@ -302,6 +303,7 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
 
   const TABS = [
     { key:'analyzer',    label:'Analyzer' },
+    { key:'acquisition', label:'Acquisition' },
     { key:'rehab',       label:'Rehab' },
     ...(showLoanTab ? [{ key:'loan', label:'Loan' }] : []),
     ...(showRentTab ? [{ key:'rent', label:'Lease' }] : []),
@@ -557,6 +559,40 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
             </button>
           )}
           <Field label="Notes"><textarea style={{ ...inp, minHeight:56, resize:'vertical' }} value={form.nhc_notes||''} onChange={set('nhc_notes')} /></Field>
+        </div>
+      )}
+
+      {/* ══════════════ ACQUISITION TAB ══════════════ */}
+      {tab==='acquisition' && (
+        <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
+          <div className="drawer-section">Purchase</div>
+          <FieldRow>
+            <Field label="Purchase Price ($)"><input style={monoInp} type="number" value={form.purchase_price||''} onChange={set('purchase_price')} /></Field>
+            <Field label="Purchase Date"><DatePicker style={inp} value={form.purchase_date||''} onChange={set('purchase_date')} /></Field>
+          </FieldRow>
+          <Field label="Acquisition Type">
+            <select style={inp} value={form.acquisition_type||'Purchased'} onChange={set('acquisition_type')}>
+              <option value="Purchased">Purchased</option>
+              <option value="Pre-Owned">Pre-Owned</option>
+            </select>
+          </Field>
+
+          <div className="drawer-section">Closing Costs</div>
+          <div style={{ fontSize:11, color:'#9ca3af', marginTop:-8 }}>
+            This is the same figure shown on the Rehab tab — editing it here updates it there too.
+          </div>
+          <FieldRow>
+            <Field label="Closing Costs ($)"><input style={monoInp} type="number" value={form.closing_costs||''} onChange={set('closing_costs')} /></Field>
+            <Field label="Paid By">
+              <select style={inp} value={form.closing_costs_paid_by||''} onChange={set('closing_costs_paid_by')}>
+                <option value="">—</option>
+                {PAID_BY_OPTIONS.map(p=><option key={p} value={p}>{p}</option>)}
+              </select>
+            </Field>
+          </FieldRow>
+          {PARTNERS.includes(form.closing_costs_paid_by) && (
+            <Field label="Date Paid"><DatePicker style={inp} value={form.closing_costs_date_paid||''} onChange={set('closing_costs_date_paid')} /></Field>
+          )}
         </div>
       )}
 
@@ -884,6 +920,7 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
     </Drawer>
   )
 }
+
 
 
 

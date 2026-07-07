@@ -1,62 +1,24 @@
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase.js'
-import { Modal, Field, inp, monoInp, fmt, DatePicker, Btn } from './ui.jsx'
+import { Modal, Field, inp, monoInp, fmt, DatePicker, Btn, PAID_BY_OPTIONS, PARTNERS, PartnerLedger, NoPartnerCells, calcOwed } from './ui.jsx'
 
 const STATUS_OPTIONS = ['Scheduled', 'In Progress', 'Completed']
 const STATUS_COLORS  = { 'Scheduled':'#9ca3af', 'In Progress':'#D97825', 'Completed':'#3B6D11' }
 const SUPPLY_STATUS_OPTIONS = ['Ordered','Received']
 const SUPPLY_STATUS_COLORS  = { Ordered:'#D97825', Received:'#3B6D11' }
-const PAID_BY_OPTIONS = ['BPV', 'Bob', 'Eric']
-const PARTNERS = ['Bob', 'Eric'] // BPV = company money, no interest owed to itself
 const UTILITY_TYPES = ['Water', 'Electric', 'Gas', 'Insurance', 'Trash', 'HOA', 'Other']
 
-// Declining-balance simple interest at 10%/yr. Each payment first clears accrued
-// interest, then reduces principal — interest going forward accrues only on what's left.
-function calcOwed(originalAmount, datePaid, repayments, asOf = new Date()) {
-  const principal0 = parseFloat(originalAmount) || 0
-  if (!datePaid || principal0 <= 0) return { balance: principal0, accruedInterest: 0, totalOwed: principal0, totalRepaid: 0 }
-  const RATE = 0.10
-  const sorted = [...repayments].sort((a,b) => new Date(a.payment_date) - new Date(b.payment_date))
-  let balance = principal0
-  let accrued = 0
-  let lastDate = new Date(datePaid + 'T12:00:00')
-  let totalRepaid = 0
-  for (const p of sorted) {
-    const pd = new Date(p.payment_date + 'T12:00:00')
-    const days = Math.max(0, (pd - lastDate) / 86400000)
-    accrued += balance * RATE * (days / 365)
-    let remaining = parseFloat(p.amount) || 0
-    totalRepaid += remaining
-    if (remaining <= accrued) { accrued -= remaining }
-    else { remaining -= accrued; accrued = 0; balance = Math.max(0, balance - remaining) }
-    lastDate = pd
-  }
-  const daysSince = Math.max(0, (asOf - lastDate) / 86400000)
-  accrued += balance * RATE * (daysSince / 365)
-  return { balance, accruedInterest: accrued, totalOwed: balance + accrued, totalRepaid }
-}
-
-function PartnerLedger({ sourceType, sourceId, originalAmount, datePaid, onDatePaidChange, closingDate }) {
+function ClosingCostInterest({ propertyId, amount, datePaid, closingDate }) {
   const [payments, setPayments] = useState([])
-
   useEffect(() => {
     supabase.from('cashoffer_partner_repayments').select('*')
-      .eq('source_type', sourceType).eq('source_id', sourceId).order('payment_date', { ascending: true })
+      .eq('source_type', 'closing_costs').eq('source_id', propertyId).order('payment_date', { ascending: true })
       .then(({ data }) => setPayments(data || []))
-  }, [sourceId])
-
+  }, [propertyId])
   const today = new Date()
   const asOf = closingDate ? new Date(Math.min(today, new Date(closingDate + 'T12:00:00'))) : today
-  const { accruedInterest } = calcOwed(originalAmount, datePaid, payments, asOf)
-
-  return (
-    <div style={{ display:'contents' }}>
-      <DatePicker value={datePaid||''} onChange={e=>onDatePaidChange(e.target.value)} style={{ ...inp, fontSize:11, padding:'4px 6px', marginRight:6 }} />
-      <div style={{ fontSize:12, fontWeight:700, fontFamily:'monospace', color:'#B8892A', textAlign:'right', marginRight:6, whiteSpace:'nowrap' }}>
-        {fmt(accruedInterest)}
-      </div>
-    </div>
-  )
+  const { accruedInterest } = calcOwed(amount, datePaid, payments, asOf)
+  return <div style={{ fontSize:14, fontWeight:700, fontFamily:'monospace', color:'#B8892A', padding:'6px 0' }}>{fmt(accruedInterest)}</div>
 }
 
 function InventoryPickerModal({ propertyId, roundId, onClose, onDone }) {
@@ -141,14 +103,7 @@ function InventoryPickerModal({ propertyId, roundId, onClose, onDone }) {
   )
 }
 
-function NoPartnerCells() {
-  return (
-    <div style={{ display:'contents' }}>
-      <div style={{ fontSize:12, color:'#D6D2CA', textAlign:'center' }}>—</div>
-      <div style={{ fontSize:12, color:'#D6D2CA', textAlign:'right', marginRight:6 }}>—</div>
-    </div>
-  )
-}
+
 
 function LoanSnapshot({ propertyId }) {
   const [loans, setLoans] = useState([])
@@ -203,6 +158,9 @@ export default function RehabRoundTracker({ property, repairItems = [], onChange
   const [activeVendorId, setActiveVendorId] = useState(null)
   const [inventoryPickerOpen, setInventoryPickerOpen] = useState(false)
   const [budget, setBudget]           = useState('')
+  const [closingCosts, setClosingCosts]           = useState('')
+  const [closingCostsPaidBy, setClosingCostsPaidBy] = useState('')
+  const [closingCostsDatePaid, setClosingCostsDatePaid] = useState('')
   const [saving, setSaving]           = useState(false)
   const [deletedItemIds, setDeletedItemIds]       = useState([])
   const [deletedSupplyIds, setDeletedSupplyIds]   = useState([])
@@ -215,6 +173,9 @@ export default function RehabRoundTracker({ property, repairItems = [], onChange
   useEffect(() => {
     if (!open || !propertyId) return
     setBudget(property.rehab_cost || '')
+    setClosingCosts(property.closing_costs || '')
+    setClosingCostsPaidBy(property.closing_costs_paid_by || '')
+    setClosingCostsDatePaid(property.closing_costs_date_paid || '')
     loadVendors()
     loadRounds()
   }, [open, propertyId])
@@ -340,7 +301,12 @@ export default function RehabRoundTracker({ property, repairItems = [], onChange
     setSaving(true)
     try {
       if (propertyId) {
-        await supabase.from('cashoffer_properties').update({ rehab_cost: parseFloat(budget) || null }).eq('id', propertyId)
+        await supabase.from('cashoffer_properties').update({
+          rehab_cost: parseFloat(budget) || null,
+          closing_costs: parseFloat(closingCosts) || null,
+          closing_costs_paid_by: closingCostsPaidBy || null,
+          closing_costs_date_paid: closingCostsDatePaid || null,
+        }).eq('id', propertyId)
       }
       if (deletedItemIds.length) await supabase.from('cashoffer_rehab_items').delete().in('id', deletedItemIds)
       if (deletedSupplyIds.length) await supabase.from('cashoffer_supplies').delete().in('id', deletedSupplyIds)
@@ -374,6 +340,9 @@ export default function RehabRoundTracker({ property, repairItems = [], onChange
   function handleCancel() {
     loadRoundData(activeRoundId)
     setBudget(property?.rehab_cost || '')
+    setClosingCosts(property?.closing_costs || '')
+    setClosingCostsPaidBy(property?.closing_costs_paid_by || '')
+    setClosingCostsDatePaid(property?.closing_costs_date_paid || '')
     onClose()
   }
 
@@ -411,6 +380,44 @@ export default function RehabRoundTracker({ property, repairItems = [], onChange
       <div style={{ display:'flex', flexDirection:'column', gap:16 }}>
 
         <LoanSnapshot propertyId={propertyId} />
+
+        {/* Closing Costs — shared with the Acquisition tab, same underlying property fields */}
+        <div style={{ background:'#FAFAF8', borderRadius:8, padding:'14px 16px', border:'0.5px solid #D6D2CA' }}>
+          <div style={{ fontSize:11, fontWeight:700, color:'#6b7280', textTransform:'uppercase', letterSpacing:0.8, marginBottom:10 }}>Closing Costs (Acquisition)</div>
+          <div style={{ display:'grid', gridTemplateColumns:'140px 110px 130px 90px', gap:10, alignItems:'end' }}>
+            <div>
+              <div style={{ fontSize:10, color:'#9ca3af', marginBottom:4 }}>Amount ($)</div>
+              <div style={{ position:'relative' }}>
+                <span style={{ position:'absolute', left:6, top:'50%', transform:'translateY(-50%)', fontSize:12, color:'#9ca3af', fontFamily:'monospace', pointerEvents:'none' }}>$</span>
+                <input style={{ ...monoInp, padding:'6px 8px 6px 16px', textAlign:'right' }} type="number" value={closingCosts} onChange={e=>setClosingCosts(e.target.value)} />
+              </div>
+            </div>
+            <div>
+              <div style={{ fontSize:10, color:'#9ca3af', marginBottom:4 }}>Paid By</div>
+              <select style={inp} value={closingCostsPaidBy} onChange={e=>setClosingCostsPaidBy(e.target.value)}>
+                <option value="">—</option>
+                {PAID_BY_OPTIONS.map(p=><option key={p} value={p}>{p}</option>)}
+              </select>
+            </div>
+            {PARTNERS.includes(closingCostsPaidBy) ? (
+              <>
+                <div>
+                  <div style={{ fontSize:10, color:'#9ca3af', marginBottom:4 }}>Date Paid</div>
+                  <DatePicker value={closingCostsDatePaid} onChange={e=>setClosingCostsDatePaid(e.target.value)} />
+                </div>
+                <div>
+                  <div style={{ fontSize:10, color:'#9ca3af', marginBottom:4 }}>Interest</div>
+                  <ClosingCostInterest
+                    propertyId={propertyId}
+                    amount={closingCosts}
+                    datePaid={closingCostsDatePaid}
+                    closingDate={closingDate}
+                  />
+                </div>
+              </>
+            ) : <><span /><span /></>}
+          </div>
+        </div>
 
         {/* Budget + progress header */}
         <div style={{ background:'#FAFAF8', borderRadius:8, padding:'14px 16px', border:'0.5px solid #D6D2CA' }}>
