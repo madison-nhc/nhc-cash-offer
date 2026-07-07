@@ -145,25 +145,34 @@ function toYMD(d) {
 // curried handlers work unmodified.
 export function DatePicker({ value, onChange, style = {}, placeholder = 'mm/dd/yyyy', disabled = false }) {
   const [open, setOpen] = useState(false)
-  const [pos, setPos] = useState({ align: 'left', vertical: 'below' })
+  const [coords, setCoords] = useState({ top: 0, left: 0 })
   const ref = useRef(null)
 
   useEffect(() => {
     if (!open) return
-    function onDocClick(e) { if (ref.current && !ref.current.contains(e.target)) setOpen(false) }
+    function onDocClick(e) {
+      if (ref.current && !ref.current.contains(e.target) && !e.target.closest('[data-datepicker-popover]')) setOpen(false)
+    }
+    function close() { setOpen(false) }
     document.addEventListener('mousedown', onDocClick)
-    return () => document.removeEventListener('mousedown', onDocClick)
+    window.addEventListener('scroll', close, true)
+    window.addEventListener('resize', close)
+    return () => {
+      document.removeEventListener('mousedown', onDocClick)
+      window.removeEventListener('scroll', close, true)
+      window.removeEventListener('resize', close)
+    }
   }, [open])
 
   useEffect(() => {
     if (!open || !ref.current) return
     const rect = ref.current.getBoundingClientRect()
-    const boundary = ref.current.closest('[data-clip-boundary]')
-    const boundsRect = boundary ? boundary.getBoundingClientRect() : { left: 0, right: window.innerWidth, top: 0, bottom: window.innerHeight }
     const POPOVER_W = 300, POPOVER_H = 340
-    const align = (rect.left + POPOVER_W > boundsRect.right) ? 'right' : 'left'
-    const vertical = (rect.bottom + POPOVER_H > boundsRect.bottom) ? 'above' : 'below'
-    setPos({ align, vertical })
+    let left = rect.left
+    let top = rect.bottom + 4
+    if (left + POPOVER_W > window.innerWidth) left = Math.max(8, rect.right - POPOVER_W)
+    if (top + POPOVER_H > window.innerHeight) top = rect.top - POPOVER_H - 4
+    setCoords({ top, left })
   }, [open])
 
   const selected = value ? new Date(value + 'T12:00:00') : undefined
@@ -202,10 +211,8 @@ export function DatePicker({ value, onChange, style = {}, placeholder = 'mm/dd/y
         </span>
       </button>
       {open && (
-        <div style={{
-          position: 'absolute', zIndex: 300,
-          ...(pos.vertical === 'below' ? { top: '100%', marginTop: 4 } : { bottom: '100%', marginBottom: 4 }),
-          ...(pos.align === 'left' ? { left: 0 } : { right: 0 }),
+        <div data-datepicker-popover style={{
+          position: 'fixed', zIndex: 9999, top: coords.top, left: coords.left,
           background: '#fff', border: '0.5px solid #D6D2CA', borderRadius: 8,
           boxShadow: '0 8px 24px rgba(0,0,0,0.18)', padding: 8,
         }}>

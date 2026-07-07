@@ -324,11 +324,11 @@ export default function RehabRoundTracker({ property, repairItems = [], onChange
           </div>
           {items.length > 0 && (
             <div style={{ border:'0.5px solid #D6D2CA', borderRadius:8, overflow:'hidden', marginBottom:8 }}>
-              <div style={{ display:'grid', gridTemplateColumns:'2fr 110px 1fr 85px 85px 100px 90px 24px', background:'#F0EDE6', padding:'6px 10px' }}>
+              <div style={{ display:'grid', gridTemplateColumns:'2fr 110px 170px 100px 90px 115px 90px 28px', background:'#F0EDE6', padding:'6px 10px' }}>
                 {['Item','Status','Vendor','Amount','Paid By','Date Paid','Interest',''].map(h=><div key={h} style={{ fontSize:10, fontWeight:600, color:'#6b7280', textTransform:'uppercase' }}>{h}</div>)}
               </div>
               {items.map((item,i) => (
-                <div key={item.id} style={{ display:'grid', gridTemplateColumns:'2fr 110px 1fr 85px 85px 100px 90px 24px', padding:'6px 10px', alignItems:'center', background:i%2===0?'#fff':'#FAFAF8', borderTop:i>0?'0.5px solid #F0EDE6':'none' }}>
+                <div key={item.id} style={{ display:'grid', gridTemplateColumns:'2fr 110px 170px 100px 90px 115px 90px 28px', padding:'6px 10px', alignItems:'center', background:i%2===0?'#fff':'#FAFAF8', borderTop:i>0?'0.5px solid #F0EDE6':'none' }}>
                     <input style={{ ...inp, fontSize:12, padding:'4px 6px', marginRight:6 }} value={item.name} onChange={e=>updateItem(item.id,'name',e.target.value)} />
                     <select value={item.status} onChange={e=>updateItem(item.id,'status',e.target.value)} style={{ border:'0.5px solid #D6D2CA', borderRadius:4, padding:'4px 6px', fontSize:11, fontFamily:'inherit', fontWeight:700, color:STATUS_COLORS[item.status]||'#2C2C2C', background:'#fff', cursor:'pointer', marginRight:6 }}>
                       {STATUS_OPTIONS.map(s=><option key={s} value={s}>{s}</option>)}
@@ -376,11 +376,11 @@ export default function RehabRoundTracker({ property, repairItems = [], onChange
           <div style={{ fontSize:13, fontWeight:700, color:'#2C2C2C', marginBottom:8 }}>Supplies</div>
           {supplies.length > 0 && (
             <div style={{ border:'0.5px solid #D6D2CA', borderRadius:8, overflow:'hidden', marginBottom:8 }}>
-              <div style={{ display:'grid', gridTemplateColumns:'2fr 55px 80px 80px 1fr 90px 85px 100px 90px 24px', background:'#F0EDE6', padding:'6px 10px' }}>
+              <div style={{ display:'grid', gridTemplateColumns:'2fr 55px 85px 85px 170px 90px 90px 115px 90px 28px', background:'#F0EDE6', padding:'6px 10px' }}>
                 {['Name','Qty','Unit Cost','Total','Vendor/Store','Status','Paid By','Date Paid','Interest',''].map(h=><div key={h} style={{ fontSize:10, fontWeight:600, color:'#6b7280', textTransform:'uppercase' }}>{h}</div>)}
               </div>
               {supplies.map((it,i) => (
-                <div key={it.id} style={{ display:'grid', gridTemplateColumns:'2fr 55px 80px 80px 1fr 90px 85px 100px 90px 24px', padding:'6px 10px', alignItems:'center', background:i%2===0?'#fff':'#FAFAF8', borderTop:i>0?'0.5px solid #F0EDE6':'none' }}>
+                <div key={it.id} style={{ display:'grid', gridTemplateColumns:'2fr 55px 85px 85px 170px 90px 90px 115px 90px 28px', padding:'6px 10px', alignItems:'center', background:i%2===0?'#fff':'#FAFAF8', borderTop:i>0?'0.5px solid #F0EDE6':'none' }}>
                     <input style={{ ...inp, fontSize:12, padding:'4px 6px', marginRight:6 }} value={it.name||''} onChange={e=>updateSupply(it.id,'name',e.target.value)} />
                     <input style={{ ...monoInp, fontSize:12, padding:'4px 6px', textAlign:'right', marginRight:6 }} type="number" value={it.quantity||''} onChange={e=>updateSupply(it.id,'quantity',parseFloat(e.target.value)||0)} />
                     <input style={{ ...monoInp, fontSize:12, padding:'4px 6px', textAlign:'right', marginRight:6 }} type="number" value={it.unit_cost||''} onChange={e=>updateSupply(it.id,'unit_cost',parseFloat(e.target.value)||0)} />
@@ -416,11 +416,11 @@ export default function RehabRoundTracker({ property, repairItems = [], onChange
           <div style={{ fontSize:11, color:'#9ca3af', marginBottom:8 }}>Recurring bills while in rehab — separate from the loan payment.</div>
           {bills.length > 0 && (
             <div style={{ border:'0.5px solid #D6D2CA', borderRadius:8, overflow:'hidden', marginBottom:8 }}>
-              <div style={{ display:'grid', gridTemplateColumns:'105px 1fr 85px 85px 100px 90px 24px', background:'#F0EDE6', padding:'6px 10px' }}>
+              <div style={{ display:'grid', gridTemplateColumns:'115px 170px 90px 90px 115px 90px 28px', background:'#F0EDE6', padding:'6px 10px' }}>
                 {['Bill Date','Type','Amount','Paid By','Date Paid','Interest',''].map(h=><div key={h} style={{ fontSize:10, fontWeight:600, color:'#6b7280', textTransform:'uppercase' }}>{h}</div>)}
               </div>
               {bills.map((b,i) => (
-                <div key={b.id} style={{ display:'grid', gridTemplateColumns:'105px 1fr 85px 85px 100px 90px 24px', padding:'6px 10px', alignItems:'center', background:i%2===0?'#fff':'#FAFAF8', borderTop:i>0?'0.5px solid #F0EDE6':'none' }}>
+                <div key={b.id} style={{ display:'grid', gridTemplateColumns:'115px 170px 90px 90px 115px 90px 28px', padding:'6px 10px', alignItems:'center', background:i%2===0?'#fff':'#FAFAF8', borderTop:i>0?'0.5px solid #F0EDE6':'none' }}>
                     <DatePicker style={{ ...inp, fontSize:12, padding:'4px 6px', marginRight:6 }} value={b.bill_date||''} onChange={e=>updateBill(b.id,'bill_date',e.target.value)} />
                     <select value={b.utility_type||'Other'} onChange={e=>updateBill(b.id,'utility_type',e.target.value)} style={{ border:'0.5px solid #D6D2CA', borderRadius:4, padding:'4px 6px', fontSize:12, fontFamily:'inherit', background:'#fff', cursor:'pointer', marginRight:6 }}>
                       {UTILITY_TYPES.map(t=><option key={t} value={t}>{t}</option>)}
