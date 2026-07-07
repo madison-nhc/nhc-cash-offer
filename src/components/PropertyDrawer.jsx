@@ -151,6 +151,7 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
   const [tab, setTab]             = useState('analyzer')
   const [rehabCost, setRehabCost] = useState(null)
   const [loanOpen, setLoanOpen] = useState(false)
+  const [selectedLoanId, setSelectedLoanId] = useState(null)
   const [rehabOpen, setRehabOpen] = useState(false)
   const [rentOpen, setRentOpen] = useState(false)
   const [editingPhotosLink, setEditingPhotosLink] = useState(false)
@@ -587,7 +588,7 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
       {tab==='loan' && (
         <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
           {form.id ? (
-            <LoanOverview propertyId={form.id} onOpenFull={()=>setLoanOpen(true)} />
+            <LoanOverview propertyId={form.id} onOpenLoan={(id)=>{ setSelectedLoanId(id); setLoanOpen(true) }} />
           ) : (
             <div style={{ background:'#F0EDE6', borderRadius:8, padding:'14px', textAlign:'center', fontSize:12, color:'#9ca3af' }}>
               Save the property first to add loan details.
@@ -768,7 +769,8 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
         propertyId={form.id}
         propertyAddress={form.address}
         open={loanOpen}
-        onClose={()=>setLoanOpen(false)}
+        initialLoanId={selectedLoanId}
+        onClose={()=>{ setLoanOpen(false); setSelectedLoanId(null) }}
       />
 
       {/* Rehab Tracker modal (Services + Supplies + Utilities + Loan snapshot) */}
@@ -866,5 +868,6 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
     </Drawer>
   )
 }
+
 
 

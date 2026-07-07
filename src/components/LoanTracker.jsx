@@ -237,7 +237,7 @@ function LoanForm({ loan, onSave, onCancel, onDelete }) {
 }
 
 // ── Main LoanTracker modal ────────────────────────────────────────────────────
-export default function LoanTracker({ propertyId, propertyAddress, open, onClose }) {
+export default function LoanTracker({ propertyId, propertyAddress, open, onClose, initialLoanId }) {
   const [loans, setLoans]         = useState([])
   const [loading, setLoading]     = useState(true)
   const [editing, setEditing]     = useState(null)   // null | 'new' | {refinanceFor: id} | loan object
@@ -246,6 +246,7 @@ export default function LoanTracker({ propertyId, propertyAddress, open, onClose
 
   useEffect(() => {
     if (open && propertyId) load()
+    if (!open) { setExpandedLoan(null); setEditing(null); setClosingId(null) }
   }, [open, propertyId])
 
   async function load() {
@@ -257,6 +258,9 @@ export default function LoanTracker({ propertyId, propertyAddress, open, onClose
       .order('loan_start_date', { ascending: true })
     setLoans(data || [])
     setLoading(false)
+    // Jump straight to the specific loan that was clicked in the drawer, if any
+    if (initialLoanId) setExpandedLoan(initialLoanId)
+    else if (initialLoanId === null && !(data && data.length)) setEditing('new')
   }
 
   async function saveLoan(form) {
@@ -464,5 +468,6 @@ export default function LoanTracker({ propertyId, propertyAddress, open, onClose
     </Modal>
   )
 }
+
 
 
