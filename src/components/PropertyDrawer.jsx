@@ -102,7 +102,7 @@ function calcOffers(p, repairs) {
   const opt2HoldMo= parseFloat(p.hold_opt2_months)||3
   const opt2Comm  = commList*asisVal
   const opt2Hold  = (parseFloat(p.hold_opt2_pct)||0.5)/100*opt2HoldMo*arv
-  const opt2Net   = asisVal-opt2Comm-opt2Hold
+  const opt2Net   = asisVal-reno-opt2Comm-opt2Hold
   const opt3HoldMo= parseFloat(p.hold_opt3_months)||6
   const opt3Comm  = commList*arv
   const opt3Hold  = (parseFloat(p.hold_opt3_pct)||0.5)/100*opt3HoldMo*arv
@@ -496,6 +496,7 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
                 ]},
                 { label:'As-Is Net', value:d.opt2Net, color:'#2D6FAF', rows:[
                   { l:'List Price', v:fmt(d.asisVal) },
+                  { l:'Repairs', v:`−${fmt(d.reno)}` },
                   { l:`Comm (${(d.commListPct*100).toFixed(1).replace(/\.0$/,'')}%)`, v:`−${fmt(d.opt2Comm)}` },
                   { l:`Holding (${d.opt2HoldMo}mo)`, v:`−${fmt(d.opt2Hold)}` },
                 ]},
