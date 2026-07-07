@@ -1,10 +1,10 @@
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase.js'
-import { Field, FieldRow, inp, monoInp, Btn, fmt, fmtK } from './ui.jsx'
+import { Field, FieldRow, inp, monoInp, Btn, fmt, fmtK, DatePicker } from './ui.jsx'
 import Drawer from './Drawer.jsx'
 import AddressInput from './AddressInput.jsx'
 import RehabRoundTracker from './RehabRoundTracker.jsx'
-import RehabOverview from './RehabOverview.jsx'
+import RehabStatCards from './RehabOverview.jsx'
 import LoanTracker from './LoanTracker.jsx'
 import RentTracker from './RentTracker.jsx'
 import LoanOverview from './LoanOverview.jsx'
@@ -463,7 +463,7 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
                 <Field label="# of Months"><input style={monoInp} type="number" value={form.post_occupancy_months||''} onChange={set('post_occupancy_months')} /></Field>
                 <Field label="Payment ($)"><input style={monoInp} type="number" value={form.post_occupancy_payment||''} onChange={set('post_occupancy_payment')} /></Field>
               </FieldRow>
-              <Field label="End Date"><input style={inp} type="date" value={form.post_occupancy_end_date||''} onChange={set('post_occupancy_end_date')} /></Field>
+              <Field label="End Date"><DatePicker style={inp} value={form.post_occupancy_end_date||''} onChange={set('post_occupancy_end_date')} /></Field>
             </>)}
           </div>
 
@@ -564,30 +564,28 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
       {tab==='rehab' && (
         <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
           <div style={{ background:'#FAFAF8', borderRadius:8, padding:'12px 14px', border:'0.5px solid #D6D2CA' }}>
-            <div style={{ fontSize:10, color:'#9ca3af', textTransform:'uppercase', letterSpacing:0.8, marginBottom:8 }}>Rehab Stage</div>
-            <div style={{ display:'flex', gap:4, flexWrap:'wrap' }}>
-              {REHAB_STAGES.map(st=>{
-                const active=(form.rehab_stage||'Not Started')===st
-                const color=REHAB_COLOR[st]
-                return (
-                  <button key={st} onClick={()=>setVal('rehab_stage',st)} style={{
-                    padding:'4px 10px', border:`1.5px solid ${active?color:'#D6D2CA'}`,
-                    borderRadius:16, cursor:'pointer', fontSize:11, fontWeight:active?700:400,
-                    fontFamily:'inherit', background:active?color:'#fff', color:active?'#fff':'#6b7280',
-                    transition:'all 0.12s', whiteSpace:'nowrap',
-                  }}>{st}</button>
-                )
-              })}
-            </div>
-            <div style={{ marginTop:10 }}>
-              <Field label="Rehab Start Date">
-                <input style={inp} type="date" value={form.rehab_start_date||''} onChange={set('rehab_start_date')} />
+            <FieldRow>
+              <Field label="Rehab Stage">
+                <select
+                  value={form.rehab_stage||'Not Started'}
+                  onChange={e=>setVal('rehab_stage', e.target.value)}
+                  style={{
+                    ...inp, fontWeight:700, color:'#fff',
+                    background: REHAB_COLOR[form.rehab_stage||'Not Started'],
+                    border:`1.5px solid ${REHAB_COLOR[form.rehab_stage||'Not Started']}`,
+                  }}
+                >
+                  {REHAB_STAGES.map(st=><option key={st} value={st} style={{ background:'#fff', color:'#2C2C2C', fontWeight:400 }}>{st}</option>)}
+                </select>
               </Field>
-            </div>
+              <Field label="Rehab Start Date">
+                <DatePicker style={inp} value={form.rehab_start_date||''} onChange={set('rehab_start_date')} />
+              </Field>
+            </FieldRow>
           </div>
 
           {form.id ? (<>
-            <RehabOverview propertyId={form.id} onOpenFull={()=>setRehabOpen(true)} />
+            <RehabStatCards propertyId={form.id} onOpenFull={()=>setRehabOpen(true)} />
           </>) : (
             <div style={{ background:'#F0EDE6', borderRadius:8, padding:'14px', textAlign:'center', fontSize:12, color:'#9ca3af' }}>
               Save the property first to track rehab line items.
@@ -636,8 +634,8 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
           {disp==='listing' && (<>
             <div className="drawer-section">Listing Details</div>
             <FieldRow>
-              <Field label="List Date"><input style={inp} type="date" value={form.list_date||''} onChange={set('list_date')} /></Field>
-              <Field label="Offer Date"><input style={inp} type="date" value={form.offer_date||''} onChange={set('offer_date')} /></Field>
+              <Field label="List Date"><DatePicker style={inp} value={form.list_date||''} onChange={set('list_date')} /></Field>
+              <Field label="Offer Date"><DatePicker style={inp} value={form.offer_date||''} onChange={set('offer_date')} /></Field>
             </FieldRow>
             <Field label="ARV / List Price ($)"><input style={monoInp} type="number" value={form.arv||''} onChange={set('arv')} /></Field>
             {listingType==='Reno' && (
@@ -654,7 +652,7 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
             <div className="drawer-section">Sale</div>
             <FieldRow>
               <Field label="Sale Price ($)"><input style={monoInp} type="number" value={form.sale_price||''} onChange={set('sale_price')} /></Field>
-              <Field label="Close Date"><input style={inp} type="date" value={form.disposition_date||''} onChange={set('disposition_date')} /></Field>
+              <Field label="Close Date"><DatePicker style={inp} value={form.disposition_date||''} onChange={set('disposition_date')} /></Field>
             </FieldRow>
             <Field label="Days on Market"><input style={monoInp} type="number" value={form.days_on_market||''} onChange={set('days_on_market')} /></Field>
             {(form.commission_earned||form.sale_price) && (
@@ -674,7 +672,7 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
             </FieldRow>
             <FieldRow>
               <Field label="Buyer"><input style={inp} type="text" value={form.wholesale_buyer||''} onChange={set('wholesale_buyer')} /></Field>
-              <Field label="Close Date"><input style={inp} type="date" value={form.disposition_date||''} onChange={set('disposition_date')} /></Field>
+              <Field label="Close Date"><DatePicker style={inp} value={form.disposition_date||''} onChange={set('disposition_date')} /></Field>
             </FieldRow>
             <div className="drawer-section">NHC Commission</div>
             <FieldRow>
@@ -696,7 +694,7 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
           {disp==='flip' && (<>
             <div className="drawer-section">Acquisition</div>
             <FieldRow>
-              <Field label="Purchase Date"><input style={inp} type="date" value={form.purchase_date||''} onChange={set('purchase_date')} /></Field>
+              <Field label="Purchase Date"><DatePicker style={inp} value={form.purchase_date||''} onChange={set('purchase_date')} /></Field>
               <Field label="Purchase Price ($)"><input style={monoInp} type="number" value={form.purchase_price||''} onChange={set('purchase_price')} /></Field>
             </FieldRow>
             <FieldRow>
@@ -716,7 +714,7 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
             <div className="drawer-section">Resale</div>
             <FieldRow>
               <Field label="Sale Price ($)"><input style={monoInp} type="number" value={form.sale_price||''} onChange={set('sale_price')} /></Field>
-              <Field label="Sale Date"><input style={inp} type="date" value={form.sale_date||''} onChange={set('sale_date')} /></Field>
+              <Field label="Sale Date"><DatePicker style={inp} value={form.sale_date||''} onChange={set('sale_date')} /></Field>
             </FieldRow>
             <Field label="Days on Market"><input style={monoInp} type="number" value={form.days_on_market||''} onChange={set('days_on_market')} /></Field>
             {flipProfit!==null && (
@@ -733,7 +731,7 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
           {disp==='hold' && (<>
             <div className="drawer-section">Acquisition</div>
             <FieldRow>
-              <Field label="Purchase Date"><input style={inp} type="date" value={form.purchase_date||''} onChange={set('purchase_date')} /></Field>
+              <Field label="Purchase Date"><DatePicker style={inp} value={form.purchase_date||''} onChange={set('purchase_date')} /></Field>
               <Field label="Purchase Price ($)"><input style={monoInp} type="number" value={form.purchase_price||''} onChange={set('purchase_price')} /></Field>
             </FieldRow>
             <Field label="Closing Costs ($)"><input style={monoInp} type="number" value={form.closing_costs||''} onChange={set('closing_costs')} /></Field>
@@ -751,7 +749,7 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
                 <div style={{ fontSize:11, color:'#9ca3af', marginBottom:8 }}>Stage is set to Sold — record the sale details below.</div>
                 <FieldRow>
                   <Field label="Sale Price ($)"><input style={monoInp} type="number" value={form.sale_price||''} onChange={set('sale_price')} /></Field>
-                  <Field label="Sale Date"><input style={inp} type="date" value={form.sale_date||''} onChange={set('sale_date')} /></Field>
+                  <Field label="Sale Date"><DatePicker style={inp} value={form.sale_date||''} onChange={set('sale_date')} /></Field>
                 </FieldRow>
               </>) : (
                 <div style={{ fontSize:11, color:'#9ca3af' }}>Set the stage to Sold in the header to record a sale on this hold.</div>
@@ -769,7 +767,7 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
           {/* ── LOST ── */}
           {disp==='lost' && (<>
             <div className="drawer-section">Lost / Passed Details</div>
-            <Field label="Date Passed"><input style={inp} type="date" value={form.disposition_date||''} onChange={set('disposition_date')} /></Field>
+            <Field label="Date Passed"><DatePicker style={inp} value={form.disposition_date||''} onChange={set('disposition_date')} /></Field>
             <Field label="Reason"><textarea style={{ ...inp, minHeight:72, resize:'vertical' }} value={form.lost_reason||''} onChange={set('lost_reason')} /></Field>
           </>)}
 

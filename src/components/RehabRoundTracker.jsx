@@ -538,19 +538,28 @@ export default function RehabRoundTracker({ property, repairItems = [], onChange
         </div>
 
         {/* Who fronted the money */}
-        {Object.keys(paidByTotals).length > 0 && (
-          <div style={{ background:'#FAFAF8', border:'0.5px solid #D6D2CA', borderRadius:8, padding:'12px 16px' }}>
-            <div style={{ fontSize:11, fontWeight:700, color:'#6b7280', textTransform:'uppercase', letterSpacing:0.8, marginBottom:8 }}>Who Fronted The Money — This Round</div>
-            <div style={{ display:'flex', gap:16, flexWrap:'wrap' }}>
-              {Object.entries(paidByTotals).map(([who,t]) => (
-                <div key={who}>
-                  <div style={{ fontSize:10, color:'#9ca3af' }}>{who}</div>
-                  <div style={{ fontSize:14, fontWeight:700, fontFamily:'monospace', color:'#2C2C2C' }}>{fmt(t)}</div>
-                </div>
-              ))}
+        {Object.keys(paidByTotals).length > 0 && (() => {
+          const PAID_BY_COLOR = { Bob:'#2D6FAF', Eric:'#D97825', BPV:'#B8892A' }
+          const grandTotal = Object.values(paidByTotals).reduce((s,v)=>s+v, 0)
+          return (
+            <div>
+              <div style={{ fontSize:11, fontWeight:700, color:'#6b7280', textTransform:'uppercase', letterSpacing:0.8, marginBottom:8 }}>Who Fronted The Money — This Round</div>
+              <div style={{ display:'grid', gridTemplateColumns:`repeat(${Object.keys(paidByTotals).length}, 1fr)`, gap:10 }}>
+                {Object.entries(paidByTotals).map(([who,t]) => {
+                  const color = PAID_BY_COLOR[who] || '#9ca3af'
+                  const share = grandTotal > 0 ? Math.round((t/grandTotal)*100) : 0
+                  return (
+                    <div key={who} style={{ background:'#fff', border:'0.5px solid #D6D2CA', borderTop:`3px solid ${color}`, borderRadius:8, padding:'10px 12px' }}>
+                      <div style={{ fontSize:10, fontWeight:700, color, textTransform:'uppercase', letterSpacing:0.6, marginBottom:4 }}>{who}</div>
+                      <div style={{ fontSize:18, fontWeight:700, fontFamily:'monospace', color:'#2C2C2C', lineHeight:1 }}>{fmt(t)}</div>
+                      <div style={{ fontSize:10, color:'#9ca3af', marginTop:5 }}>{share}% of this round</div>
+                    </div>
+                  )
+                })}
+              </div>
             </div>
-          </div>
-        )}
+          )
+        })()}
 
       </div>
     </Modal>
@@ -566,5 +575,6 @@ export default function RehabRoundTracker({ property, repairItems = [], onChange
     </>
   )
 }
+
 
 

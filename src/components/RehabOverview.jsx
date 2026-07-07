@@ -73,3 +73,4 @@ export default function RehabOverview({ propertyId, onOpenFull }) {
     </div>
   )
 }
+
