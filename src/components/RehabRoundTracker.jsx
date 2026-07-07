@@ -105,6 +105,9 @@ export default function RehabRoundTracker({ property, repairItems = [], onChange
       supabase.from('cashoffer_supplies').select('*').eq('rehab_round_id', roundId).order('created_at', { ascending: true }),
       supabase.from('cashoffer_utility_bills').select('*').eq('rehab_round_id', roundId).order('bill_date', { ascending: false }),
     ])
+    if (i.error || s.error || b.error) {
+      alert('Error loading rehab data: ' + (i.error?.message || s.error?.message || b.error?.message))
+    }
     setItems(i.data || [])
     setSupplies(s.data || [])
     setBills(b.data || [])
@@ -130,9 +133,14 @@ export default function RehabRoundTracker({ property, repairItems = [], onChange
     if (data) setItems(p => [...p, data])
   }
   async function copyFromAnalyzer() {
-    if (!repairItems.filter(r=>r.name).length) return
-    if (!confirm(`Copy ${repairItems.filter(r=>r.name).length} repair item(s) from the Analyzer?`)) return
-    const toInsert = repairItems.filter(r=>r.name).map((r,i) => ({ property_id: propertyId, rehab_round_id: activeRoundId, name: r.name, estimated_cost: parseFloat(r.cost)||0, status:'Scheduled', sort_order: items.length+i }))
+    const existingNames = new Set(items.map(it => (it.name || '').trim().toLowerCase()).filter(Boolean))
+    const candidates = repairItems.filter(r => r.name && !existingNames.has(r.name.trim().toLowerCase()))
+    if (!candidates.length) {
+      alert('Nothing new to copy — every named item on the Analyzer already exists in this round.')
+      return
+    }
+    if (!confirm(`Copy ${candidates.length} new repair item(s) from the Analyzer? (Items already in this round will be skipped.)`)) return
+    const toInsert = candidates.map((r,i) => ({ property_id: propertyId, rehab_round_id: activeRoundId, name: r.name, estimated_cost: parseFloat(r.cost)||0, status:'Scheduled', sort_order: items.length+i }))
     await supabase.from('cashoffer_rehab_items').insert(toInsert)
     loadRoundData(activeRoundId)
   }
@@ -368,3 +376,4 @@ export default function RehabRoundTracker({ property, repairItems = [], onChange
     </Modal>
   )
 }
+
