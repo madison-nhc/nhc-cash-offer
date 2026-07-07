@@ -3,13 +3,12 @@ import { supabase } from '../lib/supabase.js'
 import { Field, FieldRow, inp, monoInp, Btn, fmt, fmtK } from './ui.jsx'
 import Drawer from './Drawer.jsx'
 import AddressInput from './AddressInput.jsx'
-import RehabTracker from './RehabTracker.jsx'
+import RehabRoundTracker from './RehabRoundTracker.jsx'
 import RehabOverview from './RehabOverview.jsx'
 import LoanTracker from './LoanTracker.jsx'
 import RentTracker from './RentTracker.jsx'
 import LoanOverview from './LoanOverview.jsx'
 import RentOverview from './RentOverview.jsx'
-import SuppliesTracker from './SuppliesTracker.jsx'
 
 // ── Type options (primary) ────────────────────────────────────────────────────
 const TYPE_OPTIONS = [
@@ -154,7 +153,6 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
   const [loanOpen, setLoanOpen] = useState(false)
   const [rehabOpen, setRehabOpen] = useState(false)
   const [rentOpen, setRentOpen] = useState(false)
-  const [suppliesOpen, setSuppliesOpen] = useState(false)
   const [editingPhotosLink, setEditingPhotosLink] = useState(false)
 
   const isNew   = !form.id
@@ -577,13 +575,6 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
 
           {form.id ? (<>
             <RehabOverview propertyId={form.id} onOpenFull={()=>setRehabOpen(true)} />
-            <button onClick={()=>setSuppliesOpen(true)} style={{ width:'100%', background:'#fff', border:'1.5px solid #B8892A', borderRadius:8, padding:'12px 16px', cursor:'pointer', fontFamily:'inherit', display:'flex', alignItems:'center', justifyContent:'space-between', marginTop:4 }}>
-              <div style={{ textAlign:'left' }}>
-                <div style={{ fontSize:13, fontWeight:700, color:'#B8892A' }}>Supplies</div>
-                <div style={{ fontSize:11, color:'#9ca3af', marginTop:2 }}>Materials purchased — cost, vendor, status</div>
-              </div>
-              <span style={{ fontSize:18, color:'#B8892A' }}>→</span>
-            </button>
           </>) : (
             <div style={{ background:'#F0EDE6', borderRadius:8, padding:'14px', textAlign:'center', fontSize:12, color:'#9ca3af' }}>
               Save the property first to track rehab line items.
@@ -780,8 +771,8 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
         onClose={()=>setLoanOpen(false)}
       />
 
-      {/* Rehab Tracker modal */}
-      <RehabTracker
+      {/* Rehab Tracker modal (Services + Supplies + Utilities + Loan snapshot) */}
+      <RehabRoundTracker
         property={form}
         repairItems={repairs}
         onChange={total=>setRehabCost(total)}
@@ -796,14 +787,6 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
         open={rentOpen}
         onClose={()=>setRentOpen(false)}
         onRentChange={()=>onSave()}
-      />
-
-      {/* Supplies Tracker modal */}
-      <SuppliesTracker
-        propertyId={form.id}
-        propertyAddress={form.address}
-        open={suppliesOpen}
-        onClose={()=>setSuppliesOpen(false)}
       />
 
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginTop:20, paddingTop:16, borderTop:'1px solid #F0EDE6' }}>

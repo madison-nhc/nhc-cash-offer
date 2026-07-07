@@ -15,7 +15,7 @@ export default function Supplies({ onBack }) {
     setLoading(true)
     const { data } = await supabase
       .from('cashoffer_supplies')
-      .select('*, cashoffer_properties(address)')
+      .select('*, cashoffer_properties(address), cashoffer_rehab_rounds(label)')
       .order('created_at', { ascending: false })
     setItems(data || [])
     setLoading(false)
@@ -33,6 +33,7 @@ export default function Supplies({ onBack }) {
 
   const { sorted, sortKey, sortDir, toggleSort } = useSort(filtered, 'created_at', 'desc', {
     address:   i => i.cashoffer_properties?.address || '',
+    round:     i => i.cashoffer_rehab_rounds?.label || '',
     total:     i => (parseFloat(i.unit_cost)||0)*(parseFloat(i.quantity)||0),
   })
 
@@ -75,6 +76,7 @@ export default function Supplies({ onBack }) {
           <thead>
             <tr>
               <SortTh sortKeyName="address" {...{sortKey,sortDir,toggleSort}}>Property</SortTh>
+              <SortTh sortKeyName="round" {...{sortKey,sortDir,toggleSort}}>Round</SortTh>
               <SortTh sortKeyName="name" {...{sortKey,sortDir,toggleSort}}>Item</SortTh>
               <SortTh sortKeyName="quantity" {...{sortKey,sortDir,toggleSort}} align="right">Qty</SortTh>
               <SortTh sortKeyName="unit_cost" {...{sortKey,sortDir,toggleSort}} align="right">Unit Cost</SortTh>
@@ -87,6 +89,7 @@ export default function Supplies({ onBack }) {
             {sorted.map((it,i) => (
               <tr key={it.id} style={{ background: i%2===1?'#FAFAF8':'#fff', borderBottom:'0.5px solid #F0EDE6' }}>
                 <td style={{ padding:'10px 14px', fontSize:13, fontWeight:600 }}>{it.cashoffer_properties?.address || '—'}</td>
+                <td style={{ padding:'10px 14px', fontSize:12, color:'#9ca3af' }}>{it.cashoffer_rehab_rounds?.label || '—'}</td>
                 <td style={{ padding:'10px 14px', fontSize:13 }}>{it.name || '—'}</td>
                 <td style={{ padding:'10px 14px', fontSize:13, fontFamily:'monospace', textAlign:'right' }}>{it.quantity ?? '—'}</td>
                 <td style={{ padding:'10px 14px', fontSize:13, fontFamily:'monospace', textAlign:'right' }}>{it.unit_cost ? fmt(it.unit_cost) : '—'}</td>
