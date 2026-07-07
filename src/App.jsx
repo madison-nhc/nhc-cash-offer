@@ -11,6 +11,7 @@ import Wholesale from './pages/Wholesale.jsx'
 import Sold from './pages/Sold.jsx'
 import MailingTracker from './pages/MailingTracker.jsx'
 import Vendors from './pages/Vendors.jsx'
+import Inventory from './pages/Inventory.jsx'
 import OpsLog from './pages/OpsLog.jsx'
 
 function GlobalSearch({ onSelect, mobile }) {
@@ -93,6 +94,7 @@ const TABS = [
   { id:'wholesale',  label:'Wholesale',        short:'Wholesale', path:'/wholesale' },
   { id:'sold',       label:'Sold',             short:'Sold',      path:'/sold' },
   { id:'vendors',    label:'Vendors',          short:'Vendors',   path:'/vendors' },
+  { id:'inventory',  label:'Inventory',        short:'Inventory', path:'/inventory' },
   { id:'opslog',     label:'Improvements',     short:'Improvements', path:'/ops-log' },
 ]
 
@@ -162,6 +164,7 @@ export default function App() {
     sold:      <Sold />,
     mailings:  <MailingTracker />,
     vendors:   <Vendors />,
+    inventory: <Inventory />,
     opslog:    <OpsLog />,
   }
 
@@ -271,4 +274,5 @@ export default function App() {
     </div>
   )
 }
+
 
