@@ -7,7 +7,99 @@ const STATUS_COLORS  = { 'Scheduled':'#9ca3af', 'In Progress':'#D97825', 'Comple
 const SUPPLY_STATUS_OPTIONS = ['Ordered','Received']
 const SUPPLY_STATUS_COLORS  = { Ordered:'#D97825', Received:'#3B6D11' }
 const PAID_BY_OPTIONS = ['BPV', 'Bob', 'Eric', 'Blaire', 'Other']
+const PARTNERS = ['Bob', 'Eric', 'Blaire', 'Other'] // BPV = company money, no interest owed to itself
 const UTILITY_TYPES = ['Water', 'Electric', 'Gas', 'Insurance', 'Trash', 'HOA', 'Other']
+
+// Declining-balance simple interest at 10%/yr. Each payment first clears accrued
+// interest, then reduces principal — interest going forward accrues only on what's left.
+function calcOwed(originalAmount, datePaid, repayments, asOf = new Date()) {
+  const principal0 = parseFloat(originalAmount) || 0
+  if (!datePaid || principal0 <= 0) return { balance: principal0, accruedInterest: 0, totalOwed: principal0, totalRepaid: 0 }
+  const RATE = 0.10
+  const sorted = [...repayments].sort((a,b) => new Date(a.payment_date) - new Date(b.payment_date))
+  let balance = principal0
+  let accrued = 0
+  let lastDate = new Date(datePaid + 'T12:00:00')
+  let totalRepaid = 0
+  for (const p of sorted) {
+    const pd = new Date(p.payment_date + 'T12:00:00')
+    const days = Math.max(0, (pd - lastDate) / 86400000)
+    accrued += balance * RATE * (days / 365)
+    let remaining = parseFloat(p.amount) || 0
+    totalRepaid += remaining
+    if (remaining <= accrued) { accrued -= remaining }
+    else { remaining -= accrued; accrued = 0; balance = Math.max(0, balance - remaining) }
+    lastDate = pd
+  }
+  const daysSince = Math.max(0, (asOf - lastDate) / 86400000)
+  accrued += balance * RATE * (daysSince / 365)
+  return { balance, accruedInterest: accrued, totalOwed: balance + accrued, totalRepaid }
+}
+
+function PartnerLedger({ sourceType, sourceId, originalAmount, datePaid, onDatePaidChange }) {
+  const [open, setOpen] = useState(false)
+  const [payments, setPayments] = useState([])
+  const [loaded, setLoaded] = useState(false)
+  const [newAmt, setNewAmt] = useState('')
+  const [newDate, setNewDate] = useState(new Date().toISOString().slice(0,10))
+
+  async function load() {
+    const { data } = await supabase.from('cashoffer_partner_repayments').select('*')
+      .eq('source_type', sourceType).eq('source_id', sourceId).order('payment_date', { ascending: true })
+    setPayments(data || [])
+    setLoaded(true)
+  }
+  useEffect(() => { if (open && !loaded) load() }, [open])
+
+  const { totalOwed, totalRepaid } = calcOwed(originalAmount, datePaid, payments)
+
+  async function addPayment() {
+    const amt = parseFloat(newAmt)
+    if (!amt || amt <= 0) return
+    await supabase.from('cashoffer_partner_repayments').insert({ source_type: sourceType, source_id: sourceId, amount: amt, payment_date: newDate })
+    setNewAmt('')
+    load()
+  }
+  async function removePayment(id) {
+    await supabase.from('cashoffer_partner_repayments').delete().eq('id', id)
+    load()
+  }
+
+  return (
+    <div style={{ gridColumn:'1 / -1', marginTop: open ? 6 : 0 }}>
+      <div onClick={()=>setOpen(o=>!o)} style={{ display:'inline-flex', alignItems:'center', gap:5, cursor:'pointer', fontSize:11, fontWeight:700, color:'#B8892A' }}>
+        {open?'▾':'▸'} Owed: {fmt(totalOwed)} {totalRepaid > 0 && <span style={{ color:'#9ca3af', fontWeight:400 }}>({fmt(totalRepaid)} repaid)</span>}
+      </div>
+      {open && (
+        <div style={{ background:'#FAFAF8', border:'0.5px solid #D6D2CA', borderRadius:6, padding:'10px 12px', marginTop:4 }}>
+          <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:8, flexWrap:'wrap' }}>
+            <label style={{ fontSize:10, color:'#9ca3af', display:'flex', alignItems:'center', gap:6 }}>
+              Date Paid
+              <input type="date" value={datePaid||''} onChange={e=>onDatePaidChange(e.target.value)} style={{ ...inp, fontSize:11, padding:'3px 6px' }} />
+            </label>
+            <span style={{ fontSize:10, color:'#9ca3af' }}>Interest accrues at 10%/yr on the outstanding balance until repaid.</span>
+          </div>
+          {payments.length > 0 && (
+            <div style={{ display:'flex', flexDirection:'column', gap:4, marginBottom:8 }}>
+              {payments.map(p => (
+                <div key={p.id} style={{ display:'flex', alignItems:'center', gap:8, fontSize:11 }}>
+                  <span style={{ color:'#6b7280' }}>{new Date(p.payment_date+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}</span>
+                  <span style={{ fontFamily:'monospace', fontWeight:600 }}>{fmt(p.amount)}</span>
+                  <button onClick={()=>removePayment(p.id)} style={{ background:'none', border:'none', color:'#D6D2CA', cursor:'pointer', fontSize:14, padding:0 }}>×</button>
+                </div>
+              ))}
+            </div>
+          )}
+          <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+            <input type="number" placeholder="Amount" value={newAmt} onChange={e=>setNewAmt(e.target.value)} style={{ ...monoInp, fontSize:11, padding:'4px 6px', width:90 }} />
+            <input type="date" value={newDate} onChange={e=>setNewDate(e.target.value)} style={{ ...inp, fontSize:11, padding:'4px 6px' }} />
+            <button onClick={addPayment} style={{ background:'#2D6FAF', color:'#fff', border:'none', borderRadius:5, padding:'4px 10px', fontSize:11, fontWeight:700, cursor:'pointer', fontFamily:'inherit' }}>+ Payment</button>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
 
 function LoanSnapshot({ propertyId }) {
   const [loans, setLoans] = useState([])
@@ -268,30 +360,42 @@ export default function RehabRoundTracker({ property, repairItems = [], onChange
                 {['Item','Status','Vendor','Actual','Paid By',''].map(h=><div key={h} style={{ fontSize:10, fontWeight:600, color:'#6b7280', textTransform:'uppercase' }}>{h}</div>)}
               </div>
               {items.map((item,i) => (
-                <div key={item.id} style={{ display:'grid', gridTemplateColumns:'2fr 120px 1fr 90px 90px 28px', padding:'6px 10px', alignItems:'center', background:i%2===0?'#fff':'#FAFAF8', borderTop:i>0?'0.5px solid #F0EDE6':'none' }}>
-                  <input style={{ ...inp, fontSize:12, padding:'4px 6px', marginRight:6 }} value={item.name} onChange={e=>updateItem(item.id,'name',e.target.value)} />
-                  <select value={item.status} onChange={e=>updateItem(item.id,'status',e.target.value)} style={{ border:'0.5px solid #D6D2CA', borderRadius:4, padding:'4px 6px', fontSize:11, fontFamily:'inherit', fontWeight:700, color:STATUS_COLORS[item.status]||'#2C2C2C', background:'#fff', cursor:'pointer', marginRight:6 }}>
-                    {STATUS_OPTIONS.map(s=><option key={s} value={s}>{s}</option>)}
-                  </select>
-                  <div style={{ position:'relative', marginRight:6 }}>
-                    <input ref={el=>vendorRefs.current[item.id]=el} style={{ ...inp, fontSize:12, padding:'4px 6px', width:'100%' }} value={item.vendor||''}
-                      onChange={e=>{ updateItem(item.id,'vendor',e.target.value); setActiveVendorId(item.id) }}
-                      onBlur={()=>setTimeout(()=>setActiveVendorId(null),150)} onFocus={()=>setActiveVendorId(item.id)} />
-                    {activeVendorId===item.id && vendors.filter(v=>v.toLowerCase().includes((item.vendor||'').toLowerCase())&&v!==item.vendor).length>0 && (
-                      <div style={{ position:'absolute', top:'100%', left:0, right:0, zIndex:50, background:'#fff', border:'0.5px solid #D6D2CA', borderRadius:4, boxShadow:'0 4px 12px rgba(0,0,0,0.1)', maxHeight:140, overflowY:'auto' }}>
-                        {vendors.filter(v=>v.toLowerCase().includes((item.vendor||'').toLowerCase())&&v!==item.vendor).map(v=>(
-                          <div key={v} onMouseDown={()=>{updateItem(item.id,'vendor',v);setActiveVendorId(null)}} style={{ padding:'7px 10px', fontSize:12, cursor:'pointer', borderBottom:'0.5px solid #F0EDE6' }}>{v}</div>
-                        ))}
-                      </div>
-                    )}
+                <div key={item.id}>
+                  <div style={{ display:'grid', gridTemplateColumns:'2fr 120px 1fr 90px 90px 28px', padding:'6px 10px', alignItems:'center', background:i%2===0?'#fff':'#FAFAF8', borderTop:i>0?'0.5px solid #F0EDE6':'none' }}>
+                    <input style={{ ...inp, fontSize:12, padding:'4px 6px', marginRight:6 }} value={item.name} onChange={e=>updateItem(item.id,'name',e.target.value)} />
+                    <select value={item.status} onChange={e=>updateItem(item.id,'status',e.target.value)} style={{ border:'0.5px solid #D6D2CA', borderRadius:4, padding:'4px 6px', fontSize:11, fontFamily:'inherit', fontWeight:700, color:STATUS_COLORS[item.status]||'#2C2C2C', background:'#fff', cursor:'pointer', marginRight:6 }}>
+                      {STATUS_OPTIONS.map(s=><option key={s} value={s}>{s}</option>)}
+                    </select>
+                    <div style={{ position:'relative', marginRight:6 }}>
+                      <input ref={el=>vendorRefs.current[item.id]=el} style={{ ...inp, fontSize:12, padding:'4px 6px', width:'100%' }} value={item.vendor||''}
+                        onChange={e=>{ updateItem(item.id,'vendor',e.target.value); setActiveVendorId(item.id) }}
+                        onBlur={()=>setTimeout(()=>setActiveVendorId(null),150)} onFocus={()=>setActiveVendorId(item.id)} />
+                      {activeVendorId===item.id && vendors.filter(v=>v.toLowerCase().includes((item.vendor||'').toLowerCase())&&v!==item.vendor).length>0 && (
+                        <div style={{ position:'absolute', top:'100%', left:0, right:0, zIndex:50, background:'#fff', border:'0.5px solid #D6D2CA', borderRadius:4, boxShadow:'0 4px 12px rgba(0,0,0,0.1)', maxHeight:140, overflowY:'auto' }}>
+                          {vendors.filter(v=>v.toLowerCase().includes((item.vendor||'').toLowerCase())&&v!==item.vendor).map(v=>(
+                            <div key={v} onMouseDown={()=>{updateItem(item.id,'vendor',v);setActiveVendorId(null)}} style={{ padding:'7px 10px', fontSize:12, cursor:'pointer', borderBottom:'0.5px solid #F0EDE6' }}>{v}</div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    <input style={{ ...monoInp, fontSize:12, padding:'4px 6px', textAlign:'right', borderColor:item.status==='Completed'?'#3B6D11':'#D6D2CA', marginRight:6 }} type="number"
+                      value={item.actual_cost!=null?item.actual_cost:''} onChange={e=>updateItem(item.id,'actual_cost', e.target.value===''?null:parseFloat(e.target.value)||0)} />
+                    <select value={item.paid_by||''} onChange={e=>updateItem(item.id,'paid_by',e.target.value||null)} style={{ border:'0.5px solid #D6D2CA', borderRadius:4, padding:'4px 6px', fontSize:11, fontFamily:'inherit', background:'#fff', cursor:'pointer', marginRight:6 }}>
+                      <option value="">—</option>
+                      {PAID_BY_OPTIONS.map(p=><option key={p} value={p}>{p}</option>)}
+                    </select>
+                    <button onClick={()=>removeItem(item.id)} style={{ background:'none', border:'none', color:'#D6D2CA', cursor:'pointer', fontSize:18, padding:0 }}>×</button>
                   </div>
-                  <input style={{ ...monoInp, fontSize:12, padding:'4px 6px', textAlign:'right', borderColor:item.status==='Completed'?'#3B6D11':'#D6D2CA', marginRight:6 }} type="number"
-                    value={item.actual_cost!=null?item.actual_cost:''} onChange={e=>updateItem(item.id,'actual_cost', e.target.value===''?null:parseFloat(e.target.value)||0)} />
-                  <select value={item.paid_by||''} onChange={e=>updateItem(item.id,'paid_by',e.target.value||null)} style={{ border:'0.5px solid #D6D2CA', borderRadius:4, padding:'4px 6px', fontSize:11, fontFamily:'inherit', background:'#fff', cursor:'pointer', marginRight:6 }}>
-                    <option value="">—</option>
-                    {PAID_BY_OPTIONS.map(p=><option key={p} value={p}>{p}</option>)}
-                  </select>
-                  <button onClick={()=>removeItem(item.id)} style={{ background:'none', border:'none', color:'#D6D2CA', cursor:'pointer', fontSize:18, padding:0 }}>×</button>
+                  {PARTNERS.includes(item.paid_by) && (
+                    <div style={{ padding:'4px 10px 8px', background:i%2===0?'#fff':'#FAFAF8' }}>
+                      <PartnerLedger
+                        sourceType="rehab_item" sourceId={item.id}
+                        originalAmount={item.actual_cost!=null?item.actual_cost:item.estimated_cost}
+                        datePaid={item.date_paid}
+                        onDatePaidChange={v=>updateItem(item.id,'date_paid',v)}
+                      />
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
@@ -308,20 +412,32 @@ export default function RehabRoundTracker({ property, repairItems = [], onChange
                 {['Name','Qty','Unit Cost','Total','Vendor/Store','Status','Paid By',''].map(h=><div key={h} style={{ fontSize:10, fontWeight:600, color:'#6b7280', textTransform:'uppercase' }}>{h}</div>)}
               </div>
               {supplies.map((it,i) => (
-                <div key={it.id} style={{ display:'grid', gridTemplateColumns:'2fr 60px 90px 90px 1fr 100px 90px 28px', padding:'6px 10px', alignItems:'center', background:i%2===0?'#fff':'#FAFAF8', borderTop:i>0?'0.5px solid #F0EDE6':'none' }}>
-                  <input style={{ ...inp, fontSize:12, padding:'4px 6px', marginRight:6 }} value={it.name||''} onChange={e=>updateSupply(it.id,'name',e.target.value)} />
-                  <input style={{ ...monoInp, fontSize:12, padding:'4px 6px', textAlign:'right', marginRight:6 }} type="number" value={it.quantity||''} onChange={e=>updateSupply(it.id,'quantity',parseFloat(e.target.value)||0)} />
-                  <input style={{ ...monoInp, fontSize:12, padding:'4px 6px', textAlign:'right', marginRight:6 }} type="number" value={it.unit_cost||''} onChange={e=>updateSupply(it.id,'unit_cost',parseFloat(e.target.value)||0)} />
-                  <div style={{ fontFamily:'monospace', fontSize:12, fontWeight:600, textAlign:'right', marginRight:6 }}>{fmt((parseFloat(it.unit_cost)||0)*(parseFloat(it.quantity)||0))}</div>
-                  <input style={{ ...inp, fontSize:12, padding:'4px 6px', marginRight:6 }} value={it.vendor||''} onChange={e=>updateSupply(it.id,'vendor',e.target.value)} />
-                  <select style={{ border:'0.5px solid #D6D2CA', borderRadius:4, padding:'4px 6px', fontSize:11, color:SUPPLY_STATUS_COLORS[it.status], fontWeight:700, marginRight:6, background:'#fff' }} value={it.status||'Ordered'} onChange={e=>updateSupply(it.id,'status',e.target.value)}>
-                    {SUPPLY_STATUS_OPTIONS.map(s=><option key={s} value={s}>{s}</option>)}
-                  </select>
-                  <select style={{ border:'0.5px solid #D6D2CA', borderRadius:4, padding:'4px 6px', fontSize:11, fontFamily:'inherit', background:'#fff', cursor:'pointer', marginRight:6 }} value={it.paid_by||''} onChange={e=>updateSupply(it.id,'paid_by',e.target.value||null)}>
-                    <option value="">—</option>
-                    {PAID_BY_OPTIONS.map(p=><option key={p} value={p}>{p}</option>)}
-                  </select>
-                  <button onClick={()=>removeSupply(it.id)} style={{ background:'none', border:'none', color:'#D6D2CA', cursor:'pointer', fontSize:18, padding:0 }}>×</button>
+                <div key={it.id}>
+                  <div style={{ display:'grid', gridTemplateColumns:'2fr 60px 90px 90px 1fr 100px 90px 28px', padding:'6px 10px', alignItems:'center', background:i%2===0?'#fff':'#FAFAF8', borderTop:i>0?'0.5px solid #F0EDE6':'none' }}>
+                    <input style={{ ...inp, fontSize:12, padding:'4px 6px', marginRight:6 }} value={it.name||''} onChange={e=>updateSupply(it.id,'name',e.target.value)} />
+                    <input style={{ ...monoInp, fontSize:12, padding:'4px 6px', textAlign:'right', marginRight:6 }} type="number" value={it.quantity||''} onChange={e=>updateSupply(it.id,'quantity',parseFloat(e.target.value)||0)} />
+                    <input style={{ ...monoInp, fontSize:12, padding:'4px 6px', textAlign:'right', marginRight:6 }} type="number" value={it.unit_cost||''} onChange={e=>updateSupply(it.id,'unit_cost',parseFloat(e.target.value)||0)} />
+                    <div style={{ fontFamily:'monospace', fontSize:12, fontWeight:600, textAlign:'right', marginRight:6 }}>{fmt((parseFloat(it.unit_cost)||0)*(parseFloat(it.quantity)||0))}</div>
+                    <input style={{ ...inp, fontSize:12, padding:'4px 6px', marginRight:6 }} value={it.vendor||''} onChange={e=>updateSupply(it.id,'vendor',e.target.value)} />
+                    <select style={{ border:'0.5px solid #D6D2CA', borderRadius:4, padding:'4px 6px', fontSize:11, color:SUPPLY_STATUS_COLORS[it.status], fontWeight:700, marginRight:6, background:'#fff' }} value={it.status||'Ordered'} onChange={e=>updateSupply(it.id,'status',e.target.value)}>
+                      {SUPPLY_STATUS_OPTIONS.map(s=><option key={s} value={s}>{s}</option>)}
+                    </select>
+                    <select style={{ border:'0.5px solid #D6D2CA', borderRadius:4, padding:'4px 6px', fontSize:11, fontFamily:'inherit', background:'#fff', cursor:'pointer', marginRight:6 }} value={it.paid_by||''} onChange={e=>updateSupply(it.id,'paid_by',e.target.value||null)}>
+                      <option value="">—</option>
+                      {PAID_BY_OPTIONS.map(p=><option key={p} value={p}>{p}</option>)}
+                    </select>
+                    <button onClick={()=>removeSupply(it.id)} style={{ background:'none', border:'none', color:'#D6D2CA', cursor:'pointer', fontSize:18, padding:0 }}>×</button>
+                  </div>
+                  {PARTNERS.includes(it.paid_by) && (
+                    <div style={{ padding:'4px 10px 8px', background:i%2===0?'#fff':'#FAFAF8' }}>
+                      <PartnerLedger
+                        sourceType="supply" sourceId={it.id}
+                        originalAmount={(parseFloat(it.unit_cost)||0)*(parseFloat(it.quantity)||0)}
+                        datePaid={it.date_paid}
+                        onDatePaidChange={v=>updateSupply(it.id,'date_paid',v)}
+                      />
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
@@ -339,17 +455,29 @@ export default function RehabRoundTracker({ property, repairItems = [], onChange
                 {['Date','Type','Amount','Paid By',''].map(h=><div key={h} style={{ fontSize:10, fontWeight:600, color:'#6b7280', textTransform:'uppercase' }}>{h}</div>)}
               </div>
               {bills.map((b,i) => (
-                <div key={b.id} style={{ display:'grid', gridTemplateColumns:'110px 1fr 90px 90px 28px', padding:'6px 10px', alignItems:'center', background:i%2===0?'#fff':'#FAFAF8', borderTop:i>0?'0.5px solid #F0EDE6':'none' }}>
-                  <input style={{ ...inp, fontSize:12, padding:'4px 6px', marginRight:6 }} type="date" value={b.bill_date||''} onChange={e=>updateBill(b.id,'bill_date',e.target.value)} />
-                  <select value={b.utility_type||'Other'} onChange={e=>updateBill(b.id,'utility_type',e.target.value)} style={{ border:'0.5px solid #D6D2CA', borderRadius:4, padding:'4px 6px', fontSize:12, fontFamily:'inherit', background:'#fff', cursor:'pointer', marginRight:6 }}>
-                    {UTILITY_TYPES.map(t=><option key={t} value={t}>{t}</option>)}
-                  </select>
-                  <input style={{ ...monoInp, fontSize:12, padding:'4px 6px', textAlign:'right', marginRight:6 }} type="number" value={b.amount??''} onChange={e=>updateBill(b.id,'amount', e.target.value===''?null:parseFloat(e.target.value)||0)} />
-                  <select value={b.paid_by||''} onChange={e=>updateBill(b.id,'paid_by',e.target.value||null)} style={{ border:'0.5px solid #D6D2CA', borderRadius:4, padding:'4px 6px', fontSize:11, fontFamily:'inherit', background:'#fff', cursor:'pointer', marginRight:6 }}>
-                    <option value="">—</option>
-                    {PAID_BY_OPTIONS.map(p=><option key={p} value={p}>{p}</option>)}
-                  </select>
-                  <button onClick={()=>removeBill(b.id)} style={{ background:'none', border:'none', color:'#D6D2CA', cursor:'pointer', fontSize:18, padding:0 }}>×</button>
+                <div key={b.id}>
+                  <div style={{ display:'grid', gridTemplateColumns:'110px 1fr 90px 90px 28px', padding:'6px 10px', alignItems:'center', background:i%2===0?'#fff':'#FAFAF8', borderTop:i>0?'0.5px solid #F0EDE6':'none' }}>
+                    <input style={{ ...inp, fontSize:12, padding:'4px 6px', marginRight:6 }} type="date" value={b.bill_date||''} onChange={e=>updateBill(b.id,'bill_date',e.target.value)} />
+                    <select value={b.utility_type||'Other'} onChange={e=>updateBill(b.id,'utility_type',e.target.value)} style={{ border:'0.5px solid #D6D2CA', borderRadius:4, padding:'4px 6px', fontSize:12, fontFamily:'inherit', background:'#fff', cursor:'pointer', marginRight:6 }}>
+                      {UTILITY_TYPES.map(t=><option key={t} value={t}>{t}</option>)}
+                    </select>
+                    <input style={{ ...monoInp, fontSize:12, padding:'4px 6px', textAlign:'right', marginRight:6 }} type="number" value={b.amount??''} onChange={e=>updateBill(b.id,'amount', e.target.value===''?null:parseFloat(e.target.value)||0)} />
+                    <select value={b.paid_by||''} onChange={e=>updateBill(b.id,'paid_by',e.target.value||null)} style={{ border:'0.5px solid #D6D2CA', borderRadius:4, padding:'4px 6px', fontSize:11, fontFamily:'inherit', background:'#fff', cursor:'pointer', marginRight:6 }}>
+                      <option value="">—</option>
+                      {PAID_BY_OPTIONS.map(p=><option key={p} value={p}>{p}</option>)}
+                    </select>
+                    <button onClick={()=>removeBill(b.id)} style={{ background:'none', border:'none', color:'#D6D2CA', cursor:'pointer', fontSize:18, padding:0 }}>×</button>
+                  </div>
+                  {PARTNERS.includes(b.paid_by) && (
+                    <div style={{ padding:'4px 10px 8px', background:i%2===0?'#fff':'#FAFAF8' }}>
+                      <PartnerLedger
+                        sourceType="utility_bill" sourceId={b.id}
+                        originalAmount={b.amount}
+                        datePaid={b.date_paid || b.bill_date}
+                        onDatePaidChange={v=>updateBill(b.id,'date_paid',v)}
+                      />
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
