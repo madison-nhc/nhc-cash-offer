@@ -4,6 +4,7 @@ import { Modal, Field, FieldRow, inp, monoInp, Btn, fmt } from './ui.jsx'
 
 const STATUS_OPTIONS = ['Ordered','Received']
 const STATUS_COLORS  = { Ordered:'#D97825', Received:'#3B6D11' }
+const PAID_BY_OPTIONS = ['BPV', 'Bob', 'Eric', 'Blaire', 'Other']
 
 export default function SuppliesTracker({ propertyId, propertyAddress, open, onClose }) {
   const [items, setItems]     = useState([])
@@ -36,7 +37,7 @@ export default function SuppliesTracker({ propertyId, propertyAddress, open, onC
   }
 
   async function addItem() {
-    const payload = { property_id: propertyId, name:'', unit_cost:0, quantity:1, vendor:'', status:'Ordered' }
+    const payload = { property_id: propertyId, name:'', unit_cost:0, quantity:1, vendor:'', status:'Ordered', paid_by:null }
     const { data } = await supabase.from('cashoffer_supplies').insert(payload).select().single()
     setItems(i => [...i, data])
   }
@@ -54,6 +55,11 @@ export default function SuppliesTracker({ propertyId, propertyAddress, open, onC
   if (!open) return null
 
   const total = items.reduce((s,i) => s + ((parseFloat(i.unit_cost)||0) * (parseFloat(i.quantity)||0)), 0)
+  const paidByTotals = {}
+  for (const it of items) {
+    if (!it.paid_by) continue
+    paidByTotals[it.paid_by] = (paidByTotals[it.paid_by] || 0) + ((parseFloat(it.unit_cost)||0) * (parseFloat(it.quantity)||0))
+  }
 
   return (
     <Modal title={`Supplies — ${propertyAddress?.split(',')[0] || ''}`} onClose={onClose} width={760}>
@@ -67,18 +73,19 @@ export default function SuppliesTracker({ propertyId, propertyAddress, open, onC
         </div>
         <table style={{ width:'100%', borderCollapse:'collapse', tableLayout:'fixed' }}>
           <colgroup>
-            <col style={{ width:'28%' }} />
-            <col style={{ width:'10%' }} />
-            <col style={{ width:'16%' }} />
+            <col style={{ width:'24%' }} />
+            <col style={{ width:'8%' }} />
             <col style={{ width:'14%' }} />
-            <col style={{ width:'20%' }} />
-            <col style={{ width:'14%' }} />
+            <col style={{ width:'12%' }} />
+            <col style={{ width:'18%' }} />
+            <col style={{ width:'12%' }} />
+            <col style={{ width:'12%' }} />
             <col style={{ width:'24px' }} />
           </colgroup>
           <thead>
             <tr>
-              {['Name','Qty','Unit Cost','Total','Vendor/Store','Status',''].map((h,i)=>(
-                <th key={h} style={{ textAlign:i>0&&i<6?'right':'left', fontSize:10, color:'#9ca3af', fontWeight:600, textTransform:'uppercase', letterSpacing:0.5, paddingBottom:6, paddingRight:i>0&&i<6?10:0 }}>{h}</th>
+              {['Name','Qty','Unit Cost','Total','Vendor/Store','Status','Paid By',''].map((h,i)=>(
+                <th key={h} style={{ textAlign:i>0&&i<7?'right':'left', fontSize:10, color:'#9ca3af', fontWeight:600, textTransform:'uppercase', letterSpacing:0.5, paddingBottom:6, paddingRight:i>0&&i<7?10:0 }}>{h}</th>
               ))}
             </tr>
           </thead>
@@ -135,6 +142,12 @@ export default function SuppliesTracker({ propertyId, propertyAddress, open, onC
                     {STATUS_OPTIONS.map(s=><option key={s} value={s}>{s}</option>)}
                   </select>
                 </td>
+                <td style={{ paddingBottom:6, paddingRight:6 }}>
+                  <select style={{ ...inp, fontSize:11 }} value={it.paid_by||''} onChange={e=>updateItem(it.id,'paid_by',e.target.value||null)}>
+                    <option value="">—</option>
+                    {PAID_BY_OPTIONS.map(p=><option key={p} value={p}>{p}</option>)}
+                  </select>
+                </td>
                 <td style={{ paddingBottom:6, textAlign:'center' }}>
                   <button onClick={()=>removeItem(it.id)} style={{ background:'none', border:'none', color:'#D6D2CA', cursor:'pointer', fontSize:16, padding:0 }}>×</button>
                 </td>
@@ -145,6 +158,22 @@ export default function SuppliesTracker({ propertyId, propertyAddress, open, onC
         <button onClick={addItem} style={{ background:'transparent', border:'1px dashed #D6D2CA', borderRadius:6, padding:'6px', color:'#9ca3af', fontSize:12, cursor:'pointer', fontFamily:'inherit', width:'100%', marginTop:8 }}>
           + Add Supply Item
         </button>
+
+        {Object.keys(paidByTotals).length > 0 && (
+          <div style={{ background:'#FAFAF8', border:'0.5px solid #D6D2CA', borderRadius:8, padding:'12px 16px', marginTop:14 }}>
+            <div style={{ fontSize:11, fontWeight:700, color:'#6b7280', textTransform:'uppercase', letterSpacing:0.8, marginBottom:8 }}>
+              Who Fronted The Money
+            </div>
+            <div style={{ display:'flex', gap:16, flexWrap:'wrap' }}>
+              {Object.entries(paidByTotals).map(([who, t]) => (
+                <div key={who}>
+                  <div style={{ fontSize:10, color:'#9ca3af' }}>{who}</div>
+                  <div style={{ fontSize:14, fontWeight:700, fontFamily:'monospace', color:'#2C2C2C' }}>{fmt(t)}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </>)}
     </Modal>
   )
