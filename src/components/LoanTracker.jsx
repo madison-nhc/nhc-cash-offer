@@ -241,13 +241,12 @@ export default function LoanTracker({ propertyId, propertyAddress, open, onClose
   const [loans, setLoans]         = useState([])
   const [loading, setLoading]     = useState(true)
   const [editing, setEditing]     = useState(null)   // null | 'new' | {refinanceFor: id} | loan object
-  const [expandedLoan, setExpandedLoan] = useState(null) // id of loan showing amortization (list mode only)
   const [closingId, setClosingId] = useState(null)   // id of loan showing Paid Off / Refinance choice
   const [focusId, setFocusId]     = useState(initialLoanId ?? null) // non-null = single-loan detail view
 
   useEffect(() => {
     if (open && propertyId) load()
-    if (!open) { setExpandedLoan(null); setEditing(null); setClosingId(null) }
+    if (!open) { setEditing(null); setClosingId(null) }
   }, [open, propertyId])
 
   useEffect(() => {
@@ -316,8 +315,6 @@ export default function LoanTracker({ propertyId, propertyAddress, open, onClose
 
   if (!open) return null
 
-  const activeLoans = loans.filter(l => l.is_active)
-  const closedLoans = loans.filter(l => !l.is_active)
   const focusLoan = focusId ? loans.find(l => l.id === focusId) : null
 
   return (
@@ -343,15 +340,6 @@ export default function LoanTracker({ propertyId, propertyAddress, open, onClose
         </>
       ) : focusLoan ? (
         <>
-          {loans.length > 1 && (
-            <div
-              onClick={()=>setFocusId(null)}
-              style={{ fontSize:11, fontWeight:700, color:'#2D6FAF', cursor:'pointer', marginBottom:14 }}
-            >
-              ← View all {loans.length} loans for this property
-            </div>
-          )}
-
           <div style={{ background:'#FAFAF8', borderRadius:8, padding:'14px 16px', border:'0.5px solid #D6D2CA' }}>
             <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', marginBottom:12 }}>
               <div>
@@ -418,134 +406,21 @@ export default function LoanTracker({ propertyId, propertyAddress, open, onClose
               startDate={focusLoan.loan_start_date}
             />
           </div>
-        </>
-      ) : (
-        <>
-          {/* Active loans */}
-          {activeLoans.length > 0 ? (
-            <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
-              {activeLoans.length > 1 && (
-                <div style={{ fontSize:10, fontWeight:700, color:'#9ca3af', textTransform:'uppercase', letterSpacing:1 }}>{activeLoans.length} Active Loans</div>
-              )}
-              {activeLoans.map(loan => (
-                <div key={loan.id}>
-                  <div style={{ background:'#FAFAF8', borderRadius:8, padding:'14px 16px', border:'0.5px solid #D6D2CA' }}>
-                    <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', marginBottom:12 }}>
-                      <div>
-                        <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:4 }}>
-                          <span style={{ fontSize:14, fontWeight:700, color:'#2C2C2C' }}>{loan.lender_name || loan.bank || 'Unnamed Lender'}</span>
-                          <span style={{ background:TYPE_COLOR[loan.loan_type]+'18', color:TYPE_COLOR[loan.loan_type], border:`1px solid ${TYPE_COLOR[loan.loan_type]}40`, borderRadius:4, padding:'2px 8px', fontSize:10, fontWeight:700 }}>{loan.loan_type}</span>
-                        </div>
-                        <div style={{ fontSize:12, color:'#6b7280' }}>
-                          {loan.loan_start_date ? new Date(loan.loan_start_date+'T12:00:00').toLocaleDateString('en-US',{month:'short',year:'numeric'}) : ''}
-                          {loan.loan_start_date && loan.loan_term_months ? ` · ${loan.loan_term_months/12}yr term` : ''}
-                        </div>
-                      </div>
-                      <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-                        <Btn variant="outline" onClick={()=>setEditing(loan)} style={{ fontSize:11, padding:'5px 12px' }}>Edit</Btn>
-                        <Btn variant="outline" onClick={()=>setClosingId(closingId===loan.id?null:loan.id)} style={{ fontSize:11, padding:'5px 12px' }}>Close Loan</Btn>
-                      </div>
-                    </div>
 
-                    {closingId === loan.id && (
-                      <div style={{ background:'#fff', border:'1px solid #D6D2CA', borderRadius:6, padding:'10px 12px', marginBottom:12, display:'flex', gap:8, alignItems:'center', flexWrap:'wrap' }}>
-                        <span style={{ fontSize:11, color:'#6b7280' }}>How is this loan closing out?</span>
-                        <button onClick={()=>markPaidOff(loan)} style={{ background:'#3B6D11', color:'#fff', border:'none', borderRadius:6, padding:'6px 12px', fontSize:11, fontWeight:700, cursor:'pointer', fontFamily:'inherit' }}>Paid Off</button>
-                        <button onClick={()=>{ setEditing({ refinanceFor: loan.id }); setClosingId(null) }} style={{ background:'#2D6FAF', color:'#fff', border:'none', borderRadius:6, padding:'6px 12px', fontSize:11, fontWeight:700, cursor:'pointer', fontFamily:'inherit' }}>Refinance</button>
-                        <span style={{ fontSize:10, color:'#9ca3af' }}>Paid Off asks for total interest paid. Refinance opens a new loan and closes this one.</span>
-                      </div>
-                    )}
-
-                    {/* Key figures */}
-                    <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:10 }}>
-                      {[
-                        { label:'Original Amount',  value:fmt(loan.loan_amount),   color:'#2C2C2C' },
-                        { label:'Rate',             value:`${loan.interest_rate}%`, color:'#2C2C2C' },
-                        { label:'Monthly Payment',  value:fmt(loan.monthly_payment || (()=>{ const s=buildSchedule(loan.loan_amount,loan.interest_rate,loan.loan_term_months,null); return s[0]?.payment })()), color:'#D97825' },
-                        { label:'Current Balance',  value:fmt(currentBalance(buildSchedule(loan.loan_amount,loan.interest_rate,loan.loan_term_months,loan.monthly_payment),loan.loan_start_date)), color:'#2D6FAF' },
-                      ].map(({label,value,color})=>(
-                        <div key={label} style={{ textAlign:'center', background:'#fff', borderRadius:6, padding:'8px 10px', border:'0.5px solid #D6D2CA' }}>
-                          <div style={{ fontSize:9, color:'#9ca3af', textTransform:'uppercase', letterSpacing:0.7, marginBottom:3 }}>{label}</div>
-                          <div style={{ fontSize:14, fontWeight:700, fontFamily:'monospace', color }}>{value||'—'}</div>
-                        </div>
-                      ))}
-                    </div>
-
-                    {loan.notes && (
-                      <div style={{ fontSize:11, color:'#6b7280', marginTop:10, fontStyle:'italic' }}>{loan.notes}</div>
-                    )}
-                  </div>
-
-                  {/* Amortization toggle */}
-                  <div
-                    onClick={()=>setExpandedLoan(expandedLoan===loan.id?null:loan.id)}
-                    style={{ display:'flex', alignItems:'center', gap:8, cursor:'pointer', marginTop:8, padding:'6px 2px' }}
-                  >
-                    <span style={{ fontSize:11, fontWeight:700, color:'#B8892A', textTransform:'uppercase', letterSpacing:0.8 }}>Amortization Schedule</span>
-                    <span style={{ fontSize:10, color:'#9ca3af' }}>{expandedLoan===loan.id?'▲':'▼'} click to {expandedLoan===loan.id?'hide':'show'}</span>
-                  </div>
-
-                  {expandedLoan===loan.id && (
-                    <AmortizationTable
-                      schedule={buildSchedule(loan.loan_amount, loan.interest_rate, loan.loan_term_months, loan.monthly_payment)}
-                      startDate={loan.loan_start_date}
-                    />
-                  )}
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div style={{ background:'#F0EDE6', borderRadius:8, padding:'20px', textAlign:'center', marginBottom:16 }}>
-              <div style={{ fontSize:13, color:'#6b7280', marginBottom:8 }}>No loan recorded for this property.</div>
-              <Btn onClick={()=>setEditing('new')}>+ Add Loan</Btn>
-            </div>
-          )}
-
-          {/* Closed loans / history */}
-          {closedLoans.length > 0 && (
-            <div style={{ marginTop:20 }}>
-              <div style={{ fontSize:10, fontWeight:700, color:'#9ca3af', textTransform:'uppercase', letterSpacing:1, marginBottom:10 }}>Loan History</div>
-              {closedLoans.map((loan) => {
-                const sched = buildSchedule(loan.loan_amount, loan.interest_rate, loan.loan_term_months, loan.monthly_payment)
-                const isExp = expandedLoan === loan.id
-                return (
-                  <div key={loan.id} style={{ borderRadius:8, border:'0.5px solid #D6D2CA', marginBottom:10, overflow:'hidden' }}>
-                    <div style={{ background:'#FAFAF8', padding:'10px 14px', display:'flex', alignItems:'center', justifyContent:'space-between', cursor:'pointer' }}
-                      onClick={()=>setExpandedLoan(isExp?null:loan.id)}>
-                      <div>
-                        <div style={{ fontSize:12, fontWeight:700, color:'#6b7280' }}>{loan.lender_name||loan.bank||'Unnamed Lender'}</div>
-                        <div style={{ fontSize:11, color:'#9ca3af' }}>
-                          {loan.loan_type} · {loan.interest_rate}% · {fmt(loan.loan_amount)}
-                          {loan.closed_reason === 'Refinanced' && loan.refinanced_date ? ` · Refinanced ${new Date(loan.refinanced_date+'T12:00:00').toLocaleDateString('en-US',{month:'short',year:'numeric'})}` : ''}
-                          {loan.closed_reason === 'Paid Off' ? ` · Paid Off${loan.paid_off_date ? ' '+new Date(loan.paid_off_date+'T12:00:00').toLocaleDateString('en-US',{month:'short',year:'numeric'}) : ''} · Total Interest Paid: ${fmt(loan.total_interest_paid)}` : ''}
-                        </div>
-                      </div>
-                      <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-                        <button onClick={e=>{e.stopPropagation();setEditing(loan)}} style={{ background:'none', border:'1px solid #D6D2CA', borderRadius:4, padding:'3px 8px', fontSize:11, cursor:'pointer', color:'#6b7280', fontFamily:'inherit' }}>Edit</button>
-                        <span style={{ fontSize:10, color:'#9ca3af' }}>{isExp?'▲':'▼'}</span>
-                      </div>
-                    </div>
-                    {isExp && (
-                      <div style={{ padding:'0 14px 14px' }}>
-                        <AmortizationTable schedule={sched} startDate={loan.loan_start_date} />
-                      </div>
-                    )}
-                  </div>
-                )
-              })}
-            </div>
-          )}
-
-          {/* Add another loan (standalone, doesn't close anything) */}
-          {activeLoans.length > 0 && (
+          {focusLoan.is_active && (
             <div style={{ marginTop:16, paddingTop:16, borderTop:'1px solid #F0EDE6' }}>
               <Btn variant="outline" onClick={()=>setEditing('new')} style={{ fontSize:12 }}>+ Add Another Loan</Btn>
               <span style={{ fontSize:11, color:'#9ca3af', marginLeft:10 }}>
-                Adds a new, separate active loan — doesn't close any existing ones.
+                Adds a new, separate active loan on this property — doesn't close this one.
               </span>
             </div>
           )}
         </>
+      ) : (
+        <div style={{ background:'#F0EDE6', borderRadius:8, padding:'20px', textAlign:'center' }}>
+          <div style={{ fontSize:13, color:'#6b7280', marginBottom:8 }}>No loan selected.</div>
+          <Btn variant="outline" onClick={onClose} style={{ fontSize:12 }}>Close</Btn>
+        </div>
       )}
     </Modal>
   )
