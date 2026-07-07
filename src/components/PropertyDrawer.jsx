@@ -234,6 +234,7 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
       hold_opt2_pct:form.hold_opt2_pct||0.5, hold_opt2_months:form.hold_opt2_months||3,
       hold_opt3_pct:form.hold_opt3_pct||0.5, hold_opt3_months:form.hold_opt3_months||6,
       mailing_id:form.mailing_id||null,
+      source:form.source||null,
       commission_pct:form.commission_pct||null, commission_earned:form.commission_earned||null,
       commission_min:form.commission_min||5000,
       nhc_notes:form.nhc_notes||null,
@@ -416,6 +417,23 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
                 <option value="Pre-Owned">Pre-Owned</option>
               </select>
             </Field>
+          </FieldRow>
+
+          <FieldRow>
+            <Field label="Source">
+              <select style={inp} value={form.source||''} onChange={set('source')}>
+                <option value="">— Select —</option>
+                {['Sphere','Networking','Facebook','Instagram','Google','Referral','Mailers','Sign Call','Website','Other'].map(s=><option key={s} value={s}>{s}</option>)}
+              </select>
+            </Field>
+            {form.source==='Mailers' && (
+              <Field label="Which Mailer?">
+                <select style={inp} value={form.mailing_id||''} onChange={set('mailing_id')}>
+                  <option value="">Unattributed / older campaign</option>
+                  {mailings.map(m=><option key={m.id} value={m.id}>{m.campaign_name?.replace(/^Campaign \d+ — /,'')} {m.drop_date?`(${m.drop_date})`:''}</option>)}
+                </select>
+              </Field>
+            )}
           </FieldRow>
 
           <div style={{ background:'#FAFAF8', borderRadius:8, padding:'4px 14px 12px', border:'0.5px solid #D6D2CA' }}>
@@ -755,15 +773,6 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
             <Field label="Reason"><textarea style={{ ...inp, minHeight:72, resize:'vertical' }} value={form.lost_reason||''} onChange={set('lost_reason')} /></Field>
           </>)}
 
-          {mailings.length>0 && (<>
-            <div className="drawer-section">Source</div>
-            <Field label="Mailing Campaign">
-              <select style={inp} value={form.mailing_id||''} onChange={set('mailing_id')}>
-                <option value="">No specific campaign</option>
-                {mailings.map(m=><option key={m.id} value={m.id}>{m.campaign_name?.replace(/^Campaign \d+ — /,'')} {m.drop_date?`(${m.drop_date})`:''}</option>)}
-              </select>
-            </Field>
-          </>)}
         </div>
       )}
 
