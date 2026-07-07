@@ -497,6 +497,7 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
                 { label:'As-Is Net', value:d.opt2Net, color:'#2D6FAF', rows:[
                   { l:'ARV', v:fmt(d.arv) },
                   { l:'As-Is Deduction', v:`−${fmt(d.asisDeduction)}` },
+                  { l:'Listing Price', v:fmt(d.asisVal), strong:true },
                   { l:`Comm (${(d.commListPct*100).toFixed(1).replace(/\.0$/,'')}%)`, v:`−${fmt(d.opt2Comm)}` },
                   { l:`Holding (${d.opt2HoldMo}mo)`, v:`−${fmt(d.opt2Hold)}` },
                 ]},
@@ -511,7 +512,10 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
                   <div style={{ fontSize:15, fontWeight:700, fontFamily:'monospace', color:card.color, marginTop:2 }}>{fmt(card.value)}</div>
                   <div style={{ marginTop:6, paddingTop:6, borderTop:'1px solid #F0EDE6', fontSize:10, color:'#6b7280', lineHeight:1.7 }}>
                     {card.rows.map(r=>(
-                      <div key={r.l} style={{ display:'flex', justifyContent:'space-between' }}>
+                      <div key={r.l} style={{
+                        display:'flex', justifyContent:'space-between',
+                        ...(r.strong ? { borderTop:'1px solid #E5E1DB', marginTop:2, paddingTop:2, color:'#2C2C2C', fontWeight:700 } : {}),
+                      }}>
                         <span>{r.l}</span><span style={{ fontFamily:'monospace' }}>{r.v}</span>
                       </div>
                     ))}
