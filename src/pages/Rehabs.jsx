@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase.js'
 import { useIsMobile } from '../hooks/useIsMobile.js'
 import { PageWrap, SectionBar, Card, EmptyState, LoadingSpinner, fmt, fmtK, useSort, SortTh } from '../components/ui.jsx'
 import PropertyDrawer from '../components/PropertyDrawer.jsx'
+import ProposalModal from '../components/ProposalModal.jsx'
 
 const REHAB_STAGE_COLOR = {
   'Not Started':'#9ca3af','Demo':'#D97825','Rough Work':'#B8892A',
@@ -20,6 +21,7 @@ export default function Rehabs({ onOpenSupplies }) {
   const [mailings, setMailings] = useState([])
   const [loading, setLoading] = useState(true)
   const [drawer, setDrawer] = useState(null)
+  const [proposal, setProposal] = useState(null)
   const [stageFilter, setStageFilter] = useState('all')
 
   useEffect(() => { load() }, [])
@@ -196,7 +198,9 @@ export default function Rehabs({ onOpenSupplies }) {
         </Card>
       )}
 
-      <PropertyDrawer property={drawer} open={!!drawer} onClose={()=>setDrawer(null)} onSave={()=>load()} mailings={mailings} initialTab="rehab" />
+      <PropertyDrawer property={drawer} open={!!drawer} onClose={()=>setDrawer(null)} onSave={()=>load()} mailings={mailings} initialTab="rehab" onViewOffer={p => setProposal(p)} />
+      {proposal && <ProposalModal property={proposal} onClose={() => setProposal(null)} />}
     </PageWrap>
   )
 }
+

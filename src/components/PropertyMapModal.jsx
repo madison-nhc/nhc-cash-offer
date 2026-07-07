@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
 import PropertyDrawer from './PropertyDrawer.jsx'
+import ProposalModal from './ProposalModal.jsx'
 import { supabase } from '../lib/supabase.js'
 
 const GMAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_KEY
@@ -88,6 +89,7 @@ export default function PropertyMapModal({ properties: initialProperties, packag
   const [properties, setProperties] = useState(initialProperties)
   // Property currently open in the side drawer (null = drawer closed)
   const [drawerProp, setDrawerProp] = useState(null)
+  const [proposal, setProposal] = useState(null)
 
   // Refresh property data from DB after a save (keeps drawer open)
   const handleSave = useCallback(async () => {
@@ -372,15 +374,17 @@ export default function PropertyMapModal({ properties: initialProperties, packag
                   onClose={handleDrawerClose}
                   onSave={handleSave}
                   mailings={[]}
-                  onViewOffer={() => {}}
+                  onViewOffer={p => setProposal(p)}
                   inlineMode={true}
                 />
               </div>
             </div>
           )}
+          {proposal && <ProposalModal property={proposal} onClose={() => setProposal(null)} />}
         </div>
       </div>
     </div>
   )
 }
+
 

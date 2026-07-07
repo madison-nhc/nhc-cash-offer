@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase.js'
 import { useIsMobile } from '../hooks/useIsMobile.js'
 import { PageWrap, SectionBar, Card, Badge, EmptyState, LoadingSpinner, fmt, fmtK, useSort, SortTh } from '../components/ui.jsx'
 import PropertyDrawer from '../components/PropertyDrawer.jsx'
+import ProposalModal from '../components/ProposalModal.jsx'
 
 function MiniStat({ label, value, sub, color = '#2C2C2C' }) {
   return (
@@ -22,6 +23,7 @@ export default function Holds() {
   const [mailings, setMailings] = useState([])
   const [loading, setLoading] = useState(true)
   const [drawer, setDrawer] = useState(null)
+  const [proposal, setProposal] = useState(null)
 
   useEffect(() => { load() }, [])
 
@@ -150,9 +152,11 @@ export default function Holds() {
         </Card>
       )}
 
-      <PropertyDrawer property={drawer} open={!!drawer} onClose={() => setDrawer(null)} onSave={() => load()} mailings={mailings} />
+      <PropertyDrawer property={drawer} open={!!drawer} onClose={() => setDrawer(null)} onSave={() => load()} mailings={mailings} onViewOffer={p => setProposal(p)} />
+      {proposal && <ProposalModal property={proposal} onClose={() => setProposal(null)} />}
     </PageWrap>
   )
 }
+
 
 
