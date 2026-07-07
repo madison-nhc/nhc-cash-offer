@@ -262,7 +262,7 @@ export default function LoanTracker({ propertyId, propertyAddress, open, onClose
       .order('loan_start_date', { ascending: true })
     setLoans(data || [])
     setLoading(false)
-    if (initialLoanId === null && !(data && data.length)) setEditing('new')
+    if (initialLoanId === null) setEditing('new')
   }
 
   async function saveLoan(form) {
@@ -341,26 +341,18 @@ export default function LoanTracker({ propertyId, propertyAddress, open, onClose
       ) : focusLoan ? (
         <>
           <div style={{ background:'#FAFAF8', borderRadius:8, padding:'14px 16px', border:'0.5px solid #D6D2CA' }}>
-            <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', marginBottom:12 }}>
-              <div>
-                <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:4 }}>
-                  <span style={{ fontSize:14, fontWeight:700, color:'#2C2C2C' }}>{focusLoan.lender_name || focusLoan.bank || 'Unnamed Lender'}</span>
-                  <span style={{ background:TYPE_COLOR[focusLoan.loan_type]+'18', color:TYPE_COLOR[focusLoan.loan_type], border:`1px solid ${TYPE_COLOR[focusLoan.loan_type]}40`, borderRadius:4, padding:'2px 8px', fontSize:10, fontWeight:700 }}>{focusLoan.loan_type}</span>
-                  {!focusLoan.is_active && (
-                    <span style={{ background:'#9ca3af18', color:'#6b7280', border:'1px solid #9ca3af40', borderRadius:4, padding:'2px 8px', fontSize:10, fontWeight:700 }}>{focusLoan.closed_reason || 'Closed'}</span>
-                  )}
-                </div>
-                <div style={{ fontSize:12, color:'#6b7280' }}>
-                  {focusLoan.loan_start_date ? new Date(focusLoan.loan_start_date+'T12:00:00').toLocaleDateString('en-US',{month:'short',year:'numeric'}) : ''}
-                  {focusLoan.loan_start_date && focusLoan.loan_term_months ? ` · ${focusLoan.loan_term_months/12}yr term` : ''}
-                </div>
+            <div style={{ marginBottom:12 }}>
+              <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:4 }}>
+                <span style={{ fontSize:14, fontWeight:700, color:'#2C2C2C' }}>{focusLoan.lender_name || focusLoan.bank || 'Unnamed Lender'}</span>
+                <span style={{ background:TYPE_COLOR[focusLoan.loan_type]+'18', color:TYPE_COLOR[focusLoan.loan_type], border:`1px solid ${TYPE_COLOR[focusLoan.loan_type]}40`, borderRadius:4, padding:'2px 8px', fontSize:10, fontWeight:700 }}>{focusLoan.loan_type}</span>
+                {!focusLoan.is_active && (
+                  <span style={{ background:'#9ca3af18', color:'#6b7280', border:'1px solid #9ca3af40', borderRadius:4, padding:'2px 8px', fontSize:10, fontWeight:700 }}>{focusLoan.closed_reason || 'Closed'}</span>
+                )}
               </div>
-              {focusLoan.is_active && (
-                <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-                  <Btn variant="outline" onClick={()=>setEditing(focusLoan)} style={{ fontSize:11, padding:'5px 12px' }}>Edit</Btn>
-                  <Btn variant="outline" onClick={()=>setClosingId(closingId===focusLoan.id?null:focusLoan.id)} style={{ fontSize:11, padding:'5px 12px' }}>Close Loan</Btn>
-                </div>
-              )}
+              <div style={{ fontSize:12, color:'#6b7280' }}>
+                {focusLoan.loan_start_date ? new Date(focusLoan.loan_start_date+'T12:00:00').toLocaleDateString('en-US',{month:'short',year:'numeric'}) : ''}
+                {focusLoan.loan_start_date && focusLoan.loan_term_months ? ` · ${focusLoan.loan_term_months/12}yr term` : ''}
+              </div>
             </div>
 
             {closingId === focusLoan.id && (
@@ -407,14 +399,15 @@ export default function LoanTracker({ propertyId, propertyAddress, open, onClose
             />
           </div>
 
-          {focusLoan.is_active && (
-            <div style={{ marginTop:16, paddingTop:16, borderTop:'1px solid #F0EDE6' }}>
-              <Btn variant="outline" onClick={()=>setEditing('new')} style={{ fontSize:12 }}>+ Add Another Loan</Btn>
-              <span style={{ fontSize:11, color:'#9ca3af', marginLeft:10 }}>
-                Adds a new, separate active loan on this property — doesn't close this one.
-              </span>
-            </div>
-          )}
+          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginTop:18, paddingTop:16, borderTop:'1px solid #F0EDE6' }}>
+            <Btn variant="danger" onClick={async ()=>{ await deleteLoan(focusLoan.id); onClose() }}>Delete Loan</Btn>
+            {focusLoan.is_active && (
+              <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+                <Btn variant="outline" onClick={()=>setClosingId(closingId===focusLoan.id?null:focusLoan.id)}>Close Loan</Btn>
+                <Btn onClick={()=>setEditing(focusLoan)}>Edit / Save</Btn>
+              </div>
+            )}
+          </div>
         </>
       ) : (
         <div style={{ background:'#F0EDE6', borderRadius:8, padding:'20px', textAlign:'center' }}>

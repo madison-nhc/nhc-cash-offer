@@ -112,6 +112,14 @@ export default function LoanOverview({ propertyId, onOpenLoan }) {
             </div>
           )}
           {activeLoans.map(loan => <LoanCard key={loan.id} loan={loan} />)}
+          <div>
+            <button onClick={()=>onOpenLoan(null)} style={{
+              background:'none', border:'1px solid #2D6FAF', color:'#2D6FAF', borderRadius:8,
+              fontSize:12, fontWeight:700, padding:'7px 14px', cursor:'pointer', fontFamily:'inherit',
+            }}>
+              + Add Another Loan
+            </button>
+          </div>
         </>
       )}
 
