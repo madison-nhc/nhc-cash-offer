@@ -203,6 +203,10 @@ export default function RehabRoundTracker({ property, repairItems = [], onChange
   const [activeVendorId, setActiveVendorId] = useState(null)
   const [inventoryPickerOpen, setInventoryPickerOpen] = useState(false)
   const [budget, setBudget]           = useState('')
+  const [saving, setSaving]           = useState(false)
+  const [deletedItemIds, setDeletedItemIds]       = useState([])
+  const [deletedSupplyIds, setDeletedSupplyIds]   = useState([])
+  const [deletedBillIds, setDeletedBillIds]       = useState([])
   const vendorRefs = useRef({})
 
   const propertyId = property?.id
@@ -269,6 +273,9 @@ export default function RehabRoundTracker({ property, repairItems = [], onChange
     setItems(i.data || [])
     setSupplies(s.data || [])
     setBills(b.data || [])
+    setDeletedItemIds([])
+    setDeletedSupplyIds([])
+    setDeletedBillIds([])
   }
 
   function notifyParent() {
@@ -280,17 +287,19 @@ export default function RehabRoundTracker({ property, repairItems = [], onChange
     }, 200)
   }
 
-  async function saveBudget(val) {
+  function saveBudget(val) {
     setBudget(val)
-    if (propertyId) await supabase.from('cashoffer_properties').update({ rehab_cost: parseFloat(val) || null }).eq('id', propertyId)
   }
 
   // Services
-  async function addItem() {
-    const { data } = await supabase.from('cashoffer_rehab_items').insert({ property_id: propertyId, rehab_round_id: activeRoundId, name: '', status: 'Scheduled', estimated_cost: 0, sort_order: items.length }).select().single()
-    if (data) setItems(p => [...p, data])
+  function addItem() {
+    setItems(p => [...p, {
+      id: `new-${Date.now()}-${Math.random().toString(36).slice(2)}`, _isNew: true,
+      property_id: propertyId, rehab_round_id: activeRoundId,
+      name: '', status: 'Scheduled', estimated_cost: 0, sort_order: p.length,
+    }])
   }
-  async function copyFromAnalyzer() {
+  function copyFromAnalyzer() {
     const existingNames = new Set(items.map(it => (it.name || '').trim().toLowerCase()).filter(Boolean))
     const candidates = repairItems.filter(r => r.name && !existingNames.has(r.name.trim().toLowerCase()))
     if (!candidates.length) {
@@ -298,46 +307,97 @@ export default function RehabRoundTracker({ property, repairItems = [], onChange
       return
     }
     if (!confirm(`Copy ${candidates.length} new repair item(s) from the Analyzer? (Items already in this round will be skipped.)`)) return
-    const toInsert = candidates.map((r,i) => ({ property_id: propertyId, rehab_round_id: activeRoundId, name: r.name, estimated_cost: parseFloat(r.cost)||0, status:'Scheduled', sort_order: items.length+i }))
-    await supabase.from('cashoffer_rehab_items').insert(toInsert)
-    loadRoundData(activeRoundId)
+    setItems(p => [
+      ...p,
+      ...candidates.map((r,i) => ({
+        id: `new-${Date.now()}-${i}-${Math.random().toString(36).slice(2)}`, _isNew: true,
+        property_id: propertyId, rehab_round_id: activeRoundId,
+        name: r.name, estimated_cost: parseFloat(r.cost)||0, status:'Scheduled', sort_order: p.length+i,
+      })),
+    ])
   }
-  async function updateItem(id, field, value) {
+  function updateItem(id, field, value) {
     setItems(p => p.map(it => it.id===id ? {...it,[field]:value} : it))
-    await supabase.from('cashoffer_rehab_items').update({ [field]: value }).eq('id', id)
-    if (field==='actual_cost'||field==='estimated_cost') notifyParent()
   }
-  async function removeItem(id) {
-    await supabase.from('cashoffer_rehab_items').delete().eq('id', id)
-    setItems(p => p.filter(it => it.id!==id)); notifyParent()
+  function removeItem(id) {
+    const it = items.find(x => x.id === id)
+    if (it && !it._isNew) setDeletedItemIds(d => [...d, id])
+    setItems(p => p.filter(it => it.id!==id))
   }
 
   // Supplies
-  async function addSupply() {
-    const { data } = await supabase.from('cashoffer_supplies').insert({ property_id: propertyId, rehab_round_id: activeRoundId, name:'', unit_cost:0, quantity:1, vendor:'', status:'Ordered' }).select().single()
-    if (data) setSupplies(p => [...p, data])
+  function addSupply() {
+    setSupplies(p => [...p, {
+      id: `new-${Date.now()}-${Math.random().toString(36).slice(2)}`, _isNew: true,
+      property_id: propertyId, rehab_round_id: activeRoundId,
+      name:'', unit_cost:0, quantity:1, vendor:'', status:'Ordered',
+    }])
   }
-  async function updateSupply(id, field, value) {
+  function updateSupply(id, field, value) {
     setSupplies(p => p.map(it => it.id===id ? {...it,[field]:value} : it))
-    await supabase.from('cashoffer_supplies').update({ [field]: value }).eq('id', id)
   }
-  async function removeSupply(id) {
-    await supabase.from('cashoffer_supplies').delete().eq('id', id)
+  function removeSupply(id) {
+    const it = supplies.find(x => x.id === id)
+    if (it && !it._isNew) setDeletedSupplyIds(d => [...d, id])
     setSupplies(p => p.filter(it => it.id!==id))
   }
 
   // Utilities
-  async function addBill() {
-    const { data } = await supabase.from('cashoffer_utility_bills').insert({ property_id: propertyId, rehab_round_id: activeRoundId, utility_type:'Water', bill_date: new Date().toISOString().slice(0,10), amount:0, paid_by:'BPV' }).select().single()
-    if (data) setBills(p => [data, ...p])
+  function addBill() {
+    setBills(p => [{
+      id: `new-${Date.now()}-${Math.random().toString(36).slice(2)}`, _isNew: true,
+      property_id: propertyId, rehab_round_id: activeRoundId,
+      utility_type:'Water', bill_date: new Date().toISOString().slice(0,10), amount:0, paid_by:'BPV',
+    }, ...p])
   }
-  async function updateBill(id, field, value) {
+  function updateBill(id, field, value) {
     setBills(p => p.map(b => b.id===id ? {...b,[field]:value} : b))
-    await supabase.from('cashoffer_utility_bills').update({ [field]: value }).eq('id', id)
   }
-  async function removeBill(id) {
-    await supabase.from('cashoffer_utility_bills').delete().eq('id', id)
+  function removeBill(id) {
+    const b = bills.find(x => x.id === id)
+    if (b && !b._isNew) setDeletedBillIds(d => [...d, id])
     setBills(p => p.filter(b => b.id!==id))
+  }
+
+  async function handleSave() {
+    setSaving(true)
+    try {
+      if (propertyId) {
+        await supabase.from('cashoffer_properties').update({ rehab_cost: parseFloat(budget) || null }).eq('id', propertyId)
+      }
+      if (deletedItemIds.length) await supabase.from('cashoffer_rehab_items').delete().in('id', deletedItemIds)
+      if (deletedSupplyIds.length) await supabase.from('cashoffer_supplies').delete().in('id', deletedSupplyIds)
+      if (deletedBillIds.length) await supabase.from('cashoffer_utility_bills').delete().in('id', deletedBillIds)
+
+      const newItems = items.filter(it => it._isNew).map(({ id, _isNew, ...rest }) => rest)
+      const existingItems = items.filter(it => !it._isNew)
+      if (newItems.length) await supabase.from('cashoffer_rehab_items').insert(newItems)
+      await Promise.all(existingItems.map(({ id, ...rest }) => supabase.from('cashoffer_rehab_items').update(rest).eq('id', id)))
+
+      const newSupplies = supplies.filter(it => it._isNew).map(({ id, _isNew, ...rest }) => rest)
+      const existingSupplies = supplies.filter(it => !it._isNew)
+      if (newSupplies.length) await supabase.from('cashoffer_supplies').insert(newSupplies)
+      await Promise.all(existingSupplies.map(({ id, ...rest }) => supabase.from('cashoffer_supplies').update(rest).eq('id', id)))
+
+      const newBills = bills.filter(b => b._isNew).map(({ id, _isNew, ...rest }) => rest)
+      const existingBills = bills.filter(b => !b._isNew)
+      if (newBills.length) await supabase.from('cashoffer_utility_bills').insert(newBills)
+      await Promise.all(existingBills.map(({ id, ...rest }) => supabase.from('cashoffer_utility_bills').update(rest).eq('id', id)))
+
+      await loadRoundData(activeRoundId)
+      notifyParent()
+      setSaving(false)
+      onClose()
+    } catch (err) {
+      setSaving(false)
+      alert('Something went wrong saving: ' + err.message)
+    }
+  }
+
+  function handleCancel() {
+    loadRoundData(activeRoundId)
+    setBudget(property?.rehab_cost || '')
+    onClose()
   }
 
   if (!open) return null
@@ -370,8 +430,8 @@ export default function RehabRoundTracker({ property, repairItems = [], onChange
             </button>
           ) : <span />}
           <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-            <Btn variant="outline" onClick={onClose}>Cancel</Btn>
-            <Btn onClick={onClose}>Save</Btn>
+            <Btn variant="outline" onClick={handleCancel}>Cancel</Btn>
+            <Btn onClick={handleSave} disabled={saving}>{saving ? 'Saving…' : 'Save'}</Btn>
           </div>
         </div>
       }
@@ -607,6 +667,7 @@ export default function RehabRoundTracker({ property, repairItems = [], onChange
     </>
   )
 }
+
 
 
 
