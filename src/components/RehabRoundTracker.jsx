@@ -37,61 +37,22 @@ function calcOwed(originalAmount, datePaid, repayments, asOf = new Date()) {
 }
 
 function PartnerLedger({ sourceType, sourceId, originalAmount, datePaid, onDatePaidChange }) {
-  const [open, setOpen] = useState(false)
   const [payments, setPayments] = useState([])
-  const [newAmt, setNewAmt] = useState('')
-  const [newDate, setNewDate] = useState(new Date().toISOString().slice(0,10))
 
-  async function load() {
-    const { data } = await supabase.from('cashoffer_partner_repayments').select('*')
+  useEffect(() => {
+    supabase.from('cashoffer_partner_repayments').select('*')
       .eq('source_type', sourceType).eq('source_id', sourceId).order('payment_date', { ascending: true })
-    setPayments(data || [])
-  }
-  useEffect(() => { load() }, [sourceId])
+      .then(({ data }) => setPayments(data || []))
+  }, [sourceId])
 
-  const { totalOwed, totalRepaid } = calcOwed(originalAmount, datePaid, payments)
-
-  async function addPayment() {
-    const amt = parseFloat(newAmt)
-    if (!amt || amt <= 0) return
-    await supabase.from('cashoffer_partner_repayments').insert({ source_type: sourceType, source_id: sourceId, amount: amt, payment_date: newDate })
-    setNewAmt('')
-    load()
-  }
-  async function removePayment(id) {
-    await supabase.from('cashoffer_partner_repayments').delete().eq('id', id)
-    load()
-  }
+  const { accruedInterest } = calcOwed(originalAmount, datePaid, payments)
 
   return (
     <div style={{ display:'contents' }}>
       <input type="date" value={datePaid||''} onChange={e=>onDatePaidChange(e.target.value)} style={{ ...inp, fontSize:11, padding:'4px 6px', marginRight:6 }} />
-      <div onClick={()=>setOpen(o=>!o)} style={{ cursor:'pointer', fontSize:12, fontWeight:700, fontFamily:'monospace', color:'#B8892A', textAlign:'right', marginRight:6, whiteSpace:'nowrap' }}>
-        {open?'▾':'▸'} {fmt(totalOwed)}
+      <div style={{ fontSize:12, fontWeight:700, fontFamily:'monospace', color:'#B8892A', textAlign:'right', marginRight:6, whiteSpace:'nowrap' }}>
+        {fmt(accruedInterest)}
       </div>
-      {open && (
-        <div style={{ gridColumn:'1 / -1', background:'#FAFAF8', border:'0.5px solid #D6D2CA', borderRadius:6, padding:'10px 12px', margin:'2px 0 6px' }}>
-          <div style={{ fontSize:10, color:'#9ca3af', marginBottom:8 }}>
-            Interest accrues at 10%/yr on the outstanding balance until repaid. {totalRepaid > 0 && `${fmt(totalRepaid)} repaid so far.`}
-          </div>
-          {payments.length > 0 && (
-            <div style={{ display:'flex', flexDirection:'column', gap:4, marginBottom:8 }}>
-              {payments.map(p => (
-                <div key={p.id} style={{ display:'flex', alignItems:'center', gap:8, fontSize:11 }}>
-                  <span style={{ color:'#6b7280' }}>{new Date(p.payment_date+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}</span>
-                  <span style={{ fontFamily:'monospace', fontWeight:600 }}>{fmt(p.amount)}</span>
-                  <button onClick={()=>removePayment(p.id)} style={{ background:'none', border:'none', color:'#D6D2CA', cursor:'pointer', fontSize:14, padding:0 }}>×</button>
-                </div>
-              ))}
-            </div>
-          )}
-          <div style={{ display:'flex', alignItems:'center', gap:6 }}>
-            <input type="number" placeholder="Amount" value={newAmt} onChange={e=>setNewAmt(e.target.value)} style={{ ...monoInp, fontSize:11, padding:'4px 6px', width:90 }} />
-            <input type="date" value={newDate} onChange={e=>setNewDate(e.target.value)} style={{ ...inp, fontSize:11, padding:'4px 6px' }} />
-            <button onClick={addPayment} style={{ background:'#2D6FAF', color:'#fff', border:'none', borderRadius:5, padding:'4px 10px', fontSize:11, fontWeight:700, cursor:'pointer', fontFamily:'inherit' }}>+ Payment</button>
-          </div>
-        </div>
-      )}
     </div>
   )
 }
