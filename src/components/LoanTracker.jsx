@@ -241,13 +241,18 @@ export default function LoanTracker({ propertyId, propertyAddress, open, onClose
   const [loans, setLoans]         = useState([])
   const [loading, setLoading]     = useState(true)
   const [editing, setEditing]     = useState(null)   // null | 'new' | {refinanceFor: id} | loan object
-  const [expandedLoan, setExpandedLoan] = useState(null) // id of loan showing amortization
+  const [expandedLoan, setExpandedLoan] = useState(null) // id of loan showing amortization (list mode only)
   const [closingId, setClosingId] = useState(null)   // id of loan showing Paid Off / Refinance choice
+  const [focusId, setFocusId]     = useState(initialLoanId ?? null) // non-null = single-loan detail view
 
   useEffect(() => {
     if (open && propertyId) load()
     if (!open) { setExpandedLoan(null); setEditing(null); setClosingId(null) }
   }, [open, propertyId])
+
+  useEffect(() => {
+    if (open) setFocusId(initialLoanId ?? null)
+  }, [open, initialLoanId])
 
   async function load() {
     setLoading(true)
@@ -258,9 +263,7 @@ export default function LoanTracker({ propertyId, propertyAddress, open, onClose
       .order('loan_start_date', { ascending: true })
     setLoans(data || [])
     setLoading(false)
-    // Jump straight to the specific loan that was clicked in the drawer, if any
-    if (initialLoanId) setExpandedLoan(initialLoanId)
-    else if (initialLoanId === null && !(data && data.length)) setEditing('new')
+    if (initialLoanId === null && !(data && data.length)) setEditing('new')
   }
 
   async function saveLoan(form) {
@@ -315,6 +318,7 @@ export default function LoanTracker({ propertyId, propertyAddress, open, onClose
 
   const activeLoans = loans.filter(l => l.is_active)
   const closedLoans = loans.filter(l => !l.is_active)
+  const focusLoan = focusId ? loans.find(l => l.id === focusId) : null
 
   return (
     <Modal title={`Loan Tracker — ${propertyAddress?.split(',')[0] || ''}`} onClose={onClose} width={720}>
@@ -336,6 +340,84 @@ export default function LoanTracker({ propertyId, propertyAddress, open, onClose
             onCancel={()=>setEditing(null)}
             onDelete={deleteLoan}
           />
+        </>
+      ) : focusLoan ? (
+        <>
+          {loans.length > 1 && (
+            <div
+              onClick={()=>setFocusId(null)}
+              style={{ fontSize:11, fontWeight:700, color:'#2D6FAF', cursor:'pointer', marginBottom:14 }}
+            >
+              ← View all {loans.length} loans for this property
+            </div>
+          )}
+
+          <div style={{ background:'#FAFAF8', borderRadius:8, padding:'14px 16px', border:'0.5px solid #D6D2CA' }}>
+            <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', marginBottom:12 }}>
+              <div>
+                <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:4 }}>
+                  <span style={{ fontSize:14, fontWeight:700, color:'#2C2C2C' }}>{focusLoan.lender_name || focusLoan.bank || 'Unnamed Lender'}</span>
+                  <span style={{ background:TYPE_COLOR[focusLoan.loan_type]+'18', color:TYPE_COLOR[focusLoan.loan_type], border:`1px solid ${TYPE_COLOR[focusLoan.loan_type]}40`, borderRadius:4, padding:'2px 8px', fontSize:10, fontWeight:700 }}>{focusLoan.loan_type}</span>
+                  {!focusLoan.is_active && (
+                    <span style={{ background:'#9ca3af18', color:'#6b7280', border:'1px solid #9ca3af40', borderRadius:4, padding:'2px 8px', fontSize:10, fontWeight:700 }}>{focusLoan.closed_reason || 'Closed'}</span>
+                  )}
+                </div>
+                <div style={{ fontSize:12, color:'#6b7280' }}>
+                  {focusLoan.loan_start_date ? new Date(focusLoan.loan_start_date+'T12:00:00').toLocaleDateString('en-US',{month:'short',year:'numeric'}) : ''}
+                  {focusLoan.loan_start_date && focusLoan.loan_term_months ? ` · ${focusLoan.loan_term_months/12}yr term` : ''}
+                </div>
+              </div>
+              {focusLoan.is_active && (
+                <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+                  <Btn variant="outline" onClick={()=>setEditing(focusLoan)} style={{ fontSize:11, padding:'5px 12px' }}>Edit</Btn>
+                  <Btn variant="outline" onClick={()=>setClosingId(closingId===focusLoan.id?null:focusLoan.id)} style={{ fontSize:11, padding:'5px 12px' }}>Close Loan</Btn>
+                </div>
+              )}
+            </div>
+
+            {closingId === focusLoan.id && (
+              <div style={{ background:'#fff', border:'1px solid #D6D2CA', borderRadius:6, padding:'10px 12px', marginBottom:12, display:'flex', gap:8, alignItems:'center', flexWrap:'wrap' }}>
+                <span style={{ fontSize:11, color:'#6b7280' }}>How is this loan closing out?</span>
+                <button onClick={()=>markPaidOff(focusLoan)} style={{ background:'#3B6D11', color:'#fff', border:'none', borderRadius:6, padding:'6px 12px', fontSize:11, fontWeight:700, cursor:'pointer', fontFamily:'inherit' }}>Paid Off</button>
+                <button onClick={()=>{ setEditing({ refinanceFor: focusLoan.id }); setClosingId(null) }} style={{ background:'#2D6FAF', color:'#fff', border:'none', borderRadius:6, padding:'6px 12px', fontSize:11, fontWeight:700, cursor:'pointer', fontFamily:'inherit' }}>Refinance</button>
+                <span style={{ fontSize:10, color:'#9ca3af' }}>Paid Off asks for total interest paid. Refinance opens a new loan and closes this one.</span>
+              </div>
+            )}
+
+            <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:10 }}>
+              {[
+                { label:'Original Amount',  value:fmt(focusLoan.loan_amount),   color:'#2C2C2C' },
+                { label:'Rate',             value:`${focusLoan.interest_rate}%`, color:'#2C2C2C' },
+                { label:'Monthly Payment',  value:fmt(focusLoan.monthly_payment || (()=>{ const s=buildSchedule(focusLoan.loan_amount,focusLoan.interest_rate,focusLoan.loan_term_months,null); return s[0]?.payment })()), color:'#D97825' },
+                { label:'Current Balance',  value:fmt(currentBalance(buildSchedule(focusLoan.loan_amount,focusLoan.interest_rate,focusLoan.loan_term_months,focusLoan.monthly_payment),focusLoan.loan_start_date)), color:'#2D6FAF' },
+              ].map(({label,value,color})=>(
+                <div key={label} style={{ textAlign:'center', background:'#fff', borderRadius:6, padding:'8px 10px', border:'0.5px solid #D6D2CA' }}>
+                  <div style={{ fontSize:9, color:'#9ca3af', textTransform:'uppercase', letterSpacing:0.7, marginBottom:3 }}>{label}</div>
+                  <div style={{ fontSize:14, fontWeight:700, fontFamily:'monospace', color }}>{value||'—'}</div>
+                </div>
+              ))}
+            </div>
+
+            {focusLoan.notes && (
+              <div style={{ fontSize:11, color:'#6b7280', marginTop:10, fontStyle:'italic' }}>{focusLoan.notes}</div>
+            )}
+
+            {!focusLoan.is_active && (focusLoan.closed_reason === 'Refinanced'
+              ? <div style={{ fontSize:11, color:'#9ca3af', marginTop:10 }}>Refinanced {focusLoan.refinanced_date ? new Date(focusLoan.refinanced_date+'T12:00:00').toLocaleDateString('en-US',{month:'short',year:'numeric'}) : ''}</div>
+              : focusLoan.closed_reason === 'Paid Off'
+                ? <div style={{ fontSize:11, color:'#9ca3af', marginTop:10 }}>Paid Off {focusLoan.paid_off_date ? new Date(focusLoan.paid_off_date+'T12:00:00').toLocaleDateString('en-US',{month:'short',year:'numeric'}) : ''} · Total Interest Paid: {fmt(focusLoan.total_interest_paid)}</div>
+                : null)}
+          </div>
+
+          <div style={{ marginTop:10 }}>
+            <div style={{ fontSize:11, fontWeight:700, color:'#B8892A', textTransform:'uppercase', letterSpacing:0.8, marginBottom:6 }}>
+              Amortization Schedule
+            </div>
+            <AmortizationTable
+              schedule={buildSchedule(focusLoan.loan_amount, focusLoan.interest_rate, focusLoan.loan_term_months, focusLoan.monthly_payment)}
+              startDate={focusLoan.loan_start_date}
+            />
+          </div>
         </>
       ) : (
         <>
