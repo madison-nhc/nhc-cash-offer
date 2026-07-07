@@ -213,9 +213,9 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
     }))
   }
 
-  function calcCommission(pct, base, min) {
-    const p=parseFloat(pct)||0, b=parseFloat(base)||0, m=parseFloat(min)||5000
-    return b&&p ? Math.max(m, b*p/100) : null
+  function calcCommission(pct, base) {
+    const p=parseFloat(pct)||0, b=parseFloat(base)||0
+    return b&&p ? b*p/100 : null
   }
 
   async function save() {
@@ -642,14 +642,11 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
               </Field>
             )}
             <div className="drawer-section">NHC Commission</div>
-            <FieldRow>
-              <Field label="Commission %">
-                <input style={monoInp} type="number" value={form.commission_pct||''}
-                  onChange={e=>{ const e2=calcCommission(e.target.value,form.sale_price||form.arv,form.commission_min); setForm(f=>({...f,commission_pct:e.target.value,commission_earned:e2?e2.toFixed(2):f.commission_earned})) }} />
-              </Field>
-              <Field label="Minimum ($)"><input style={monoInp} type="number" value={form.commission_min||5000} onChange={set('commission_min')} /></Field>
-            </FieldRow>
-            <Field label="Commission Earned ($)"><input style={monoInp} type="number" value={form.commission_earned||''} onChange={set('commission_earned')} /></Field>
+            <Field label="Commission %">
+              <input style={monoInp} type="number" value={form.commission_pct||''}
+                onChange={e=>{ const e2=calcCommission(e.target.value,form.sale_price||form.arv); setForm(f=>({...f,commission_pct:e.target.value,commission_earned:e2?e2.toFixed(2):f.commission_earned})) }} />
+            </Field>
+            <Field label="Commission Earned ($) — auto-calculated, edit to override"><input style={monoInp} type="number" value={form.commission_earned||''} onChange={set('commission_earned')} /></Field>
             <div className="drawer-section">Sale</div>
             <FieldRow>
               <Field label="Sale Price ($)"><input style={monoInp} type="number" value={form.sale_price||''} onChange={set('sale_price')} /></Field>
@@ -679,9 +676,9 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
             <FieldRow>
               <Field label="Commission %">
                 <input style={monoInp} type="number" value={form.commission_pct||''}
-                  onChange={e=>{ const e2=calcCommission(e.target.value,form.purchase_price,form.commission_min); setForm(f=>({...f,commission_pct:e.target.value,commission_earned:e2?e2.toFixed(2):f.commission_earned})) }} />
+                  onChange={e=>{ const e2=calcCommission(e.target.value,form.purchase_price); setForm(f=>({...f,commission_pct:e.target.value,commission_earned:e2?e2.toFixed(2):f.commission_earned})) }} />
               </Field>
-              <Field label="Commission Earned ($)"><input style={monoInp} type="number" value={form.commission_earned||''} onChange={set('commission_earned')} /></Field>
+              <Field label="Commission Earned ($) — auto-calc, edit to override"><input style={monoInp} type="number" value={form.commission_earned||''} onChange={set('commission_earned')} /></Field>
             </FieldRow>
             {(form.wholesale_fee||form.commission_earned) && (
               <div style={{ display:'flex', gap:8, marginTop:4 }}>
@@ -707,14 +704,11 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
               </Field>
             </FieldRow>
             <div className="drawer-section">NHC Commission on Purchase</div>
-            <FieldRow>
-              <Field label="Commission %">
-                <input style={monoInp} type="number" value={form.commission_pct||''}
-                  onChange={e=>{ const e2=calcCommission(e.target.value,form.purchase_price,form.commission_min); setForm(f=>({...f,commission_pct:e.target.value,commission_earned:e2?e2.toFixed(2):f.commission_earned})) }} />
-              </Field>
-              <Field label="Minimum ($)"><input style={monoInp} type="number" value={form.commission_min||5000} onChange={set('commission_min')} /></Field>
-            </FieldRow>
-            <Field label="Commission Earned ($)"><input style={monoInp} type="number" value={form.commission_earned||''} onChange={set('commission_earned')} /></Field>
+            <Field label="Commission %">
+              <input style={monoInp} type="number" value={form.commission_pct||''}
+                onChange={e=>{ const e2=calcCommission(e.target.value,form.purchase_price); setForm(f=>({...f,commission_pct:e.target.value,commission_earned:e2?e2.toFixed(2):f.commission_earned})) }} />
+            </Field>
+            <Field label="Commission Earned ($) — auto-calc, edit to override"><input style={monoInp} type="number" value={form.commission_earned||''} onChange={set('commission_earned')} /></Field>
             <div className="drawer-section">Resale</div>
             <FieldRow>
               <Field label="Sale Price ($)"><input style={monoInp} type="number" value={form.sale_price||''} onChange={set('sale_price')} /></Field>
@@ -743,9 +737,9 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
             <FieldRow>
               <Field label="Commission %">
                 <input style={monoInp} type="number" value={form.commission_pct||''}
-                  onChange={e=>{ const e2=calcCommission(e.target.value,form.purchase_price,form.commission_min); setForm(f=>({...f,commission_pct:e.target.value,commission_earned:e2?e2.toFixed(2):f.commission_earned})) }} />
+                  onChange={e=>{ const e2=calcCommission(e.target.value,form.purchase_price); setForm(f=>({...f,commission_pct:e.target.value,commission_earned:e2?e2.toFixed(2):f.commission_earned})) }} />
               </Field>
-              <Field label="Commission Earned ($)"><input style={monoInp} type="number" value={form.commission_earned||''} onChange={set('commission_earned')} /></Field>
+              <Field label="Commission Earned ($) — auto-calc, edit to override"><input style={monoInp} type="number" value={form.commission_earned||''} onChange={set('commission_earned')} /></Field>
             </FieldRow>
             <div className="drawer-section">Sale</div>
             <div style={{ background:'#FAFAF8', borderRadius:8, padding:'12px 14px', border:'0.5px solid #D6D2CA' }}>
