@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 
-export default function Drawer({ open, onClose, title, subtitle, children, width = 520, headerActions, hideCloseButton = false }) {
+export default function Drawer({ open, onClose, title, subtitle, children, width = 520, headerActions, hideCloseButton = false, footer }) {
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 768
   const actualWidth = isMobile ? '100vw' : width
   // Lock scroll when open
@@ -70,8 +70,15 @@ export default function Drawer({ open, onClose, title, subtitle, children, width
         <div style={{ flex: 1, overflowY: 'auto', padding: '4px 24px 24px' }}>
           {children}
         </div>
+
+        {footer && (
+          <div style={{ padding: '14px 24px', borderTop: '1px solid #F0EDE6', flexShrink: 0, background: '#fff' }}>
+            {footer}
+          </div>
+        )}
       </div>
     </>
   )
 }
+
 

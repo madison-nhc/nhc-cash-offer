@@ -49,7 +49,7 @@ export function SectionBar({ children }) {
   )
 }
 
-export function Modal({ title, onClose, children, width = 560 }) {
+export function Modal({ title, onClose, children, width = 560, footer }) {
   return (
     <div style={{
       position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)',
@@ -58,14 +58,14 @@ export function Modal({ title, onClose, children, width = 560 }) {
     }} onClick={e => e.target === e.currentTarget && onClose()}>
       <div data-clip-boundary style={{
         background: '#fff', borderRadius: 10, width: '100%', maxWidth: width,
-        maxHeight: '90vh', overflowY: 'auto',
+        maxHeight: '90vh', display: 'flex', flexDirection: 'column', overflow: 'hidden',
         boxShadow: '0 20px 60px rgba(0,0,0,0.25)',
         borderTop: '3px solid #B8892A'
       }}>
         {/* Header */}
         <div style={{
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          padding: '14px 20px', borderBottom: '1px solid #F0EDE6'
+          padding: '14px 20px', borderBottom: '1px solid #F0EDE6', flexShrink: 0
         }}>
           <span style={{ fontSize: 15, fontWeight: 700, color: '#2C2C2C' }}>{title}</span>
           <button onClick={onClose} style={{
@@ -73,9 +73,14 @@ export function Modal({ title, onClose, children, width = 560 }) {
             color: '#6b7280', lineHeight: 1, padding: '0 4px'
           }}>×</button>
         </div>
-        <div style={{ padding: '20px' }}>
+        <div style={{ padding: '20px', overflowY: 'auto', flex: 1 }}>
           {children}
         </div>
+        {footer && (
+          <div style={{ padding: '14px 20px', borderTop: '1px solid #F0EDE6', flexShrink: 0 }}>
+            {footer}
+          </div>
+        )}
       </div>
     </div>
   )

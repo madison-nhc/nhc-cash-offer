@@ -801,24 +801,27 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
         onRentChange={()=>onSave()}
       />
 
-      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginTop:20, paddingTop:16, borderTop:'1px solid #F0EDE6' }}>
-        {!isNew ? (
-          <button onClick={del} style={{ background:'#B91C1C', border:'1px solid #B91C1C', color:'#fff', fontSize:11, fontWeight:700, cursor:'pointer', fontFamily:'inherit', borderRadius:6, padding:'6px 12px' }}>
-            Delete Property
-          </button>
-        ) : <span />}
-        <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-          <Btn variant="outline" onClick={onClose}>Cancel</Btn>
-          <Btn onClick={handleClose}>Save</Btn>
-        </div>
-      </div>
     </>
   )
 
-  if (inlineMode) return <div style={{ padding:'0 16px 24px' }}>{innerContent}</div>
+  const footerContent = (
+    <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+      {!isNew ? (
+        <button onClick={del} style={{ background:'#B91C1C', border:'1px solid #B91C1C', color:'#fff', fontSize:11, fontWeight:700, cursor:'pointer', fontFamily:'inherit', borderRadius:6, padding:'6px 12px' }}>
+          Delete Property
+        </button>
+      ) : <span />}
+      <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+        <Btn variant="outline" onClick={onClose}>Cancel</Btn>
+        <Btn onClick={handleClose}>Save</Btn>
+      </div>
+    </div>
+  )
+
+  if (inlineMode) return <div style={{ padding:'0 16px 24px' }}>{innerContent}<div style={{ marginTop:20, paddingTop:16, borderTop:'1px solid #F0EDE6' }}>{footerContent}</div></div>
 
   return (
-    <Drawer open={open} onClose={guardedClose} hideCloseButton width={580}
+    <Drawer open={open} onClose={guardedClose} hideCloseButton width={580} footer={footerContent}
       title={form.address || 'New Property'}
       headerActions={null}
       subtitle={
@@ -881,6 +884,7 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
     </Drawer>
   )
 }
+
 
 
 

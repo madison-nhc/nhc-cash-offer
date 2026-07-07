@@ -237,6 +237,21 @@ export default function RehabRoundTracker({ property, repairItems = [], onChange
     if (data) { setRounds(r => [...r, data]); setActiveRoundId(data.id) }
   }
 
+  async function deleteRound() {
+    const round = rounds.find(r => r.id === activeRoundId)
+    if (!round) return
+    if (!confirm(`Delete "${round.label}"? This permanently removes every service, supply, and utility bill logged under this round. This cannot be undone.`)) return
+    await Promise.all([
+      supabase.from('cashoffer_rehab_items').delete().eq('rehab_round_id', activeRoundId),
+      supabase.from('cashoffer_supplies').delete().eq('rehab_round_id', activeRoundId),
+      supabase.from('cashoffer_utility_bills').delete().eq('rehab_round_id', activeRoundId),
+    ])
+    await supabase.from('cashoffer_rehab_rounds').delete().eq('id', activeRoundId)
+    const remaining = rounds.filter(r => r.id !== activeRoundId)
+    setRounds(remaining)
+    setActiveRoundId(remaining[remaining.length - 1]?.id || null)
+  }
+
   async function loadVendors() {
     const { data } = await supabase.from('cashoffer_vendors').select('company_name').not('company_name', 'is', null).neq('company_name', '')
     setVendors([...new Set((data || []).map(r => r.company_name).filter(Boolean))].sort())
@@ -343,7 +358,24 @@ export default function RehabRoundTracker({ property, repairItems = [], onChange
 
   return (
     <>
-    <Modal title={`Rehab — ${property?.address?.split(',')[0] || ''}`} onClose={onClose} width={1240}>
+    <Modal
+      title={`Rehab — ${property?.address?.split(',')[0] || ''}`}
+      onClose={onClose}
+      width={1240}
+      footer={
+        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+          {rounds.length > 1 ? (
+            <button onClick={deleteRound} style={{ background:'#B91C1C', border:'1px solid #B91C1C', color:'#fff', fontSize:11, fontWeight:700, cursor:'pointer', fontFamily:'inherit', borderRadius:6, padding:'6px 12px' }}>
+              Delete This Round
+            </button>
+          ) : <span />}
+          <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+            <Btn variant="outline" onClick={onClose}>Cancel</Btn>
+            <Btn onClick={onClose}>Save</Btn>
+          </div>
+        </div>
+      }
+    >
       <div style={{ display:'flex', flexDirection:'column', gap:16 }}>
 
         <LoanSnapshot propertyId={propertyId} />
@@ -575,6 +607,7 @@ export default function RehabRoundTracker({ property, repairItems = [], onChange
     </>
   )
 }
+
 
 
 
