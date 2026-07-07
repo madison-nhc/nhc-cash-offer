@@ -473,7 +473,7 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
           </Field>
           <FieldRow>
             <Field label="As-Is Deduction %"><input style={monoInp} type="number" value={form.asis_pct||50} onChange={set('asis_pct')} /></Field>
-            <Field label="As-Is Override ($)"><input style={monoInp} type="number" value={form.asis_override||''} onChange={set('asis_override')} /></Field>
+            <Field label="As-Is Listing Price Override ($)"><input style={monoInp} type="number" value={form.asis_override||''} onChange={set('asis_override')} /></Field>
           </FieldRow>
           <FieldRow>
             <Field label="Profit Margin %"><input style={monoInp} type="number" value={form.profit_margin||15} onChange={set('profit_margin')} /></Field>
@@ -505,6 +505,7 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
                   { l:'ARV', v:fmt(d.arv) },
                   { l:'Repairs', v:`−${fmt(d.reno)}` },
                   { l:`Comm (${(d.commListPct*100).toFixed(1).replace(/\.0$/,'')}%)`, v:`−${fmt(d.opt3Comm)}` },
+                  { l:`Holding (${d.opt3HoldMo}mo)`, v:`−${fmt(d.opt3Hold)}` },
                 ]},
               ].map(card=>(
                 <div key={card.label} style={{ background:'#FAFAF8', borderRadius:6, padding:'8px 10px', borderTop:`3px solid ${card.color}` }}>
