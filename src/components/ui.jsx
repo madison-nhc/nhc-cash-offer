@@ -56,7 +56,7 @@ export function Modal({ title, onClose, children, width = 560 }) {
       zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center',
       padding: 16
     }} onClick={e => e.target === e.currentTarget && onClose()}>
-      <div style={{
+      <div data-clip-boundary style={{
         background: '#fff', borderRadius: 10, width: '100%', maxWidth: width,
         maxHeight: '90vh', overflowY: 'auto',
         boxShadow: '0 20px 60px rgba(0,0,0,0.25)',
@@ -158,9 +158,11 @@ export function DatePicker({ value, onChange, style = {}, placeholder = 'mm/dd/y
   useEffect(() => {
     if (!open || !ref.current) return
     const rect = ref.current.getBoundingClientRect()
+    const boundary = ref.current.closest('[data-clip-boundary]')
+    const boundsRect = boundary ? boundary.getBoundingClientRect() : { left: 0, right: window.innerWidth, top: 0, bottom: window.innerHeight }
     const POPOVER_W = 300, POPOVER_H = 340
-    const align = (rect.left + POPOVER_W > window.innerWidth) ? 'right' : 'left'
-    const vertical = (rect.bottom + POPOVER_H > window.innerHeight) ? 'above' : 'below'
+    const align = (rect.left + POPOVER_W > boundsRect.right) ? 'right' : 'left'
+    const vertical = (rect.bottom + POPOVER_H > boundsRect.bottom) ? 'above' : 'below'
     setPos({ align, vertical })
   }, [open])
 
