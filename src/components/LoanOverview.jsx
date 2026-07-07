@@ -21,13 +21,6 @@ export default function LoanOverview({ propertyId, onOpenLoan }) {
     setLoading(false)
   }
 
-  async function deleteLoan(e, id) {
-    e.stopPropagation()
-    if (!confirm('Delete this loan record? This cannot be undone.')) return
-    await supabase.from('cashoffer_loans').delete().eq('id', id)
-    setLoans(l => l.filter(x => x.id !== id))
-  }
-
   if (loading) return <div style={{ textAlign:'center', padding:20, color:'#9ca3af', fontSize:12 }}>Loading…</div>
 
   const activeLoans = loans.filter(l => l.is_active)
@@ -82,12 +75,6 @@ export default function LoanOverview({ propertyId, onOpenLoan }) {
           )}
         </div>
         <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-          <button onClick={e=>deleteLoan(e, loan.id)} title="Delete loan" style={{
-            background:'none', border:'1px solid #B91C1C', color:'#B91C1C', borderRadius:6,
-            fontSize:10, fontWeight:700, padding:'3px 8px', cursor:'pointer', fontFamily:'inherit',
-          }}>
-            Delete
-          </button>
           <span style={{ fontSize:16, color:'#2D6FAF' }}>→</span>
         </div>
       </div>
