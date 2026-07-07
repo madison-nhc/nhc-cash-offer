@@ -282,6 +282,10 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
     if (ok) onClose()
     // if save failed, keep the drawer open so nothing is lost
   }
+  function guardedClose() {
+    if (!form.address) { onClose(); return }
+    if (confirm('Discard unsaved changes to this property?')) onClose()
+  }
   async function del() {
     if (!confirm('Delete this deal? This cannot be undone.')) return
     await supabase.from('cashoffer_properties').delete().eq('id',form.id)
@@ -810,7 +814,7 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
   if (inlineMode) return <div style={{ padding:'0 16px 24px' }}>{innerContent}</div>
 
   return (
-    <Drawer open={open} onClose={onClose} hideCloseButton width={580}
+    <Drawer open={open} onClose={guardedClose} hideCloseButton width={580}
       title={form.address || 'New Property'}
       headerActions={null}
       subtitle={
