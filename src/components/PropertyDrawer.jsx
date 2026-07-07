@@ -795,11 +795,14 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
 
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginTop:20, paddingTop:16, borderTop:'1px solid #F0EDE6' }}>
         {!isNew ? (
-          <button onClick={del} style={{ background:'none', border:'1px solid #B91C1C', color:'#B91C1C', fontSize:11, fontWeight:700, cursor:'pointer', fontFamily:'inherit', borderRadius:6, padding:'6px 12px' }}>
+          <button onClick={del} style={{ background:'#B91C1C', border:'1px solid #B91C1C', color:'#fff', fontSize:11, fontWeight:700, cursor:'pointer', fontFamily:'inherit', borderRadius:6, padding:'6px 12px' }}>
             Delete Property
           </button>
         ) : <span />}
-        <Btn onClick={handleClose}>Save</Btn>
+        <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+          <Btn variant="outline" onClick={onClose}>Cancel</Btn>
+          <Btn onClick={handleClose}>Save</Btn>
+        </div>
       </div>
     </>
   )
@@ -807,7 +810,7 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
   if (inlineMode) return <div style={{ padding:'0 16px 24px' }}>{innerContent}</div>
 
   return (
-    <Drawer open={open} onClose={handleClose} width={580}
+    <Drawer open={open} onClose={onClose} hideCloseButton width={580}
       title={form.address || 'New Property'}
       headerActions={null}
       subtitle={
