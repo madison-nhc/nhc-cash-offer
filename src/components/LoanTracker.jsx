@@ -240,8 +240,9 @@ function LoanForm({ loan, onSave, onCancel, onDelete }) {
 export default function LoanTracker({ propertyId, propertyAddress, open, onClose }) {
   const [loans, setLoans]         = useState([])
   const [loading, setLoading]     = useState(true)
-  const [editing, setEditing]     = useState(null)   // null | 'new' | loan object
+  const [editing, setEditing]     = useState(null)   // null | 'new' | {refinanceFor: id} | loan object
   const [expandedLoan, setExpandedLoan] = useState(null) // id of loan showing amortization
+  const [closingId, setClosingId] = useState(null)   // id of loan showing Paid Off / Refinance choice
 
   useEffect(() => {
     if (open && propertyId) load()
@@ -255,9 +256,6 @@ export default function LoanTracker({ propertyId, propertyAddress, open, onClose
       .eq('property_id', propertyId)
       .order('loan_start_date', { ascending: true })
     setLoans(data || [])
-    // Auto-expand active loan's amortization
-    const active = (data||[]).find(l=>l.is_active)
-    if (active && !expandedLoan) setExpandedLoan(active.id)
     setLoading(false)
   }
 
@@ -277,14 +275,28 @@ export default function LoanTracker({ propertyId, propertyAddress, open, onClose
     }
     if (form.id) {
       await supabase.from('cashoffer_loans').update(payload).eq('id', form.id)
+    } else if (editing?.refinanceFor) {
+      // Refinance: close only the specific loan being refinanced, then add the new one
+      await supabase.from('cashoffer_loans').update({
+        is_active: false, closed_reason: 'Refinanced', refinanced_date: new Date().toISOString().split('T')[0],
+      }).eq('id', editing.refinanceFor)
+      await supabase.from('cashoffer_loans').insert(payload)
     } else {
-      // Mark all existing loans inactive when adding a new one (refi)
-      if (loans.length > 0) {
-        await supabase.from('cashoffer_loans').update({ is_active: false, refinanced_date: new Date().toISOString().split('T')[0] }).eq('property_id', propertyId).eq('is_active', true)
-      }
+      // Brand new, standalone loan — doesn't touch any existing loans
       await supabase.from('cashoffer_loans').insert(payload)
     }
     setEditing(null)
+    load()
+  }
+
+  async function markPaidOff(loan) {
+    const val = prompt(`Total interest paid on this loan (${loan.lender_name || loan.bank || 'loan'}):`, '')
+    if (val === null) return
+    await supabase.from('cashoffer_loans').update({
+      is_active: false, closed_reason: 'Paid Off', paid_off_date: new Date().toISOString().split('T')[0],
+      total_interest_paid: parseFloat(val) || 0,
+    }).eq('id', loan.id)
+    setClosingId(null)
     load()
   }
 
@@ -297,8 +309,8 @@ export default function LoanTracker({ propertyId, propertyAddress, open, onClose
 
   if (!open) return null
 
-  const activeLoan = loans.find(l => l.is_active)
-  const priorLoans = loans.filter(l => !l.is_active)
+  const activeLoans = loans.filter(l => l.is_active)
+  const closedLoans = loans.filter(l => !l.is_active)
 
   return (
     <Modal title={`Loan Tracker — ${propertyAddress?.split(',')[0] || ''}`} onClose={onClose} width={720}>
@@ -307,15 +319,15 @@ export default function LoanTracker({ propertyId, propertyAddress, open, onClose
       ) : editing ? (
         <>
           <div style={{ fontSize:13, fontWeight:700, color:'#2C2C2C', marginBottom:16 }}>
-            {editing==='new' ? (loans.length > 0 ? 'Add Refinance Loan' : 'Add Loan') : 'Edit Loan'}
+            {editing?.refinanceFor ? 'Add Refinance Loan' : editing==='new' ? 'Add Loan' : 'Edit Loan'}
           </div>
-          {loans.length > 0 && editing==='new' && (
+          {editing?.refinanceFor && (
             <div style={{ background:'#fff3cd', borderRadius:6, padding:'10px 14px', fontSize:12, color:'#856404', marginBottom:12 }}>
-              Adding a new loan will mark the current active loan as refinanced.
+              Saving will mark that loan as refinanced and add this as a new active loan.
             </div>
           )}
           <LoanForm
-            loan={editing==='new' ? null : editing}
+            loan={(editing==='new' || editing?.refinanceFor) ? null : editing}
             onSave={saveLoan}
             onCancel={()=>setEditing(null)}
             onDelete={deleteLoan}
@@ -323,60 +335,78 @@ export default function LoanTracker({ propertyId, propertyAddress, open, onClose
         </>
       ) : (
         <>
-          {/* Active loan */}
-          {activeLoan ? (
-            <div>
-              {/* Active loan summary card */}
-              <div style={{ background:'#FAFAF8', borderRadius:8, padding:'14px 16px', border:'0.5px solid #D6D2CA', marginBottom:16 }}>
-                <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', marginBottom:12 }}>
-                  <div>
-                    <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:4 }}>
-                      <span style={{ fontSize:14, fontWeight:700, color:'#2C2C2C' }}>{activeLoan.lender_name || activeLoan.bank || 'Unnamed Lender'}</span>
-                      <span style={{ background:TYPE_COLOR[activeLoan.loan_type]+'18', color:TYPE_COLOR[activeLoan.loan_type], border:`1px solid ${TYPE_COLOR[activeLoan.loan_type]}40`, borderRadius:4, padding:'2px 8px', fontSize:10, fontWeight:700 }}>{activeLoan.loan_type}</span>
-                    </div>
-                    <div style={{ fontSize:12, color:'#6b7280' }}>
-                      {activeLoan.loan_start_date ? new Date(activeLoan.loan_start_date+'T12:00:00').toLocaleDateString('en-US',{month:'short',year:'numeric'}) : ''}
-                      {activeLoan.loan_start_date && activeLoan.loan_term_months ? ` · ${activeLoan.loan_term_months/12}yr term` : ''}
-                    </div>
-                  </div>
-                  <Btn variant="outline" onClick={()=>setEditing(activeLoan)} style={{ fontSize:11, padding:'5px 12px' }}>Edit</Btn>
-                </div>
-
-                {/* Key figures */}
-                <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:10 }}>
-                  {[
-                    { label:'Original Amount',  value:fmt(activeLoan.loan_amount),   color:'#2C2C2C' },
-                    { label:'Rate',             value:`${activeLoan.interest_rate}%`, color:'#2C2C2C' },
-                    { label:'Monthly Payment',  value:fmt(activeLoan.monthly_payment || (()=>{ const s=buildSchedule(activeLoan.loan_amount,activeLoan.interest_rate,activeLoan.loan_term_months,null); return s[0]?.payment })()), color:'#D97825' },
-                    { label:'Current Balance',  value:fmt(currentBalance(buildSchedule(activeLoan.loan_amount,activeLoan.interest_rate,activeLoan.loan_term_months,activeLoan.monthly_payment),activeLoan.loan_start_date)), color:'#2D6FAF' },
-                  ].map(({label,value,color})=>(
-                    <div key={label} style={{ textAlign:'center', background:'#fff', borderRadius:6, padding:'8px 10px', border:'0.5px solid #D6D2CA' }}>
-                      <div style={{ fontSize:9, color:'#9ca3af', textTransform:'uppercase', letterSpacing:0.7, marginBottom:3 }}>{label}</div>
-                      <div style={{ fontSize:14, fontWeight:700, fontFamily:'monospace', color }}>{value||'—'}</div>
-                    </div>
-                  ))}
-                </div>
-
-                {activeLoan.notes && (
-                  <div style={{ fontSize:11, color:'#6b7280', marginTop:10, fontStyle:'italic' }}>{activeLoan.notes}</div>
-                )}
-              </div>
-
-              {/* Amortization toggle */}
-              <div
-                onClick={()=>setExpandedLoan(expandedLoan===activeLoan.id?null:activeLoan.id)}
-                style={{ display:'flex', alignItems:'center', gap:8, cursor:'pointer', marginBottom:8, padding:'6px 2px' }}
-              >
-                <span style={{ fontSize:11, fontWeight:700, color:'#B8892A', textTransform:'uppercase', letterSpacing:0.8 }}>Amortization Schedule</span>
-                <span style={{ fontSize:10, color:'#9ca3af' }}>{expandedLoan===activeLoan.id?'▲':'▼'} click to {expandedLoan===activeLoan.id?'hide':'show'}</span>
-              </div>
-
-              {expandedLoan===activeLoan.id && (
-                <AmortizationTable
-                  schedule={buildSchedule(activeLoan.loan_amount, activeLoan.interest_rate, activeLoan.loan_term_months, activeLoan.monthly_payment)}
-                  startDate={activeLoan.loan_start_date}
-                />
+          {/* Active loans */}
+          {activeLoans.length > 0 ? (
+            <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
+              {activeLoans.length > 1 && (
+                <div style={{ fontSize:10, fontWeight:700, color:'#9ca3af', textTransform:'uppercase', letterSpacing:1 }}>{activeLoans.length} Active Loans</div>
               )}
+              {activeLoans.map(loan => (
+                <div key={loan.id}>
+                  <div style={{ background:'#FAFAF8', borderRadius:8, padding:'14px 16px', border:'0.5px solid #D6D2CA' }}>
+                    <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', marginBottom:12 }}>
+                      <div>
+                        <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:4 }}>
+                          <span style={{ fontSize:14, fontWeight:700, color:'#2C2C2C' }}>{loan.lender_name || loan.bank || 'Unnamed Lender'}</span>
+                          <span style={{ background:TYPE_COLOR[loan.loan_type]+'18', color:TYPE_COLOR[loan.loan_type], border:`1px solid ${TYPE_COLOR[loan.loan_type]}40`, borderRadius:4, padding:'2px 8px', fontSize:10, fontWeight:700 }}>{loan.loan_type}</span>
+                        </div>
+                        <div style={{ fontSize:12, color:'#6b7280' }}>
+                          {loan.loan_start_date ? new Date(loan.loan_start_date+'T12:00:00').toLocaleDateString('en-US',{month:'short',year:'numeric'}) : ''}
+                          {loan.loan_start_date && loan.loan_term_months ? ` · ${loan.loan_term_months/12}yr term` : ''}
+                        </div>
+                      </div>
+                      <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+                        <Btn variant="outline" onClick={()=>setEditing(loan)} style={{ fontSize:11, padding:'5px 12px' }}>Edit</Btn>
+                        <Btn variant="outline" onClick={()=>setClosingId(closingId===loan.id?null:loan.id)} style={{ fontSize:11, padding:'5px 12px' }}>Close Loan</Btn>
+                      </div>
+                    </div>
+
+                    {closingId === loan.id && (
+                      <div style={{ background:'#fff', border:'1px solid #D6D2CA', borderRadius:6, padding:'10px 12px', marginBottom:12, display:'flex', gap:8, alignItems:'center', flexWrap:'wrap' }}>
+                        <span style={{ fontSize:11, color:'#6b7280' }}>How is this loan closing out?</span>
+                        <button onClick={()=>markPaidOff(loan)} style={{ background:'#3B6D11', color:'#fff', border:'none', borderRadius:6, padding:'6px 12px', fontSize:11, fontWeight:700, cursor:'pointer', fontFamily:'inherit' }}>Paid Off</button>
+                        <button onClick={()=>{ setEditing({ refinanceFor: loan.id }); setClosingId(null) }} style={{ background:'#2D6FAF', color:'#fff', border:'none', borderRadius:6, padding:'6px 12px', fontSize:11, fontWeight:700, cursor:'pointer', fontFamily:'inherit' }}>Refinance</button>
+                        <span style={{ fontSize:10, color:'#9ca3af' }}>Paid Off asks for total interest paid. Refinance opens a new loan and closes this one.</span>
+                      </div>
+                    )}
+
+                    {/* Key figures */}
+                    <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:10 }}>
+                      {[
+                        { label:'Original Amount',  value:fmt(loan.loan_amount),   color:'#2C2C2C' },
+                        { label:'Rate',             value:`${loan.interest_rate}%`, color:'#2C2C2C' },
+                        { label:'Monthly Payment',  value:fmt(loan.monthly_payment || (()=>{ const s=buildSchedule(loan.loan_amount,loan.interest_rate,loan.loan_term_months,null); return s[0]?.payment })()), color:'#D97825' },
+                        { label:'Current Balance',  value:fmt(currentBalance(buildSchedule(loan.loan_amount,loan.interest_rate,loan.loan_term_months,loan.monthly_payment),loan.loan_start_date)), color:'#2D6FAF' },
+                      ].map(({label,value,color})=>(
+                        <div key={label} style={{ textAlign:'center', background:'#fff', borderRadius:6, padding:'8px 10px', border:'0.5px solid #D6D2CA' }}>
+                          <div style={{ fontSize:9, color:'#9ca3af', textTransform:'uppercase', letterSpacing:0.7, marginBottom:3 }}>{label}</div>
+                          <div style={{ fontSize:14, fontWeight:700, fontFamily:'monospace', color }}>{value||'—'}</div>
+                        </div>
+                      ))}
+                    </div>
+
+                    {loan.notes && (
+                      <div style={{ fontSize:11, color:'#6b7280', marginTop:10, fontStyle:'italic' }}>{loan.notes}</div>
+                    )}
+                  </div>
+
+                  {/* Amortization toggle */}
+                  <div
+                    onClick={()=>setExpandedLoan(expandedLoan===loan.id?null:loan.id)}
+                    style={{ display:'flex', alignItems:'center', gap:8, cursor:'pointer', marginTop:8, padding:'6px 2px' }}
+                  >
+                    <span style={{ fontSize:11, fontWeight:700, color:'#B8892A', textTransform:'uppercase', letterSpacing:0.8 }}>Amortization Schedule</span>
+                    <span style={{ fontSize:10, color:'#9ca3af' }}>{expandedLoan===loan.id?'▲':'▼'} click to {expandedLoan===loan.id?'hide':'show'}</span>
+                  </div>
+
+                  {expandedLoan===loan.id && (
+                    <AmortizationTable
+                      schedule={buildSchedule(loan.loan_amount, loan.interest_rate, loan.loan_term_months, loan.monthly_payment)}
+                      startDate={loan.loan_start_date}
+                    />
+                  )}
+                </div>
+              ))}
             </div>
           ) : (
             <div style={{ background:'#F0EDE6', borderRadius:8, padding:'20px', textAlign:'center', marginBottom:16 }}>
@@ -385,11 +415,11 @@ export default function LoanTracker({ propertyId, propertyAddress, open, onClose
             </div>
           )}
 
-          {/* Prior loans / refi history */}
-          {priorLoans.length > 0 && (
+          {/* Closed loans / history */}
+          {closedLoans.length > 0 && (
             <div style={{ marginTop:20 }}>
               <div style={{ fontSize:10, fontWeight:700, color:'#9ca3af', textTransform:'uppercase', letterSpacing:1, marginBottom:10 }}>Loan History</div>
-              {priorLoans.map((loan, i) => {
+              {closedLoans.map((loan) => {
                 const sched = buildSchedule(loan.loan_amount, loan.interest_rate, loan.loan_term_months, loan.monthly_payment)
                 const isExp = expandedLoan === loan.id
                 return (
@@ -400,7 +430,8 @@ export default function LoanTracker({ propertyId, propertyAddress, open, onClose
                         <div style={{ fontSize:12, fontWeight:700, color:'#6b7280' }}>{loan.lender_name||loan.bank||'Unnamed Lender'}</div>
                         <div style={{ fontSize:11, color:'#9ca3af' }}>
                           {loan.loan_type} · {loan.interest_rate}% · {fmt(loan.loan_amount)}
-                          {loan.refinanced_date ? ` · Refinanced ${new Date(loan.refinanced_date+'T12:00:00').toLocaleDateString('en-US',{month:'short',year:'numeric'})}` : ''}
+                          {loan.closed_reason === 'Refinanced' && loan.refinanced_date ? ` · Refinanced ${new Date(loan.refinanced_date+'T12:00:00').toLocaleDateString('en-US',{month:'short',year:'numeric'})}` : ''}
+                          {loan.closed_reason === 'Paid Off' ? ` · Paid Off${loan.paid_off_date ? ' '+new Date(loan.paid_off_date+'T12:00:00').toLocaleDateString('en-US',{month:'short',year:'numeric'}) : ''} · Total Interest Paid: ${fmt(loan.total_interest_paid)}` : ''}
                         </div>
                       </div>
                       <div style={{ display:'flex', alignItems:'center', gap:8 }}>
@@ -419,14 +450,12 @@ export default function LoanTracker({ propertyId, propertyAddress, open, onClose
             </div>
           )}
 
-          {/* Add / Refi button */}
-          {activeLoan && (
+          {/* Add another loan (standalone, doesn't close anything) */}
+          {activeLoans.length > 0 && (
             <div style={{ marginTop:16, paddingTop:16, borderTop:'1px solid #F0EDE6' }}>
-              <Btn variant="outline" onClick={()=>setEditing('new')} style={{ fontSize:12 }}>
-                {loans.length > 0 ? '+ Add Refinance Loan' : '+ Add Loan'}
-              </Btn>
+              <Btn variant="outline" onClick={()=>setEditing('new')} style={{ fontSize:12 }}>+ Add Another Loan</Btn>
               <span style={{ fontSize:11, color:'#9ca3af', marginLeft:10 }}>
-                This will mark the current loan as refinanced and add a new active loan.
+                Adds a new, separate active loan — doesn't close any existing ones.
               </span>
             </div>
           )}
