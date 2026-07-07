@@ -1,13 +1,13 @@
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase.js'
-import { Field, inp, monoInp, fmt } from './ui.jsx'
+import { Field, inp, monoInp, fmt, Modal } from './ui.jsx'
 
 const STATUS_OPTIONS = ['Scheduled', 'In Progress', 'Completed']
 const STATUS_COLORS  = { 'Scheduled':'#9ca3af', 'In Progress':'#D97825', 'Completed':'#3B6D11' }
 const PAID_BY_OPTIONS = ['BPV', 'Bob', 'Eric', 'Blaire', 'Other']
 const UTILITY_TYPES = ['Water', 'Electric', 'Gas', 'Insurance', 'Trash', 'HOA', 'Other']
 
-export default function RehabTracker({ property, repairItems = [], onChange }) {
+export default function RehabTracker({ property, repairItems = [], onChange, open = true, onClose }) {
   const [items, setItems]         = useState([])
   const [budget, setBudget]       = useState('')
   const [vendors, setVendors]     = useState([])
@@ -169,7 +169,10 @@ export default function RehabTracker({ property, repairItems = [], onChange }) {
     paidByTotals[b.paid_by] = (paidByTotals[b.paid_by] || 0) + (parseFloat(b.amount) || 0)
   }
 
+  if (!open) return null
+
   return (
+    <Modal title={`Rehab Tracker — ${property?.address?.split(',')[0] || ''}`} onClose={onClose} width={860}>
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
 
       {/* Budget + progress header */}
@@ -419,6 +422,7 @@ export default function RehabTracker({ property, repairItems = [], onChange }) {
       </div>
 
     </div>
+    </Modal>
   )
 }
 

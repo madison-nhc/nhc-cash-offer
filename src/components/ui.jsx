@@ -91,7 +91,7 @@ export function EmptyState({ icon = '○', text }) {
 export function PageWrap({ children, pad = true }) {
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 768
   return (
-    <div style={{ padding: pad ? (isMobile ? '16px 12px' : '24px') : 0, maxWidth: 1200, margin: '0 auto' }}>
+    <div style={{ padding: pad ? (isMobile ? '16px 12px' : '24px') : 0, width: '100%' }}>
       {children}
     </div>
   )

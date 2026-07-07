@@ -4,6 +4,7 @@ import { Field, FieldRow, inp, monoInp, Btn, fmt, fmtK } from './ui.jsx'
 import Drawer from './Drawer.jsx'
 import AddressInput from './AddressInput.jsx'
 import RehabTracker from './RehabTracker.jsx'
+import RehabOverview from './RehabOverview.jsx'
 import LoanTracker from './LoanTracker.jsx'
 import RentTracker from './RentTracker.jsx'
 import LoanOverview from './LoanOverview.jsx'
@@ -151,6 +152,7 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
   const [tab, setTab]             = useState('analyzer')
   const [rehabCost, setRehabCost] = useState(null)
   const [loanOpen, setLoanOpen] = useState(false)
+  const [rehabOpen, setRehabOpen] = useState(false)
   const [rentOpen, setRentOpen] = useState(false)
   const [suppliesOpen, setSuppliesOpen] = useState(false)
   const [editingPhotosLink, setEditingPhotosLink] = useState(false)
@@ -574,7 +576,7 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
           </div>
 
           {form.id ? (<>
-            <RehabTracker property={form} repairItems={repairs} onChange={total=>setRehabCost(total)} />
+            <RehabOverview propertyId={form.id} onOpenFull={()=>setRehabOpen(true)} />
             <button onClick={()=>setSuppliesOpen(true)} style={{ width:'100%', background:'#fff', border:'1.5px solid #B8892A', borderRadius:8, padding:'12px 16px', cursor:'pointer', fontFamily:'inherit', display:'flex', alignItems:'center', justifyContent:'space-between', marginTop:4 }}>
               <div style={{ textAlign:'left' }}>
                 <div style={{ fontSize:13, fontWeight:700, color:'#B8892A' }}>Supplies</div>
@@ -782,6 +784,15 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
         propertyAddress={form.address}
         open={loanOpen}
         onClose={()=>setLoanOpen(false)}
+      />
+
+      {/* Rehab Tracker modal */}
+      <RehabTracker
+        property={form}
+        repairItems={repairs}
+        onChange={total=>setRehabCost(total)}
+        open={rehabOpen}
+        onClose={()=>setRehabOpen(false)}
       />
 
       {/* Rent Tracker modal */}
