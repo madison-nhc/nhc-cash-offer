@@ -4,12 +4,15 @@ import { Field, inp, monoInp, fmt } from './ui.jsx'
 
 const STATUS_OPTIONS = ['Scheduled', 'In Progress', 'Completed']
 const STATUS_COLORS  = { 'Scheduled':'#9ca3af', 'In Progress':'#D97825', 'Completed':'#3B6D11' }
+const PAID_BY_OPTIONS = ['BPV', 'Bob', 'Eric', 'Blaire', 'Other']
+const UTILITY_TYPES = ['Water', 'Electric', 'Gas', 'Insurance', 'Trash', 'HOA', 'Other']
 
 export default function RehabTracker({ property, repairItems = [], onChange }) {
   const [items, setItems]         = useState([])
   const [budget, setBudget]       = useState('')
   const [vendors, setVendors]     = useState([])
   const [activeVendorId, setActiveVendorId] = useState(null)
+  const [bills, setBills]         = useState([])
   const vendorRefs = useRef({})
 
   useEffect(() => {
@@ -17,7 +20,39 @@ export default function RehabTracker({ property, repairItems = [], onChange }) {
     setBudget(property.rehab_cost || '')
     loadItems(property.id)
     loadVendors()
+    loadBills(property.id)
   }, [property?.id])
+
+  async function loadBills(propertyId) {
+    const { data } = await supabase
+      .from('cashoffer_utility_bills')
+      .select('*')
+      .eq('property_id', propertyId)
+      .order('bill_date', { ascending: false })
+    setBills(data || [])
+  }
+
+  async function addBill() {
+    if (!property?.id) return
+    const { data } = await supabase.from('cashoffer_utility_bills').insert({
+      property_id: property.id,
+      utility_type: 'Water',
+      bill_date: new Date().toISOString().slice(0, 10),
+      amount: 0,
+      paid_by: 'BPV',
+    }).select().single()
+    if (data) setBills(prev => [data, ...prev])
+  }
+
+  async function updateBill(id, field, value) {
+    setBills(prev => prev.map(b => b.id === id ? { ...b, [field]: value } : b))
+    await supabase.from('cashoffer_utility_bills').update({ [field]: value }).eq('id', id)
+  }
+
+  async function removeBill(id) {
+    await supabase.from('cashoffer_utility_bills').delete().eq('id', id)
+    setBills(prev => prev.filter(b => b.id !== id))
+  }
 
   async function loadItems(propertyId) {
     const { data } = await supabase
@@ -123,6 +158,17 @@ export default function RehabTracker({ property, repairItems = [], onChange }) {
   const actualOverEst = actualTotal > estTotal
   const actualColor   = actualOverEst ? '#B91C1C' : '#3B6D11'
 
+  const paidByTotals = {}
+  for (const it of items) {
+    if (!it.paid_by) continue
+    const val = it.actual_cost !== null && it.actual_cost !== undefined ? parseFloat(it.actual_cost) || 0 : parseFloat(it.estimated_cost) || 0
+    paidByTotals[it.paid_by] = (paidByTotals[it.paid_by] || 0) + val
+  }
+  for (const b of bills) {
+    if (!b.paid_by) continue
+    paidByTotals[b.paid_by] = (paidByTotals[b.paid_by] || 0) + (parseFloat(b.amount) || 0)
+  }
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
 
@@ -194,14 +240,14 @@ export default function RehabTracker({ property, repairItems = [], onChange }) {
       {items.length > 0 && (
         <div style={{ border: '0.5px solid #D6D2CA', borderRadius: 8, overflow: 'hidden' }}>
           {/* Header */}
-          <div style={{ display: 'grid', gridTemplateColumns: '2fr 130px 1fr 90px 28px', gap: 0, background: '#F0EDE6', padding: '6px 10px' }}>
-            {['Item', 'Status', 'Vendor', 'Actual', ''].map(h => (
+          <div style={{ display: 'grid', gridTemplateColumns: '2fr 120px 1fr 90px 90px 28px', gap: 0, background: '#F0EDE6', padding: '6px 10px' }}>
+            {['Item', 'Status', 'Vendor', 'Actual', 'Paid By', ''].map(h => (
               <div key={h} style={{ fontSize: 10, fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: 0.7 }}>{h}</div>
             ))}
           </div>
           {items.map((item, i) => (
             <div key={item.id} style={{
-              display: 'grid', gridTemplateColumns: '2fr 130px 1fr 90px 28px',
+              display: 'grid', gridTemplateColumns: '2fr 120px 1fr 90px 90px 28px',
               gap: 0, padding: '6px 10px', alignItems: 'center',
               background: i % 2 === 0 ? '#fff' : '#FAFAF8',
               borderTop: i > 0 ? '0.5px solid #F0EDE6' : 'none'
@@ -268,6 +314,15 @@ export default function RehabTracker({ property, repairItems = [], onChange }) {
                 value={item.actual_cost !== null && item.actual_cost !== undefined ? item.actual_cost : ''}
                 onChange={e => updateItem(item.id, 'actual_cost', e.target.value === '' ? null : parseFloat(e.target.value) || 0)}
               />
+              {/* Paid By */}
+              <select
+                value={item.paid_by || ''}
+                onChange={e => updateItem(item.id, 'paid_by', e.target.value || null)}
+                style={{ border: '0.5px solid #D6D2CA', borderRadius: 4, padding: '4px 6px', fontSize: 11, fontFamily: 'inherit', background: '#fff', cursor: 'pointer', marginRight: 6 }}
+              >
+                <option value="">—</option>
+                {PAID_BY_OPTIONS.map(p => <option key={p} value={p}>{p}</option>)}
+              </select>
               {/* Delete */}
               <button
                 onClick={() => removeItem(item.id)}
@@ -284,6 +339,84 @@ export default function RehabTracker({ property, repairItems = [], onChange }) {
       >
         + Add Line Item
       </button>
+
+      {/* Who fronted the money */}
+      {Object.keys(paidByTotals).length > 0 && (
+        <div style={{ background: '#FAFAF8', border: '0.5px solid #D6D2CA', borderRadius: 8, padding: '12px 16px' }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 8 }}>
+            Who Fronted The Money
+          </div>
+          <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+            {Object.entries(paidByTotals).map(([who, total]) => (
+              <div key={who}>
+                <div style={{ fontSize: 10, color: '#9ca3af' }}>{who}</div>
+                <div style={{ fontSize: 14, fontWeight: 700, fontFamily: 'monospace', color: '#2C2C2C' }}>{fmt(total)}</div>
+              </div>
+            ))}
+          </div>
+          <div style={{ fontSize: 10, color: '#9ca3af', marginTop: 8 }}>Includes rehab line items and utility/holding cost bills below. Reimbursement and interest owed are tracked with your lender separately.</div>
+        </div>
+      )}
+
+      {/* Utilities & Holding Costs */}
+      <div style={{ marginTop: 6 }}>
+        <div style={{ fontSize: 13, fontWeight: 700, color: '#2C2C2C', marginBottom: 4 }}>Utilities & Holding Costs</div>
+        <div style={{ fontSize: 11, color: '#9ca3af', marginBottom: 10 }}>Recurring monthly bills while the property is in rehab — separate from any loan payment.</div>
+
+        {bills.length > 0 && (
+          <div style={{ border: '0.5px solid #D6D2CA', borderRadius: 8, overflow: 'hidden', marginBottom: 10 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '110px 1fr 90px 90px 28px', gap: 0, background: '#F0EDE6', padding: '6px 10px' }}>
+              {['Date', 'Type', 'Amount', 'Paid By', ''].map(h => (
+                <div key={h} style={{ fontSize: 10, fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: 0.7 }}>{h}</div>
+              ))}
+            </div>
+            {bills.map((b, i) => (
+              <div key={b.id} style={{
+                display: 'grid', gridTemplateColumns: '110px 1fr 90px 90px 28px',
+                gap: 0, padding: '6px 10px', alignItems: 'center',
+                background: i % 2 === 0 ? '#fff' : '#FAFAF8',
+                borderTop: i > 0 ? '0.5px solid #F0EDE6' : 'none'
+              }}>
+                <input
+                  style={{ ...inp, fontSize: 12, padding: '4px 6px', marginRight: 6 }}
+                  type="date"
+                  value={b.bill_date || ''}
+                  onChange={e => updateBill(b.id, 'bill_date', e.target.value)}
+                />
+                <select
+                  value={b.utility_type || 'Other'}
+                  onChange={e => updateBill(b.id, 'utility_type', e.target.value)}
+                  style={{ border: '0.5px solid #D6D2CA', borderRadius: 4, padding: '4px 6px', fontSize: 12, fontFamily: 'inherit', background: '#fff', cursor: 'pointer', marginRight: 6 }}
+                >
+                  {UTILITY_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+                </select>
+                <input
+                  style={{ ...monoInp, fontSize: 12, padding: '4px 6px', textAlign: 'right', marginRight: 6 }}
+                  type="number"
+                  value={b.amount ?? ''}
+                  onChange={e => updateBill(b.id, 'amount', e.target.value === '' ? null : parseFloat(e.target.value) || 0)}
+                />
+                <select
+                  value={b.paid_by || ''}
+                  onChange={e => updateBill(b.id, 'paid_by', e.target.value || null)}
+                  style={{ border: '0.5px solid #D6D2CA', borderRadius: 4, padding: '4px 6px', fontSize: 11, fontFamily: 'inherit', background: '#fff', cursor: 'pointer', marginRight: 6 }}
+                >
+                  <option value="">—</option>
+                  {PAID_BY_OPTIONS.map(p => <option key={p} value={p}>{p}</option>)}
+                </select>
+                <button onClick={() => removeBill(b.id)} style={{ background: 'none', border: 'none', color: '#D6D2CA', cursor: 'pointer', fontSize: 18, padding: 0, lineHeight: 1 }}>×</button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <button
+          onClick={addBill}
+          style={{ background: 'transparent', border: '1px dashed #D6D2CA', borderRadius: 6, padding: '7px', color: '#9ca3af', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit', width: '100%' }}
+        >
+          + Add Bill
+        </button>
+      </div>
 
     </div>
   )
