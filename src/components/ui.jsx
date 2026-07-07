@@ -1,5 +1,7 @@
 // Shared UI building blocks for NHC Cash Offer Hub
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useRef, useEffect } from 'react'
+import { DayPicker } from 'react-day-picker'
+import 'react-day-picker/dist/style.css'
 
 export function Card({ children, style = {}, topColor = '#B8892A' }) {
   return (
@@ -129,6 +131,88 @@ export const monoInp = {
   ...inp, fontFamily: "'DM Mono', monospace"
 }
 
+// Formats a Date as a local YYYY-MM-DD string (never UTC — avoids the classic
+// off-by-one bug from toISOString() shifting across midnight in local time).
+function toYMD(d) {
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
+}
+
+// Drop-in replacement for <input type="date">. Fires onChange with the same
+// {target:{value}} shape a native date input would, so existing `set('field')`
+// curried handlers work unmodified.
+export function DatePicker({ value, onChange, style = {}, placeholder = 'mm/dd/yyyy', disabled = false }) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef(null)
+
+  useEffect(() => {
+    if (!open) return
+    function onDocClick(e) { if (ref.current && !ref.current.contains(e.target)) setOpen(false) }
+    document.addEventListener('mousedown', onDocClick)
+    return () => document.removeEventListener('mousedown', onDocClick)
+  }, [open])
+
+  const selected = value ? new Date(value + 'T12:00:00') : undefined
+  const label = selected
+    ? selected.toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' })
+    : ''
+
+  function handleSelect(d) {
+    if (d) onChange({ target: { value: toYMD(d) } })
+    setOpen(false)
+  }
+  function handleClear(e) {
+    e.stopPropagation()
+    onChange({ target: { value: '' } })
+  }
+
+  return (
+    <div ref={ref} style={{ position: 'relative', width: style.width || '100%' }}>
+      <button
+        type="button"
+        disabled={disabled}
+        onClick={() => !disabled && setOpen(o => !o)}
+        style={{
+          ...inp, textAlign: 'left', cursor: disabled ? 'default' : 'pointer',
+          color: label ? '#2C2C2C' : '#9ca3af', display: 'flex',
+          alignItems: 'center', justifyContent: 'space-between', gap: 6,
+          ...style,
+        }}
+      >
+        <span>{label || placeholder}</span>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+          {label && !disabled && (
+            <span onClick={handleClear} style={{ color: '#9ca3af', fontSize: 13, lineHeight: 1, cursor: 'pointer' }}>×</span>
+          )}
+          <span style={{ color: '#B8892A', fontSize: 13 }}>📅</span>
+        </span>
+      </button>
+      {open && (
+        <div style={{
+          position: 'absolute', zIndex: 300, top: '100%', left: 0, marginTop: 4,
+          background: '#fff', border: '0.5px solid #D6D2CA', borderRadius: 8,
+          boxShadow: '0 8px 24px rgba(0,0,0,0.18)', padding: 8,
+        }}>
+          <DayPicker
+            mode="single"
+            selected={selected}
+            defaultMonth={selected}
+            onSelect={handleSelect}
+            style={{
+              '--rdp-accent-color': '#B8892A',
+              '--rdp-accent-background-color': '#B8892A18',
+              '--rdp-today-color': '#2D6FAF',
+              margin: 0,
+            }}
+          />
+        </div>
+      )}
+    </div>
+  )
+}
+
 export function Btn({ children, onClick, variant = 'primary', style: s = {}, disabled = false }) {
   const base = {
     border: 'none', borderRadius: 6, padding: '9px 18px',
@@ -244,4 +328,5 @@ export function LoadingSpinner() {
     </div>
   )
 }
+
 

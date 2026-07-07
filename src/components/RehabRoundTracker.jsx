@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase.js'
-import { Modal, Field, inp, monoInp, fmt } from './ui.jsx'
+import { Modal, Field, inp, monoInp, fmt, DatePicker } from './ui.jsx'
 
 const STATUS_OPTIONS = ['Scheduled', 'In Progress', 'Completed']
 const STATUS_COLORS  = { 'Scheduled':'#9ca3af', 'In Progress':'#D97825', 'Completed':'#3B6D11' }
@@ -51,7 +51,7 @@ function PartnerLedger({ sourceType, sourceId, originalAmount, datePaid, onDateP
 
   return (
     <div style={{ display:'contents' }}>
-      <input type="date" value={datePaid||''} onChange={e=>onDatePaidChange(e.target.value)} style={{ ...inp, fontSize:11, padding:'4px 6px', marginRight:6 }} />
+      <DatePicker value={datePaid||''} onChange={e=>onDatePaidChange(e.target.value)} style={{ ...inp, fontSize:11, padding:'4px 6px', marginRight:6 }} />
       <div style={{ fontSize:12, fontWeight:700, fontFamily:'monospace', color:'#B8892A', textAlign:'right', marginRight:6, whiteSpace:'nowrap' }}>
         {fmt(accruedInterest)}
       </div>
@@ -421,7 +421,7 @@ export default function RehabRoundTracker({ property, repairItems = [], onChange
               </div>
               {bills.map((b,i) => (
                 <div key={b.id} style={{ display:'grid', gridTemplateColumns:'105px 1fr 85px 85px 100px 90px 24px', padding:'6px 10px', alignItems:'center', background:i%2===0?'#fff':'#FAFAF8', borderTop:i>0?'0.5px solid #F0EDE6':'none' }}>
-                    <input style={{ ...inp, fontSize:12, padding:'4px 6px', marginRight:6 }} type="date" value={b.bill_date||''} onChange={e=>updateBill(b.id,'bill_date',e.target.value)} />
+                    <DatePicker style={{ ...inp, fontSize:12, padding:'4px 6px', marginRight:6 }} value={b.bill_date||''} onChange={e=>updateBill(b.id,'bill_date',e.target.value)} />
                     <select value={b.utility_type||'Other'} onChange={e=>updateBill(b.id,'utility_type',e.target.value)} style={{ border:'0.5px solid #D6D2CA', borderRadius:4, padding:'4px 6px', fontSize:12, fontFamily:'inherit', background:'#fff', cursor:'pointer', marginRight:6 }}>
                       {UTILITY_TYPES.map(t=><option key={t} value={t}>{t}</option>)}
                     </select>

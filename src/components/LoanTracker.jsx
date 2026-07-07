@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
 import { supabase } from '../lib/supabase.js'
-import { Modal, Field, FieldRow, inp, monoInp, Btn, fmt, fmtK } from './ui.jsx'
+import { Modal, Field, FieldRow, inp, monoInp, Btn, fmt, fmtK, DatePicker } from './ui.jsx'
 
 // ── Amortization engine ───────────────────────────────────────────────────────
 // Returns array of { month, payment, principal, interest, balance } for every month
@@ -194,7 +194,7 @@ function LoanForm({ loan, onSave, onCancel, onDelete }) {
             {LOAN_TYPES.map(t=><option key={t}>{t}</option>)}
           </select>
         </Field>
-        <Field label="Loan Start Date"><input style={inp} type="date" value={form.loan_start_date} onChange={set('loan_start_date')} /></Field>
+        <Field label="Loan Start Date"><DatePicker style={inp} value={form.loan_start_date} onChange={set('loan_start_date')} /></Field>
       </FieldRow>
       <FieldRow>
         <Field label="Loan Amount ($)"><input style={monoInp} type="number" value={form.loan_amount} onChange={set('loan_amount')} /></Field>

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase.js'
 import { useIsMobile } from '../hooks/useIsMobile.js'
-import { PageWrap, SectionBar, Card, Field, FieldRow, inp, monoInp, Btn, EmptyState, LoadingSpinner, fmt, fmtK, useSort, SortTh } from '../components/ui.jsx'
+import { PageWrap, SectionBar, Card, Field, FieldRow, inp, monoInp, Btn, EmptyState, LoadingSpinner, fmt, fmtK, useSort, SortTh, DatePicker } from '../components/ui.jsx'
 import Drawer from '../components/Drawer.jsx'
 
 const EMPTY_MAILING = { campaign_name:'', drop_date:'', list_size:'', piece_type:'Postcard', mailer_cost:'', calls_total:'', calls_answered:'', calls_missed:'', notes:'' }
@@ -215,7 +215,7 @@ function CampaignDrawer({ campaign, properties, open, onClose, onSave }) {
       <div style={{ display:'flex', flexDirection:'column', gap:14, paddingTop:12 }}>
         <Field label="Campaign Name / Geography"><input style={inp} value={form.campaign_name||''} onChange={set('campaign_name')} placeholder="Bourbon, Clark, Scott Counties" /></Field>
         <FieldRow>
-          <Field label="Drop Date"><input style={inp} type="date" value={form.drop_date||''} onChange={set('drop_date')} /></Field>
+          <Field label="Drop Date"><DatePicker style={inp} value={form.drop_date||''} onChange={set('drop_date')} /></Field>
           <Field label="Pieces Mailed"><input style={monoInp} type="number" value={form.list_size||''} onChange={set('list_size')} placeholder="10000" /></Field>
         </FieldRow>
         <FieldRow>

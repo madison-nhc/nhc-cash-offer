@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
 import { supabase } from '../lib/supabase.js'
-import { Modal, Field, FieldRow, inp, monoInp, Btn, fmt, fmtK } from './ui.jsx'
+import { Modal, Field, FieldRow, inp, monoInp, Btn, fmt, fmtK, DatePicker } from './ui.jsx'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function firstOfMonth(date) {
@@ -68,10 +68,10 @@ function LeaseForm({ lease, onSave, onCancel, onDelete }) {
       </FieldRow>
       <FieldRow>
         <Field label="Lease Start">
-          <input style={inp} type="date" value={form.lease_start} onChange={set('lease_start')} />
+          <DatePicker style={inp} value={form.lease_start} onChange={set('lease_start')} />
         </Field>
         <Field label="Lease End (blank = month-to-month)">
-          <input style={inp} type="date" value={form.lease_end} onChange={set('lease_end')} />
+          <DatePicker style={inp} value={form.lease_end} onChange={set('lease_end')} />
         </Field>
       </FieldRow>
       <Field label="Status">
