@@ -81,22 +81,24 @@ export default function RehabStatCards({ propertyId, onOpenFull }) {
   bills.forEach(b => { if (paidByTotals[b.paid_by] !== undefined) paidByTotals[b.paid_by] += parseFloat(b.amount)||0 })
 
   return (
-    <div style={{ display:'grid', gridTemplateColumns:'repeat(4, 1fr)', gap:10 }}>
-      <StatCard
-        topColor="#B8892A" label="Services" value={fmt(servicesTotal)}
-        sub={`${servicesDone} of ${items.length} completed`}
-        onClick={onOpenFull}
-      />
-      <StatCard
-        topColor="#2D6FAF" label="Supplies" value={fmt(suppliesTotal)}
-        sub={`${suppliesReceived} of ${supplies.length} received`}
-        onClick={onOpenFull}
-      />
-      <StatCard
-        topColor="#3B6D11" label="Utilities" value={fmt(utilitiesTotal)}
-        sub={`${bills.length} bill${bills.length===1?'':'s'} logged`}
-        onClick={onOpenFull}
-      />
+    <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+      <div style={{ display:'grid', gridTemplateColumns:'repeat(3, 1fr)', gap:10 }}>
+        <StatCard
+          topColor="#B8892A" label="Services" value={fmt(servicesTotal)}
+          sub={`${servicesDone} of ${items.length} completed`}
+          onClick={onOpenFull}
+        />
+        <StatCard
+          topColor="#2D6FAF" label="Supplies" value={fmt(suppliesTotal)}
+          sub={`${suppliesReceived} of ${supplies.length} received`}
+          onClick={onOpenFull}
+        />
+        <StatCard
+          topColor="#3B6D11" label="Utilities" value={fmt(utilitiesTotal)}
+          sub={`${bills.length} bill${bills.length===1?'':'s'} logged`}
+          onClick={onOpenFull}
+        />
+      </div>
       <div
         onClick={onOpenFull}
         style={{ background:'#fff', borderRadius:8, padding:'12px 14px', cursor:'pointer', border:'0.5px solid #D6D2CA', borderTop:'3px solid #6b21a8', transition:'border-color 0.15s' }}
@@ -104,11 +106,11 @@ export default function RehabStatCards({ propertyId, onOpenFull }) {
         onMouseLeave={e=>e.currentTarget.style.borderColor='#D6D2CA'}
       >
         <div style={{ fontSize:10, fontWeight:700, color:'#9ca3af', textTransform:'uppercase', letterSpacing:0.8, marginBottom:8 }}>Who's In</div>
-        <div style={{ display:'grid', gridTemplateColumns:'repeat(3, 1fr)', gap:4 }}>
+        <div style={{ display:'flex', gap:24 }}>
           {Object.entries(paidByTotals).map(([who, total]) => (
             <div key={who}>
               <div style={{ fontSize:10, fontWeight:700, color:PAID_BY_COLOR[who] }}>{who}</div>
-              <div style={{ fontSize:12, fontWeight:700, color:'#2C2C2C', fontFamily:'monospace' }}>{fmt(total)}</div>
+              <div style={{ fontSize:16, fontWeight:700, color:'#2C2C2C', fontFamily:'monospace' }}>{fmt(total)}</div>
             </div>
           ))}
         </div>
@@ -116,3 +118,4 @@ export default function RehabStatCards({ propertyId, onOpenFull }) {
     </div>
   )
 }
+

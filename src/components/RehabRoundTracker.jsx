@@ -211,7 +211,6 @@ export default function RehabRoundTracker({ property, repairItems = [], onChange
 
   const propertyId = property?.id
   const closingDate = property?.disposition_date || property?.sale_date || null
-  const showRoundPicker = property?.type === 'Hold' || rounds.length > 1
 
   useEffect(() => {
     if (!open || !propertyId) return
@@ -232,28 +231,6 @@ export default function RehabRoundTracker({ property, repairItems = [], onChange
     }
     setRounds(data)
     setActiveRoundId(data[data.length - 1]?.id || null)
-  }
-
-  async function addRound() {
-    const label = prompt('Name this rehab round (e.g. "Post-Tenant Turnover"):', `Round ${rounds.length + 1}`)
-    if (!label) return
-    const { data } = await supabase.from('cashoffer_rehab_rounds').insert({ property_id: propertyId, label, sort_order: rounds.length }).select().single()
-    if (data) { setRounds(r => [...r, data]); setActiveRoundId(data.id) }
-  }
-
-  async function deleteRound() {
-    const round = rounds.find(r => r.id === activeRoundId)
-    if (!round) return
-    if (!confirm(`Delete "${round.label}"? This permanently removes every service, supply, and utility bill logged under this round. This cannot be undone.`)) return
-    await Promise.all([
-      supabase.from('cashoffer_rehab_items').delete().eq('rehab_round_id', activeRoundId),
-      supabase.from('cashoffer_supplies').delete().eq('rehab_round_id', activeRoundId),
-      supabase.from('cashoffer_utility_bills').delete().eq('rehab_round_id', activeRoundId),
-    ])
-    await supabase.from('cashoffer_rehab_rounds').delete().eq('id', activeRoundId)
-    const remaining = rounds.filter(r => r.id !== activeRoundId)
-    setRounds(remaining)
-    setActiveRoundId(remaining[remaining.length - 1]?.id || null)
   }
 
   async function loadVendors() {
@@ -423,12 +400,7 @@ export default function RehabRoundTracker({ property, repairItems = [], onChange
       onClose={onClose}
       width={1240}
       footer={
-        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-          {rounds.length > 1 ? (
-            <button onClick={deleteRound} style={{ background:'#B91C1C', border:'1px solid #B91C1C', color:'#fff', fontSize:11, fontWeight:700, cursor:'pointer', fontFamily:'inherit', borderRadius:6, padding:'6px 12px' }}>
-              Delete This Round
-            </button>
-          ) : <span />}
+        <div style={{ display:'flex', justifyContent:'flex-end', alignItems:'center' }}>
           <div style={{ display:'flex', alignItems:'center', gap:8 }}>
             <Btn variant="outline" onClick={handleCancel}>Cancel</Btn>
             <Btn onClick={handleSave} disabled={saving}>{saving ? 'Saving…' : 'Save'}</Btn>
@@ -439,20 +411,6 @@ export default function RehabRoundTracker({ property, repairItems = [], onChange
       <div style={{ display:'flex', flexDirection:'column', gap:16 }}>
 
         <LoanSnapshot propertyId={propertyId} />
-
-        {/* Round picker */}
-        {showRoundPicker && (
-          <div style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
-            {rounds.map(r => (
-              <button key={r.id} onClick={()=>setActiveRoundId(r.id)} style={{
-                background: activeRoundId===r.id ? '#2C2C2C' : '#F0EDE6',
-                color: activeRoundId===r.id ? '#fff' : '#6b7280',
-                border:'none', borderRadius:20, padding:'6px 14px', cursor:'pointer', fontSize:12, fontWeight:600, fontFamily:'inherit',
-              }}>{r.label}</button>
-            ))}
-            <button onClick={addRound} style={{ background:'transparent', border:'1px dashed #D6D2CA', borderRadius:20, padding:'6px 14px', cursor:'pointer', fontSize:12, color:'#9ca3af', fontFamily:'inherit' }}>+ New Round</button>
-          </div>
-        )}
 
         {/* Budget + progress header */}
         <div style={{ background:'#FAFAF8', borderRadius:8, padding:'14px 16px', border:'0.5px solid #D6D2CA' }}>
@@ -667,6 +625,7 @@ export default function RehabRoundTracker({ property, repairItems = [], onChange
     </>
   )
 }
+
 
 
 

@@ -225,6 +225,22 @@ function LoanForm({ loan, onSave, onCancel, onDelete }) {
 
       <Field label="Notes"><textarea style={{ ...inp, minHeight:52, resize:'vertical' }} value={form.notes} onChange={set('notes')} /></Field>
 
+      {!isNew && !form.is_active && form.closed_reason === 'Paid Off' && (
+        <div style={{ background:'#fff3cd', borderRadius:8, padding:'12px 14px' }}>
+          <div style={{ fontSize:11, fontWeight:700, color:'#856404', textTransform:'uppercase', letterSpacing:0.6, marginBottom:10 }}>Correct Payoff Details</div>
+          <FieldRow>
+            <Field label="Paid Off Date"><DatePicker style={inp} value={form.paid_off_date||''} onChange={set('paid_off_date')} /></Field>
+            <Field label="Total Interest Paid ($)"><input style={monoInp} type="number" value={form.total_interest_paid??''} onChange={set('total_interest_paid')} /></Field>
+          </FieldRow>
+        </div>
+      )}
+      {!isNew && !form.is_active && form.closed_reason === 'Refinanced' && (
+        <div style={{ background:'#fff3cd', borderRadius:8, padding:'12px 14px' }}>
+          <div style={{ fontSize:11, fontWeight:700, color:'#856404', textTransform:'uppercase', letterSpacing:0.6, marginBottom:10 }}>Correct Refinance Details</div>
+          <Field label="Refinanced Date"><DatePicker style={inp} value={form.refinanced_date||''} onChange={set('refinanced_date')} /></Field>
+        </div>
+      )}
+
       <div style={{ display:'flex', justifyContent:'space-between', paddingTop:8 }}>
         {!isNew && <Btn variant="danger" onClick={()=>onDelete(loan.id)}>Delete Loan</Btn>}
         <div style={{ display:'flex', gap:8, marginLeft:'auto' }}>
@@ -401,12 +417,12 @@ export default function LoanTracker({ propertyId, propertyAddress, open, onClose
 
           <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginTop:18, paddingTop:16, borderTop:'1px solid #F0EDE6' }}>
             <Btn variant="danger" onClick={async ()=>{ await deleteLoan(focusLoan.id); onClose() }}>Delete Loan</Btn>
-            {focusLoan.is_active && (
-              <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+            <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+              {focusLoan.is_active && (
                 <Btn variant="outline" onClick={()=>setClosingId(closingId===focusLoan.id?null:focusLoan.id)}>Close Loan</Btn>
-                <Btn onClick={()=>setEditing(focusLoan)}>Edit / Save</Btn>
-              </div>
-            )}
+              )}
+              <Btn onClick={()=>setEditing(focusLoan)}>Edit / Save</Btn>
+            </div>
           </div>
         </>
       ) : (
@@ -418,6 +434,7 @@ export default function LoanTracker({ propertyId, propertyAddress, open, onClose
     </Modal>
   )
 }
+
 
 
 
