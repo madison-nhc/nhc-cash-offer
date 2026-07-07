@@ -145,6 +145,7 @@ function toYMD(d) {
 // curried handlers work unmodified.
 export function DatePicker({ value, onChange, style = {}, placeholder = 'mm/dd/yyyy', disabled = false }) {
   const [open, setOpen] = useState(false)
+  const [pos, setPos] = useState({ align: 'left', vertical: 'below' })
   const ref = useRef(null)
 
   useEffect(() => {
@@ -152,6 +153,15 @@ export function DatePicker({ value, onChange, style = {}, placeholder = 'mm/dd/y
     function onDocClick(e) { if (ref.current && !ref.current.contains(e.target)) setOpen(false) }
     document.addEventListener('mousedown', onDocClick)
     return () => document.removeEventListener('mousedown', onDocClick)
+  }, [open])
+
+  useEffect(() => {
+    if (!open || !ref.current) return
+    const rect = ref.current.getBoundingClientRect()
+    const POPOVER_W = 300, POPOVER_H = 340
+    const align = (rect.left + POPOVER_W > window.innerWidth) ? 'right' : 'left'
+    const vertical = (rect.bottom + POPOVER_H > window.innerHeight) ? 'above' : 'below'
+    setPos({ align, vertical })
   }, [open])
 
   const selected = value ? new Date(value + 'T12:00:00') : undefined
@@ -191,7 +201,9 @@ export function DatePicker({ value, onChange, style = {}, placeholder = 'mm/dd/y
       </button>
       {open && (
         <div style={{
-          position: 'absolute', zIndex: 300, top: '100%', left: 0, marginTop: 4,
+          position: 'absolute', zIndex: 300,
+          ...(pos.vertical === 'below' ? { top: '100%', marginTop: 4 } : { bottom: '100%', marginBottom: 4 }),
+          ...(pos.align === 'left' ? { left: 0 } : { right: 0 }),
           background: '#fff', border: '0.5px solid #D6D2CA', borderRadius: 8,
           boxShadow: '0 8px 24px rgba(0,0,0,0.18)', padding: 8,
         }}>
