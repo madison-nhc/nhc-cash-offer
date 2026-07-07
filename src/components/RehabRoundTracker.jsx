@@ -59,6 +59,88 @@ function PartnerLedger({ sourceType, sourceId, originalAmount, datePaid, onDateP
   )
 }
 
+function InventoryPickerModal({ propertyId, roundId, onClose, onDone }) {
+  const [items, setItems] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [selectedId, setSelectedId] = useState('')
+  const [qty, setQty] = useState('')
+  const [saving, setSaving] = useState(false)
+
+  useEffect(() => {
+    supabase.from('cashoffer_inventory_items').select('*').gt('quantity_on_hand', 0).order('name', { ascending: true })
+      .then(({ data }) => { setItems(data || []); setLoading(false) })
+  }, [])
+
+  const selected = items.find(i => i.id === selectedId)
+  const qtyNum = parseFloat(qty) || 0
+  const overStock = selected && qtyNum > selected.quantity_on_hand
+
+  async function submit() {
+    if (!selected) { alert('Pick an item from inventory.'); return }
+    if (!qtyNum || qtyNum <= 0) { alert('Enter a quantity.'); return }
+    if (overStock) { alert(`Only ${selected.quantity_on_hand} ${selected.unit} on hand.`); return }
+    setSaving(true)
+    const today = new Date().toISOString().slice(0, 10)
+
+    const { data: supply, error } = await supabase.from('cashoffer_supplies').insert({
+      property_id: propertyId, rehab_round_id: roundId,
+      name: selected.name, quantity: qtyNum, unit_cost: selected.unit_cost,
+      vendor: "Eric's Warehouse", status: 'Received', paid_by: 'Eric', date_paid: today,
+    }).select().single()
+    if (error) { setSaving(false); alert('Could not add supply: ' + error.message); return }
+
+    await supabase.from('cashoffer_inventory_checkouts').insert({
+      inventory_item_id: selected.id, property_id: propertyId, supply_id: supply.id,
+      quantity: qtyNum, unit_cost_at_checkout: selected.unit_cost, checkout_date: today,
+    })
+    await supabase.from('cashoffer_inventory_items').update({ quantity_on_hand: selected.quantity_on_hand - qtyNum }).eq('id', selected.id)
+
+    setSaving(false)
+    onDone()
+  }
+
+  return (
+    <Modal title="Add Supply From Inventory" onClose={onClose} width={420}>
+      <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
+        {loading ? (
+          <div style={{ textAlign:'center', padding:20, color:'#9ca3af', fontSize:12 }}>Loading…</div>
+        ) : items.length === 0 ? (
+          <div style={{ fontSize:12, color:'#9ca3af' }}>Nothing in Eric's warehouse with stock on hand right now.</div>
+        ) : (
+          <>
+            <div>
+              <div style={{ fontSize:10, color:'#9ca3af', textTransform:'uppercase', marginBottom:4 }}>Item</div>
+              <select style={inp} value={selectedId} onChange={e=>{ setSelectedId(e.target.value); setQty('') }}>
+                <option value="">Select an item…</option>
+                {items.map(i => <option key={i.id} value={i.id}>{i.name} — {i.quantity_on_hand} {i.unit} on hand</option>)}
+              </select>
+            </div>
+            {selected && (
+              <>
+                <div style={{ fontSize:12, color:'#6b7280' }}>
+                  {fmt(selected.unit_cost)} / {selected.unit} · {selected.location || 'no location set'}
+                </div>
+                <div>
+                  <div style={{ fontSize:10, color:'#9ca3af', textTransform:'uppercase', marginBottom:4 }}>Quantity needed ({selected.unit})</div>
+                  <input style={{ ...monoInp, borderColor: overStock?'#B91C1C':'#D6D2CA' }} type="number" value={qty} onChange={e=>setQty(e.target.value)} />
+                  {overStock && <div style={{ fontSize:11, color:'#B91C1C', marginTop:4 }}>Only {selected.quantity_on_hand} {selected.unit} available.</div>}
+                </div>
+              </>
+            )}
+            <div style={{ fontSize:11, color:'#9ca3af' }}>
+              Adds this to Supplies below (paid by Eric, accrues interest) and reduces warehouse stock.
+            </div>
+            <div style={{ display:'flex', justifyContent:'flex-end', gap:8 }}>
+              <Btn variant="outline" onClick={onClose}>Cancel</Btn>
+              <Btn onClick={submit} disabled={saving || !selected}>{saving ? 'Adding…' : 'Add to Supplies'}</Btn>
+            </div>
+          </>
+        )}
+      </div>
+    </Modal>
+  )
+}
+
 function NoPartnerCells() {
   return (
     <div style={{ display:'contents' }}>
@@ -119,6 +201,7 @@ export default function RehabRoundTracker({ property, repairItems = [], onChange
   const [bills, setBills]             = useState([])
   const [vendors, setVendors]         = useState([])
   const [activeVendorId, setActiveVendorId] = useState(null)
+  const [inventoryPickerOpen, setInventoryPickerOpen] = useState(false)
   const [budget, setBudget]           = useState('')
   const vendorRefs = useRef({})
 
@@ -259,6 +342,7 @@ export default function RehabRoundTracker({ property, repairItems = [], onChange
   bills.forEach(b => addPaid(b.paid_by, parseFloat(b.amount)||0))
 
   return (
+    <>
     <Modal title={`Rehab — ${property?.address?.split(',')[0] || ''}`} onClose={onClose} width={1240}>
       <div style={{ display:'flex', flexDirection:'column', gap:16 }}>
 
@@ -407,7 +491,10 @@ export default function RehabRoundTracker({ property, repairItems = [], onChange
               ))}
             </div>
           )}
-          <button onClick={addSupply} style={{ background:'transparent', border:'1px dashed #D6D2CA', borderRadius:6, padding:'7px', color:'#9ca3af', fontSize:12, cursor:'pointer', fontFamily:'inherit', width:'100%' }}>+ Add Supply</button>
+          <div style={{ display:'flex', gap:8 }}>
+            <button onClick={addSupply} style={{ flex:1, background:'transparent', border:'1px dashed #D6D2CA', borderRadius:6, padding:'7px', color:'#9ca3af', fontSize:12, cursor:'pointer', fontFamily:'inherit' }}>+ Add Supply</button>
+            <button onClick={()=>setInventoryPickerOpen(true)} style={{ flex:1, background:'transparent', border:'1px dashed #2D6FAF', borderRadius:6, padding:'7px', color:'#2D6FAF', fontSize:12, fontWeight:600, cursor:'pointer', fontFamily:'inherit' }}>+ From Inventory (Eric's Warehouse)</button>
+          </div>
         </div>
 
         {/* UTILITIES */}
@@ -467,6 +554,17 @@ export default function RehabRoundTracker({ property, repairItems = [], onChange
 
       </div>
     </Modal>
+
+    {inventoryPickerOpen && (
+      <InventoryPickerModal
+        propertyId={propertyId}
+        roundId={activeRoundId}
+        onClose={()=>setInventoryPickerOpen(false)}
+        onDone={()=>{ setInventoryPickerOpen(false); loadRoundData(activeRoundId) }}
+      />
+    )}
+    </>
   )
 }
+
 

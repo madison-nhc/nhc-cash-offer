@@ -3,7 +3,7 @@ import { supabase } from '../lib/supabase.js'
 import { PageWrap, SectionBar, EmptyState, Field, FieldRow, inp, monoInp, Btn, Badge, Modal, LoadingSpinner, fmt, DatePicker } from '../components/ui.jsx'
 
 const CATEGORIES = ['Appliances', 'Wood', 'Wiring', 'Plumbing', 'Electrical', 'Hardware', 'Fixtures', 'Other']
-const UNITS = ['each', 'ft', 'box', 'roll', 'sq ft', 'gallon', 'bag']
+const UNITS = ['qty', 'ft']
 
 const CAT_COLOR = {
   Appliances: '#2D6FAF', Wood: '#B8892A', Wiring: '#D97825', Plumbing: '#3B6D11',
@@ -193,7 +193,7 @@ function ItemDetailModal({ item, onClose, onUpdated, onDeleted }) {
               <input style={monoInp} type="number" value={form.quantity_on_hand ?? 0} onChange={e => saveField('quantity_on_hand', parseFloat(e.target.value) || 0)} />
             </Field>
             <Field label="Unit">
-              <select style={inp} value={form.unit || 'each'} onChange={e => saveField('unit', e.target.value)}>
+              <select style={inp} value={form.unit || 'qty'} onChange={e => saveField('unit', e.target.value)}>
                 {UNITS.map(u => <option key={u} value={u}>{u}</option>)}
               </select>
             </Field>
@@ -274,7 +274,7 @@ export default function Inventory() {
   }
 
   async function addItem() {
-    const { data } = await supabase.from('cashoffer_inventory_items').insert({ name: 'New Item', category: 'Other', unit: 'each' }).select().single()
+    const { data } = await supabase.from('cashoffer_inventory_items').insert({ name: 'New Item', category: 'Other', unit: 'qty' }).select().single()
     setItems(i => [data, ...i])
     setActiveItem(data)
   }
