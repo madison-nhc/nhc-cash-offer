@@ -10,27 +10,44 @@ const PAID_BY_OPTIONS = ['BPV', 'Bob', 'Eric', 'Blaire', 'Other']
 const UTILITY_TYPES = ['Water', 'Electric', 'Gas', 'Insurance', 'Trash', 'HOA', 'Other']
 
 function LoanSnapshot({ propertyId }) {
-  const [loan, setLoan] = useState(null)
+  const [loans, setLoans] = useState([])
   useEffect(() => {
     if (!propertyId) return
     supabase.from('cashoffer_loans').select('*').eq('property_id', propertyId).eq('is_active', true)
-      .order('loan_start_date', { ascending: false }).limit(1)
-      .then(({ data }) => setLoan(data?.[0] || null))
+      .order('loan_start_date', { ascending: false })
+      .then(({ data }) => setLoans(data || []))
   }, [propertyId])
 
-  if (!loan) return null
-  const months = loan.loan_start_date
-    ? Math.max(0, (new Date() - new Date(loan.loan_start_date + 'T12:00:00')) / (1000 * 60 * 60 * 24 * 30.44))
-    : 0
-  const estInterest = (parseFloat(loan.loan_amount) || 0) * ((parseFloat(loan.interest_rate) || 0) / 100) * (months / 12)
+  if (loans.length === 0) return null
+
+  function estInterest(loan) {
+    const months = loan.loan_start_date
+      ? Math.max(0, (new Date() - new Date(loan.loan_start_date + 'T12:00:00')) / (1000 * 60 * 60 * 24 * 30.44))
+      : 0
+    return (parseFloat(loan.loan_amount) || 0) * ((parseFloat(loan.interest_rate) || 0) / 100) * (months / 12)
+  }
+  const totalInterest = loans.reduce((s, l) => s + estInterest(l), 0)
+  const totalPrincipal = loans.reduce((s, l) => s + (parseFloat(l.loan_amount) || 0), 0)
 
   return (
-    <div style={{ background: '#FAFAF8', border: '0.5px solid #D6D2CA', borderRadius: 8, padding: '10px 16px', display: 'flex', gap: 20, flexWrap: 'wrap', alignItems: 'center' }}>
-      <div style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: 0.7 }}>Loan Snapshot</div>
-      <div><span style={{ fontSize: 10, color: '#9ca3af' }}>Lender: </span><span style={{ fontSize: 12, fontWeight: 600 }}>{loan.lender_name || loan.bank || '—'}</span></div>
-      <div><span style={{ fontSize: 10, color: '#9ca3af' }}>Principal: </span><span style={{ fontSize: 12, fontWeight: 600, fontFamily: 'monospace' }}>{fmt(loan.loan_amount)}</span></div>
-      <div><span style={{ fontSize: 10, color: '#9ca3af' }}>Rate: </span><span style={{ fontSize: 12, fontWeight: 600, fontFamily: 'monospace' }}>{loan.interest_rate}%</span></div>
-      <div><span style={{ fontSize: 10, color: '#9ca3af' }}>Est. Interest to Date: </span><span style={{ fontSize: 12, fontWeight: 700, fontFamily: 'monospace', color: '#B8892A' }}>{fmt(estInterest)}</span></div>
+    <div style={{ background: '#FAFAF8', border: '0.5px solid #D6D2CA', borderRadius: 8, padding: '10px 16px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+        <div style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: 0.7 }}>Loan Snapshot ({loans.length} active)</div>
+        <div style={{ fontSize: 11, color: '#9ca3af' }}>
+          Total Principal: <span style={{ fontWeight: 700, fontFamily: 'monospace', color: '#2C2C2C' }}>{fmt(totalPrincipal)}</span>
+          {'  '}·{'  '}Total Est. Interest: <span style={{ fontWeight: 700, fontFamily: 'monospace', color: '#B8892A' }}>{fmt(totalInterest)}</span>
+        </div>
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+        {loans.map(loan => (
+          <div key={loan.id} style={{ display: 'flex', gap: 20, flexWrap: 'wrap', alignItems: 'center', background: '#fff', border: '0.5px solid #D6D2CA', borderRadius: 6, padding: '6px 12px' }}>
+            <div style={{ fontSize: 12, fontWeight: 700, color: '#2C2C2C', minWidth: 160 }}>{loan.lender_name || loan.bank || '—'}</div>
+            <div><span style={{ fontSize: 10, color: '#9ca3af' }}>Principal: </span><span style={{ fontSize: 12, fontWeight: 600, fontFamily: 'monospace' }}>{fmt(loan.loan_amount)}</span></div>
+            <div><span style={{ fontSize: 10, color: '#9ca3af' }}>Rate: </span><span style={{ fontSize: 12, fontWeight: 600, fontFamily: 'monospace' }}>{loan.interest_rate}%</span></div>
+            <div><span style={{ fontSize: 10, color: '#9ca3af' }}>Est. Interest to Date: </span><span style={{ fontSize: 12, fontWeight: 700, fontFamily: 'monospace', color: '#B8892A' }}>{fmt(estInterest(loan))}</span></div>
+          </div>
+        ))}
+      </div>
     </div>
   )
 }
