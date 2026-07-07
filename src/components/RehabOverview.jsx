@@ -104,11 +104,11 @@ export default function RehabStatCards({ propertyId, onOpenFull }) {
         onMouseLeave={e=>e.currentTarget.style.borderColor='#D6D2CA'}
       >
         <div style={{ fontSize:10, fontWeight:700, color:'#9ca3af', textTransform:'uppercase', letterSpacing:0.8, marginBottom:8 }}>Who's In</div>
-        <div style={{ display:'flex', justifyContent:'space-between' }}>
+        <div style={{ display:'grid', gridTemplateColumns:'repeat(3, 1fr)', gap:4 }}>
           {Object.entries(paidByTotals).map(([who, total]) => (
             <div key={who}>
               <div style={{ fontSize:10, fontWeight:700, color:PAID_BY_COLOR[who] }}>{who}</div>
-              <div style={{ fontSize:14, fontWeight:700, color:'#2C2C2C', fontFamily:'monospace' }}>{fmt(total)}</div>
+              <div style={{ fontSize:12, fontWeight:700, color:'#2C2C2C', fontFamily:'monospace' }}>{fmt(total)}</div>
             </div>
           ))}
         </div>
