@@ -188,33 +188,44 @@ function SummaryCard({ rows, onClick, footerLabel }) {
   )
 }
 
-// Fetches active loan(s) for the property and renders a click-through summary card
+// Fetches active loan(s) for the property and renders a click-through summary card.
+// Loans are always taken out through BPV — individual monthly payments may be
+// personally covered by Bob/Eric, which is tracked in cashoffer_loan_payments, not here.
 function LoanSummaryCard({ propertyId, onClick }) {
   const [loans, setLoans] = useState(null)
+  const [coveredCount, setCoveredCount] = useState(0)
+
   useEffect(() => {
     if (!propertyId) return
-    supabase.from('cashoffer_loans').select('funded_by, loan_amount, lender_name, bank')
+    supabase.from('cashoffer_loans').select('id, loan_amount, lender_name, bank')
       .eq('property_id', propertyId).eq('is_active', true)
-      .then(({ data }) => setLoans(data || []))
+      .then(async ({ data }) => {
+        setLoans(data || [])
+        const loanIds = (data||[]).map(l=>l.id)
+        if (loanIds.length) {
+          const { data: payments } = await supabase.from('cashoffer_loan_payments').select('paid_by').in('loan_id', loanIds)
+          setCoveredCount((payments||[]).filter(p=>PARTNERS.includes(p.paid_by)).length)
+        }
+      })
   }, [propertyId])
 
   if (loans === null || loans.length === 0) return null
   const totalAmount = loans.reduce((s,l)=>s+(parseFloat(l.loan_amount)||0), 0)
-  const funders = [...new Set(loans.map(l=>l.funded_by).filter(f=>f && f!=='BPV'))]
 
   return (
     <SummaryCard
       onClick={onClick}
       footerLabel="Edit on Loan tab"
       rows={[
-        { label: loans.length>1 ? `Loan Amount (${loans.length} loans)` : 'Loan Amount', value: fmt(totalAmount), tag: funders.length ? funders.join(', ') : null },
+        { label: loans.length>1 ? `Loan Amount (${loans.length} loans)` : 'Loan Amount', value: fmt(totalAmount) },
+        ...(coveredCount > 0 ? [{ label:'Payments Covered Personally', value:String(coveredCount) }] : []),
       ]}
     />
   )
 }
 
 // Aggregates what's owed back to Bob/Eric personally across Closing Costs, Rehab
-// line items, and any loans they funded — one net number per partner.
+// line items, and any individual loan payments they covered — one net number per partner.
 function PartnerPaybackSummary({ propertyId, property, closingDate }) {
   const [totals, setTotals] = useState(null)
 
@@ -249,14 +260,14 @@ function PartnerPaybackSummary({ propertyId, property, closingDate }) {
       ...(bills.data||[]).map(r => addRow(r.paid_by, parseFloat(r.amount)||0, r.date_paid, 'utility_bill', r.id)),
     ])
 
-    // Loans — principal + interest actually paid so far, owed back at closing
-    const { data: loans } = await supabase.from('cashoffer_loans').select('funded_by, loan_amount, total_interest_paid').eq('property_id', propertyId)
-    ;(loans||[]).forEach(l => {
-      if (PARTNERS.includes(l.funded_by)) {
-        t[l.funded_by].principal += parseFloat(l.loan_amount)||0
-        t[l.funded_by].interest += parseFloat(l.total_interest_paid)||0
-      }
-    })
+    // Loan payments — the loan itself is always through BPV, but an individual
+    // monthly payment may have been personally covered by Bob or Eric.
+    const { data: loans } = await supabase.from('cashoffer_loans').select('id').eq('property_id', propertyId)
+    const loanIds = (loans||[]).map(l=>l.id)
+    if (loanIds.length) {
+      const { data: payments } = await supabase.from('cashoffer_loan_payments').select('id, amount, paid_by, date_paid').in('loan_id', loanIds)
+      await Promise.all((payments||[]).map(p => addRow(p.paid_by, parseFloat(p.amount)||0, p.date_paid, 'loan_payment', p.id)))
+    }
 
     setTotals(t)
   }
