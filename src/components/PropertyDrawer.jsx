@@ -418,7 +418,7 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
   if (!property) return null
 
   // Post-occupancy badge label
-  const poLabel = form.post_occupancy==='owner' ? 'Post-Occ: Owner' : form.post_occupancy==='renting_back' ? 'Post-Occ: Renting Back' : null
+  const poLabel = form.post_occupancy ? 'Post-Occ' : null
 
   const innerContent = (
     <>
@@ -734,15 +734,9 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
                   sub="Seller stays in the home after closing"
                 />
                 {form.post_occupancy && (<>
-                  <Field label="Type">
-                    <select style={inp} value={form.post_occupancy||'owner'} onChange={e=>setVal('post_occupancy',e.target.value)}>
-                      <option value="owner">Owner Staying</option>
-                      <option value="renting_back">Renting Back</option>
-                    </select>
-                  </Field>
                   <FieldRow>
                     <Field label="# of Months"><input style={monoInp} type="number" value={form.post_occupancy_months||''} onChange={set('post_occupancy_months')} /></Field>
-                    <Field label="Payment"><MoneyInput value={form.post_occupancy_payment} onChange={set('post_occupancy_payment')} /></Field>
+                    <Field label="Total Payment"><MoneyInput value={form.post_occupancy_payment} onChange={set('post_occupancy_payment')} /></Field>
                   </FieldRow>
                   <Field label="End Date"><DatePicker style={inp} value={form.post_occupancy_end_date||''} onChange={set('post_occupancy_end_date')} /></Field>
                 </>)}
