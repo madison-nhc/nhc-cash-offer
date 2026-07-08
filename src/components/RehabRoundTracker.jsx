@@ -303,9 +303,6 @@ export default function RehabRoundTracker({ property, repairItems = [], onChange
       if (propertyId) {
         await supabase.from('cashoffer_properties').update({
           rehab_cost: parseFloat(budget) || null,
-          closing_costs: parseFloat(closingCosts) || null,
-          closing_costs_paid_by: closingCostsPaidBy || null,
-          closing_costs_date_paid: closingCostsDatePaid || null,
         }).eq('id', propertyId)
       }
       if (deletedItemIds.length) await supabase.from('cashoffer_rehab_items').delete().in('id', deletedItemIds)
@@ -359,7 +356,7 @@ export default function RehabRoundTracker({ property, repairItems = [], onChange
   return (
     <>
     <Modal
-      title={`Rehab — ${property?.address?.split(',')[0] || ''}`}
+      title={`Rehab Tracker — ${property?.address?.split(',')[0] || ''}`}
       onClose={onClose}
       width={1240}
       footer={
@@ -374,46 +371,6 @@ export default function RehabRoundTracker({ property, repairItems = [], onChange
       <div style={{ display:'flex', flexDirection:'column', gap:16 }}>
 
         <LoanSnapshot propertyId={propertyId} />
-
-        {/* Closing Costs — shared with the Acquisition tab, same underlying property fields. Hidden for Pre-Owned since there's no closing/purchase to speak of. */}
-        {property?.acquisition_type !== 'Pre-Owned' && (
-        <div style={{ background:'#FAFAF8', borderRadius:8, padding:'14px 16px', border:'0.5px solid #D6D2CA' }}>
-          <div style={{ fontSize:11, fontWeight:700, color:'#6b7280', textTransform:'uppercase', letterSpacing:0.8, marginBottom:10 }}>Closing Costs (Acquisition)</div>
-          <div style={{ display:'grid', gridTemplateColumns:'140px 110px 130px 90px', gap:10, alignItems:'end' }}>
-            <div>
-              <div style={{ fontSize:10, color:'#9ca3af', marginBottom:4 }}>Amount ($)</div>
-              <div style={{ position:'relative' }}>
-                <span style={{ position:'absolute', left:6, top:'50%', transform:'translateY(-50%)', fontSize:12, color:'#9ca3af', fontFamily:'monospace', pointerEvents:'none' }}>$</span>
-                <input style={{ ...monoInp, padding:'6px 8px 6px 16px', textAlign:'right' }} type="number" value={closingCosts} onChange={e=>setClosingCosts(e.target.value)} />
-              </div>
-            </div>
-            <div>
-              <div style={{ fontSize:10, color:'#9ca3af', marginBottom:4 }}>Paid By</div>
-              <select style={inp} value={closingCostsPaidBy} onChange={e=>setClosingCostsPaidBy(e.target.value)}>
-                <option value="">—</option>
-                {PAID_BY_OPTIONS.map(p=><option key={p} value={p}>{p}</option>)}
-              </select>
-            </div>
-            {PARTNERS.includes(closingCostsPaidBy) ? (
-              <>
-                <div>
-                  <div style={{ fontSize:10, color:'#9ca3af', marginBottom:4 }}>Date Paid</div>
-                  <DatePicker value={closingCostsDatePaid} onChange={e=>setClosingCostsDatePaid(e.target.value)} />
-                </div>
-                <div>
-                  <div style={{ fontSize:10, color:'#9ca3af', marginBottom:4 }}>Interest</div>
-                  <ClosingCostInterest
-                    propertyId={propertyId}
-                    amount={closingCosts}
-                    datePaid={closingCostsDatePaid}
-                    closingDate={closingDate}
-                  />
-                </div>
-              </>
-            ) : <><span /><span /></>}
-          </div>
-        </div>
-        )}
 
         {/* Budget + progress header */}
         <div style={{ background:'#FAFAF8', borderRadius:8, padding:'14px 16px', border:'0.5px solid #D6D2CA' }}>
