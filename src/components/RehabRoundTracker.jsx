@@ -448,11 +448,9 @@ export default function RehabRoundTracker({ property, repairItems = [], onChange
                       <option value="">—</option>
                       {PAID_BY_OPTIONS.map(p=><option key={p} value={p}>{p}</option>)}
                     </select>
-                    {PARTNERS.includes(item.paid_by) ? (
-                      <div style={{ marginRight:6 }}>
-                        <DatePicker style={{ ...inp, fontSize:12, padding:'4px 6px' }} value={item.date_paid||''} onChange={e=>updateItem(item.id,'date_paid',e.target.value)} />
-                      </div>
-                    ) : <div style={{ fontSize:12, color:'#D6D2CA', textAlign:'center', marginRight:6 }}>—</div>}
+                    <div style={{ marginRight:6 }}>
+                      <DatePicker style={{ ...inp, fontSize:12, padding:'4px 6px' }} value={item.date_paid||''} onChange={e=>updateItem(item.id,'date_paid',e.target.value)} />
+                    </div>
                     <button onClick={()=>removeItem(item.id)} style={{ background:'none', border:'none', color:'#D6D2CA', cursor:'pointer', fontSize:18, padding:0 }}>×</button>
                 </div>
               ))}
@@ -483,11 +481,9 @@ export default function RehabRoundTracker({ property, repairItems = [], onChange
                       <option value="">—</option>
                       {PAID_BY_OPTIONS.map(p=><option key={p} value={p}>{p}</option>)}
                     </select>
-                    {PARTNERS.includes(it.paid_by) ? (
-                      <div style={{ marginRight:6 }}>
-                        <DatePicker style={{ ...inp, fontSize:12, padding:'4px 6px' }} value={it.date_paid||''} onChange={e=>updateSupply(it.id,'date_paid',e.target.value)} />
-                      </div>
-                    ) : <div style={{ fontSize:12, color:'#D6D2CA', textAlign:'center', marginRight:6 }}>—</div>}
+                    <div style={{ marginRight:6 }}>
+                      <DatePicker style={{ ...inp, fontSize:12, padding:'4px 6px' }} value={it.date_paid||''} onChange={e=>updateSupply(it.id,'date_paid',e.target.value)} />
+                    </div>
                     <button onClick={()=>removeSupply(it.id)} style={{ background:'none', border:'none', color:'#D6D2CA', cursor:'pointer', fontSize:18, padding:0 }}>×</button>
                 </div>
               ))}
@@ -522,11 +518,9 @@ export default function RehabRoundTracker({ property, repairItems = [], onChange
                       <option value="">—</option>
                       {PAID_BY_OPTIONS.map(p=><option key={p} value={p}>{p}</option>)}
                     </select>
-                    {PARTNERS.includes(b.paid_by) ? (
-                      <div style={{ marginRight:6 }}>
-                        <DatePicker style={{ ...inp, fontSize:12, padding:'4px 6px' }} value={b.date_paid||''} onChange={e=>updateBill(b.id,'date_paid',e.target.value)} />
-                      </div>
-                    ) : <div style={{ fontSize:12, color:'#D6D2CA', textAlign:'center', marginRight:6 }}>—</div>}
+                    <div style={{ marginRight:6 }}>
+                      <DatePicker style={{ ...inp, fontSize:12, padding:'4px 6px' }} value={b.date_paid||''} onChange={e=>updateBill(b.id,'date_paid',e.target.value)} />
+                    </div>
                     <button onClick={()=>removeBill(b.id)} style={{ background:'none', border:'none', color:'#D6D2CA', cursor:'pointer', fontSize:18, padding:0 }}>×</button>
                 </div>
               ))}

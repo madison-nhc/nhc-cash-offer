@@ -41,7 +41,7 @@ function Row({ label, amount, paidBy, datePaid, sourceType, sourceId, closingDat
       <div style={{ fontSize:12.5, color:'#2C2C2C' }}>{label}</div>
       <div style={{ fontSize:12.5, fontFamily:"'DM Mono', monospace", textAlign:'right', color:'#4b5563' }}>{fmt(amount)}</div>
       <div style={{ fontSize:11.5, fontWeight:600, color: isPartner ? (paidBy==='Bob'?'#2D6FAF':'#D97825') : '#9ca3af' }}>{paidBy || 'BPV'}</div>
-      <div style={{ fontSize:11.5, color:'#6b7280' }}>{isPartner ? (datePaid || '—') : '—'}</div>
+      <div style={{ fontSize:11.5, color:'#6b7280' }}>{datePaid || '—'}</div>
       <div style={{ fontSize:11.5, color: days==='TBD' ? '#B8892A' : '#9ca3af', fontStyle: days==='TBD' ? 'italic' : 'normal', textAlign:'right' }}>{days!=null ? days : '—'}</div>
       <div style={{ textAlign:'right' }}>
         {isPartner ? <InterestCell sourceType={sourceType} sourceId={sourceId} amount={amount} datePaid={datePaid} interestAsOfStr={interestAsOfStr} /> : <span style={{ fontSize:12, color:'#D6D2CA' }}>—</span>}
