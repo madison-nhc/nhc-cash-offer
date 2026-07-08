@@ -609,22 +609,6 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
             <AddressInput value={form.address||''} onChange={v=>setForm(f=>({...f,address:v}))} />
           </Field>
 
-          <div className="drawer-section">Owner / Seller</div>
-          <FieldRow>
-            <Field label="Name"><input style={inp} value={form.seller_name||''} onChange={set('seller_name')} /></Field>
-            <Field label="FUB Link">
-              <div style={{ display:'flex', gap:6 }}>
-                <input style={inp} placeholder="https://…" value={form.seller_fub_link||''} onChange={set('seller_fub_link')} />
-                {form.seller_fub_link && (
-                  <button
-                    onClick={() => window.open(form.seller_fub_link, 'nhc_fub', 'width=1400,height=950,noopener,noreferrer')}
-                    style={{ background:'#fff', border:'1.5px solid #2D6FAF', borderRadius:8, padding:'0 12px', cursor:'pointer', color:'#2D6FAF', fontSize:14, flexShrink:0 }}
-                  >↗</button>
-                )}
-              </div>
-            </Field>
-          </FieldRow>
-
           {zillowUrl(form.address) && (
             <button
               onClick={() => window.open(zillowUrl(form.address), 'nhc_zillow', 'width=1400,height=950,noopener,noreferrer')}
@@ -693,6 +677,21 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
             <Field label="Baths"><input style={monoInp} type="number" value={form.baths||''} onChange={set('baths')} /></Field>
             <Field label="Sq Ft"><input style={monoInp} type="number" value={form.sqft||''} onChange={set('sqft')} /></Field>
             <Field label="Units"><input style={monoInp} type="number" value={form.unit_count||''} onChange={set('unit_count')} /></Field>
+          </FieldRow>
+          <div className="drawer-section">Owner / Seller</div>
+          <FieldRow>
+            <Field label="Name"><input style={inp} value={form.seller_name||''} onChange={set('seller_name')} /></Field>
+            <Field label="FUB Link">
+              <div style={{ display:'flex', gap:6 }}>
+                <input style={inp} placeholder="https://…" value={form.seller_fub_link||''} onChange={set('seller_fub_link')} />
+                {form.seller_fub_link && (
+                  <button
+                    onClick={() => window.open(form.seller_fub_link, 'nhc_fub', 'width=1400,height=950,noopener,noreferrer')}
+                    style={{ background:'#fff', border:'1.5px solid #2D6FAF', borderRadius:8, padding:'0 12px', cursor:'pointer', color:'#2D6FAF', fontSize:14, flexShrink:0 }}
+                  >↗</button>
+                )}
+              </div>
+            </Field>
           </FieldRow>
           <FieldRow>
             <Field label="Source">
