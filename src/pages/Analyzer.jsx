@@ -63,7 +63,10 @@ function BoardCard({ p, onOpen, onDragStart }) {
 function AnalyzerBoard({ properties, onOpen, onMoved }) {
   const [dragOverCol, setDragOverCol] = useState(null)
 
-  const columnFor = p => p.type === 'Lost' ? 'Rejected / Lost' : (p.stage || 'New Lead')
+  const columnFor = p => {
+    if (p.type === 'Lost') return 'Rejected / Lost'
+    return (p.stage && p.stage !== 'Analyzing') ? p.stage : 'New Lead'
+  }
 
   async function handleDrop(e, columnKey) {
     e.preventDefault()
