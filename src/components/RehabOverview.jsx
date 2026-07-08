@@ -83,23 +83,18 @@ export default function RehabStatCards({ propertyId, onOpenFull, closingDate }) 
 
   const utilitiesTotal = bills.reduce((s,b)=>s+(parseFloat(b.amount)||0), 0)
 
-  // Principal + accrued interest per person — starts with BPV + known partners, but
-  // any other paid_by value that shows up in the data (e.g. a new investor) gets its own card too.
+  // Principal per person — starts with BPV + known partners, but any other paid_by
+  // value that shows up in the data (e.g. a new investor) gets its own card too.
+  // Interest is tracked in the dedicated Partner Ledger (Disposition tab), not here.
   const paidByPrincipal = { BPV:0, Bob:0, Eric:0 }
-  const paidByInterest  = { BPV:0, Bob:0, Eric:0 }
-  function addRow(who, amount, datePaid, sourceId) {
+  function addRow(who, amount) {
     if (!who) return
-    if (paidByPrincipal[who] === undefined) { paidByPrincipal[who] = 0; paidByInterest[who] = 0 }
+    if (paidByPrincipal[who] === undefined) paidByPrincipal[who] = 0
     paidByPrincipal[who] += amount
-    if (who !== 'BPV') {
-      const rp = repayments.filter(r => r.source_id === sourceId)
-      const { accruedInterest } = calcOwed(amount, datePaid, rp, closingDate ? new Date(Math.min(new Date(), new Date(closingDate+'T12:00:00'))) : new Date())
-      paidByInterest[who] += accruedInterest
-    }
   }
-  items.forEach(r => addRow(r.paid_by, itemCost(r), r.date_paid, r.id))
-  supplies.forEach(r => addRow(r.paid_by, supplyCost(r), r.date_paid, r.id))
-  bills.forEach(r => addRow(r.paid_by, parseFloat(r.amount)||0, r.date_paid, r.id))
+  items.forEach(r => addRow(r.paid_by, itemCost(r)))
+  supplies.forEach(r => addRow(r.paid_by, supplyCost(r)))
+  bills.forEach(r => addRow(r.paid_by, parseFloat(r.amount)||0))
 
   const totalRehabCost = servicesTotal + suppliesTotal + utilitiesTotal
 
@@ -138,13 +133,7 @@ export default function RehabStatCards({ propertyId, onOpenFull, closingDate }) 
           >
             <div style={{ fontSize:10, fontWeight:700, color:PAID_BY_COLOR[who]||'#9ca3af', textTransform:'uppercase', letterSpacing:0.6, marginBottom:6 }}>{who}</div>
             <div style={{ fontSize:9, color:'#9ca3af', textTransform:'uppercase', letterSpacing:0.5 }}>Amount</div>
-            <div style={{ fontSize:16, fontWeight:700, color:'#2C2C2C', fontFamily:'monospace', marginBottom: who==='BPV'?0:6 }}>{fmt(paidByPrincipal[who])}</div>
-            {who !== 'BPV' && (
-              <>
-                <div style={{ fontSize:9, color:'#9ca3af', textTransform:'uppercase', letterSpacing:0.5 }}>Interest</div>
-                <div style={{ fontSize:14, fontWeight:700, color:'#B8892A', fontFamily:'monospace' }}>{fmt(paidByInterest[who])}</div>
-              </>
-            )}
+            <div style={{ fontSize:16, fontWeight:700, color:'#2C2C2C', fontFamily:'monospace' }}>{fmt(paidByPrincipal[who])}</div>
           </div>
         )
         return (

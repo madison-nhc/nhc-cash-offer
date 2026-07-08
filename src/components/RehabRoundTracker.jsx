@@ -418,11 +418,11 @@ export default function RehabRoundTracker({ property, repairItems = [], onChange
           </div>
           {items.length > 0 && (
             <div style={{ border:'0.5px solid #D6D2CA', borderRadius:8, overflow:'hidden', marginBottom:8 }}>
-              <div style={{ display:'grid', gridTemplateColumns:'2fr 110px 170px 100px 90px 115px 90px 28px', background:'#F0EDE6', padding:'6px 10px' }}>
-                {['Item','Status','Vendor','Amount','Paid By','Date Paid','Interest',''].map(h=><div key={h} style={{ fontSize:10, fontWeight:600, color:'#6b7280', textTransform:'uppercase' }}>{h}</div>)}
+              <div style={{ display:'grid', gridTemplateColumns:'2fr 110px 170px 100px 90px 120px 28px', background:'#F0EDE6', padding:'8px 10px' }}>
+                {['Item','Status','Vendor','Amount','Paid By','Date Paid',''].map(h=><div key={h} style={{ fontSize:10, fontWeight:600, color:'#6b7280', textTransform:'uppercase' }}>{h}</div>)}
               </div>
               {items.map((item,i) => (
-                <div key={item.id} style={{ display:'grid', gridTemplateColumns:'2fr 110px 170px 100px 90px 115px 90px 28px', padding:'6px 10px', alignItems:'center', background:i%2===0?'#fff':'#FAFAF8', borderTop:i>0?'0.5px solid #F0EDE6':'none' }}>
+                <div key={item.id} style={{ display:'grid', gridTemplateColumns:'2fr 110px 170px 100px 90px 120px 28px', padding:'8px 10px', alignItems:'center', background:i%2===0?'#fff':'#FAFAF8', borderTop:i>0?'0.5px solid #F0EDE6':'none' }}>
                     <input style={{ ...inp, fontSize:12, padding:'4px 6px', marginRight:6 }} value={item.name} onChange={e=>updateItem(item.id,'name',e.target.value)} />
                     <select value={item.status} onChange={e=>updateItem(item.id,'status',e.target.value)} style={{ border:'0.5px solid #D6D2CA', borderRadius:4, padding:'4px 6px', fontSize:11, fontFamily:'inherit', fontWeight:700, color:STATUS_COLORS[item.status]||'#2C2C2C', background:'#fff', cursor:'pointer', marginRight:6 }}>
                       {STATUS_OPTIONS.map(s=><option key={s} value={s}>{s}</option>)}
@@ -449,14 +449,10 @@ export default function RehabRoundTracker({ property, repairItems = [], onChange
                       {PAID_BY_OPTIONS.map(p=><option key={p} value={p}>{p}</option>)}
                     </select>
                     {PARTNERS.includes(item.paid_by) ? (
-                      <PartnerLedger
-                        sourceType="rehab_item" sourceId={item.id}
-                        originalAmount={item.actual_cost!=null?item.actual_cost:item.estimated_cost}
-                        datePaid={item.date_paid}
-                        onDatePaidChange={v=>updateItem(item.id,'date_paid',v)}
-                        closingDate={closingDate}
-                      />
-                    ) : <NoPartnerCells />}
+                      <div style={{ marginRight:6 }}>
+                        <DatePicker style={{ ...inp, fontSize:12, padding:'4px 6px' }} value={item.date_paid||''} onChange={e=>updateItem(item.id,'date_paid',e.target.value)} />
+                      </div>
+                    ) : <div style={{ fontSize:12, color:'#D6D2CA', textAlign:'center', marginRight:6 }}>—</div>}
                     <button onClick={()=>removeItem(item.id)} style={{ background:'none', border:'none', color:'#D6D2CA', cursor:'pointer', fontSize:18, padding:0 }}>×</button>
                 </div>
               ))}
@@ -470,11 +466,11 @@ export default function RehabRoundTracker({ property, repairItems = [], onChange
           <div style={{ fontSize:13, fontWeight:700, color:'#2C2C2C', marginBottom:8 }}>Supplies</div>
           {supplies.length > 0 && (
             <div style={{ border:'0.5px solid #D6D2CA', borderRadius:8, overflow:'hidden', marginBottom:8 }}>
-              <div style={{ display:'grid', gridTemplateColumns:'2fr 55px 85px 85px 170px 90px 90px 115px 90px 28px', background:'#F0EDE6', padding:'6px 10px' }}>
-                {['Name','Qty','Unit Cost','Total','Vendor/Store','Status','Paid By','Date Paid','Interest',''].map(h=><div key={h} style={{ fontSize:10, fontWeight:600, color:'#6b7280', textTransform:'uppercase' }}>{h}</div>)}
+              <div style={{ display:'grid', gridTemplateColumns:'2fr 55px 85px 85px 170px 90px 90px 120px 28px', background:'#F0EDE6', padding:'8px 10px' }}>
+                {['Name','Qty','Unit Cost','Total','Vendor/Store','Status','Paid By','Date Paid',''].map(h=><div key={h} style={{ fontSize:10, fontWeight:600, color:'#6b7280', textTransform:'uppercase' }}>{h}</div>)}
               </div>
               {supplies.map((it,i) => (
-                <div key={it.id} style={{ display:'grid', gridTemplateColumns:'2fr 55px 85px 85px 170px 90px 90px 115px 90px 28px', padding:'6px 10px', alignItems:'center', background:i%2===0?'#fff':'#FAFAF8', borderTop:i>0?'0.5px solid #F0EDE6':'none' }}>
+                <div key={it.id} style={{ display:'grid', gridTemplateColumns:'2fr 55px 85px 85px 170px 90px 90px 120px 28px', padding:'8px 10px', alignItems:'center', background:i%2===0?'#fff':'#FAFAF8', borderTop:i>0?'0.5px solid #F0EDE6':'none' }}>
                     <input style={{ ...inp, fontSize:12, padding:'4px 6px', marginRight:6 }} value={it.name||''} onChange={e=>updateSupply(it.id,'name',e.target.value)} />
                     <input style={{ ...monoInp, fontSize:12, padding:'4px 6px', textAlign:'right', marginRight:6 }} type="number" value={it.quantity||''} onChange={e=>updateSupply(it.id,'quantity',parseFloat(e.target.value)||0)} />
                     <input style={{ ...monoInp, fontSize:12, padding:'4px 6px', textAlign:'right', marginRight:6 }} type="number" value={it.unit_cost||''} onChange={e=>updateSupply(it.id,'unit_cost',parseFloat(e.target.value)||0)} />
@@ -488,14 +484,10 @@ export default function RehabRoundTracker({ property, repairItems = [], onChange
                       {PAID_BY_OPTIONS.map(p=><option key={p} value={p}>{p}</option>)}
                     </select>
                     {PARTNERS.includes(it.paid_by) ? (
-                      <PartnerLedger
-                        sourceType="supply" sourceId={it.id}
-                        originalAmount={(parseFloat(it.unit_cost)||0)*(parseFloat(it.quantity)||0)}
-                        datePaid={it.date_paid}
-                        onDatePaidChange={v=>updateSupply(it.id,'date_paid',v)}
-                        closingDate={closingDate}
-                      />
-                    ) : <NoPartnerCells />}
+                      <div style={{ marginRight:6 }}>
+                        <DatePicker style={{ ...inp, fontSize:12, padding:'4px 6px' }} value={it.date_paid||''} onChange={e=>updateSupply(it.id,'date_paid',e.target.value)} />
+                      </div>
+                    ) : <div style={{ fontSize:12, color:'#D6D2CA', textAlign:'center', marginRight:6 }}>—</div>}
                     <button onClick={()=>removeSupply(it.id)} style={{ background:'none', border:'none', color:'#D6D2CA', cursor:'pointer', fontSize:18, padding:0 }}>×</button>
                 </div>
               ))}
@@ -513,11 +505,11 @@ export default function RehabRoundTracker({ property, repairItems = [], onChange
           <div style={{ fontSize:11, color:'#9ca3af', marginBottom:8 }}>Recurring bills while in rehab — separate from the loan payment.</div>
           {bills.length > 0 && (
             <div style={{ border:'0.5px solid #D6D2CA', borderRadius:8, overflow:'hidden', marginBottom:8 }}>
-              <div style={{ display:'grid', gridTemplateColumns:'115px 170px 90px 90px 115px 90px 28px', background:'#F0EDE6', padding:'6px 10px' }}>
-                {['Bill Date','Type','Amount','Paid By','Date Paid','Interest',''].map(h=><div key={h} style={{ fontSize:10, fontWeight:600, color:'#6b7280', textTransform:'uppercase' }}>{h}</div>)}
+              <div style={{ display:'grid', gridTemplateColumns:'115px 170px 90px 90px 120px 28px', background:'#F0EDE6', padding:'8px 10px' }}>
+                {['Bill Date','Type','Amount','Paid By','Date Paid',''].map(h=><div key={h} style={{ fontSize:10, fontWeight:600, color:'#6b7280', textTransform:'uppercase' }}>{h}</div>)}
               </div>
               {bills.map((b,i) => (
-                <div key={b.id} style={{ display:'grid', gridTemplateColumns:'115px 170px 90px 90px 115px 90px 28px', padding:'6px 10px', alignItems:'center', background:i%2===0?'#fff':'#FAFAF8', borderTop:i>0?'0.5px solid #F0EDE6':'none' }}>
+                <div key={b.id} style={{ display:'grid', gridTemplateColumns:'115px 170px 90px 90px 120px 28px', padding:'8px 10px', alignItems:'center', background:i%2===0?'#fff':'#FAFAF8', borderTop:i>0?'0.5px solid #F0EDE6':'none' }}>
                     <DatePicker style={{ ...inp, fontSize:12, padding:'4px 6px', marginRight:6 }} value={b.bill_date||''} onChange={e=>updateBill(b.id,'bill_date',e.target.value)} />
                     <select value={b.utility_type||'Other'} onChange={e=>updateBill(b.id,'utility_type',e.target.value)} style={{ border:'0.5px solid #D6D2CA', borderRadius:4, padding:'4px 6px', fontSize:12, fontFamily:'inherit', background:'#fff', cursor:'pointer', marginRight:6 }}>
                       {UTILITY_TYPES.map(t=><option key={t} value={t}>{t}</option>)}
@@ -531,14 +523,10 @@ export default function RehabRoundTracker({ property, repairItems = [], onChange
                       {PAID_BY_OPTIONS.map(p=><option key={p} value={p}>{p}</option>)}
                     </select>
                     {PARTNERS.includes(b.paid_by) ? (
-                      <PartnerLedger
-                        sourceType="utility_bill" sourceId={b.id}
-                        originalAmount={b.amount}
-                        datePaid={b.date_paid || b.bill_date}
-                        onDatePaidChange={v=>updateBill(b.id,'date_paid',v)}
-                        closingDate={closingDate}
-                      />
-                    ) : <NoPartnerCells />}
+                      <div style={{ marginRight:6 }}>
+                        <DatePicker style={{ ...inp, fontSize:12, padding:'4px 6px' }} value={b.date_paid||''} onChange={e=>updateBill(b.id,'date_paid',e.target.value)} />
+                      </div>
+                    ) : <div style={{ fontSize:12, color:'#D6D2CA', textAlign:'center', marginRight:6 }}>—</div>}
                     <button onClick={()=>removeBill(b.id)} style={{ background:'none', border:'none', color:'#D6D2CA', cursor:'pointer', fontSize:18, padding:0 }}>×</button>
                 </div>
               ))}
