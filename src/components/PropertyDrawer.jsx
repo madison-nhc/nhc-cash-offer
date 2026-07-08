@@ -556,19 +556,12 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
             <Field label="Purchase Price ($)"><input style={monoInp} type="number" value={form.purchase_price||''} onChange={set('purchase_price')} /></Field>
             <Field label="Purchase Date"><DatePicker style={inp} value={form.purchase_date||''} onChange={set('purchase_date')} /></Field>
           </FieldRow>
-          <FieldRow>
-            <Field label="Owner">
-              <select style={inp} value={form.owner||'BPV'} onChange={set('owner')}>
-                {['BPV','Bob Sophiea','Eric Kimble','Other'].map(o=><option key={o}>{o}</option>)}
-              </select>
-            </Field>
-            <Field label="Acquisition Type">
-              <select style={inp} value={form.acquisition_type||'Purchased'} onChange={set('acquisition_type')}>
-                <option value="Purchased">Purchased</option>
-                <option value="Pre-Owned">Pre-Owned</option>
-              </select>
-            </Field>
-          </FieldRow>
+          <Toggle
+            on={form.acquisition_type==='Pre-Owned'}
+            onToggle={()=>setVal('acquisition_type', form.acquisition_type==='Pre-Owned' ? 'Purchased' : 'Pre-Owned')}
+            label="Pre-Owned"
+            sub="Already owned before this deal, not purchased on the open market"
+          />
 
           <div className="drawer-section">Closing Costs</div>
           <div style={{ fontSize:11, color:'#9ca3af', marginTop:-8 }}>
@@ -855,6 +848,22 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
       headerActions={null}
       subtitle={
         <div style={{ display:'flex', alignItems:'flex-end', gap:10, marginTop:8, flexWrap:'wrap' }}>
+          {/* Owner dropdown — first */}
+          <div style={{ display:'flex', flexDirection:'column', gap:2 }}>
+            <span style={{ fontSize:9, fontWeight:700, color:'#9ca3af', textTransform:'uppercase', letterSpacing:0.6 }}>Owner</span>
+            <select
+              value={form.owner||'BPV'}
+              onChange={set('owner')}
+              onClick={e=>e.stopPropagation()}
+              style={{
+                border:'1.5px solid #D6D2CA', borderRadius:6, padding:'3px 8px',
+                fontSize:11, fontWeight:600, fontFamily:'inherit', color:'#6b7280', background:'#fff',
+                cursor:'pointer', outline:'none',
+              }}>
+              {['BPV','Bob Sophiea','Eric Kimble','Other'].map(o=><option key={o}>{o}</option>)}
+            </select>
+          </div>
+
           {/* Type dropdown — primary */}
           <div style={{ display:'flex', flexDirection:'column', gap:2 }}>
             <span style={{ fontSize:9, fontWeight:700, color:'#9ca3af', textTransform:'uppercase', letterSpacing:0.6 }}>Deal Type</span>
@@ -913,6 +922,7 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
     </Drawer>
   )
 }
+
 
 
 
