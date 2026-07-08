@@ -345,21 +345,16 @@ function LoanForm({ form, setForm, isNew }) {
 export default function LoanTracker({ propertyId, propertyAddress, open, onClose, initialLoanId }) {
   const [loans, setLoans]         = useState([])
   const [loading, setLoading]     = useState(true)
-  const [editing, setEditing]     = useState(null)      // null | 'new' | {refinanceFor:id} | loan object
-  const [editForm, setEditForm]   = useState(EMPTY_LOAN) // controlled form state, lives here so footer buttons can save it
+  const [selection, setSelection] = useState(null)      // null | 'new' | {refinanceFor:id} | loan id (string)
+  const [editForm, setEditForm]   = useState(EMPTY_LOAN) // controlled form state, always editable, lives here for the sticky footer
   const [closingId, setClosingId] = useState(null)
-  const [focusId, setFocusId]     = useState(initialLoanId ?? null)
   const [payoffTotals, setPayoffTotals] = useState({ total:0, byPerson:{BPV:0,Bob:0,Eric:0}, count:0, totalInterest:0 })
   const [payoffDate, setPayoffDate] = useState(new Date().toISOString().slice(0,10))
 
   useEffect(() => {
     if (open && propertyId) load()
-    if (!open) { setEditing(null); setClosingId(null) }
+    if (!open) { setSelection(null); setClosingId(null) }
   }, [open, propertyId]) // eslint-disable-line react-hooks/exhaustive-deps
-
-  useEffect(() => {
-    if (open) setFocusId(initialLoanId ?? null)
-  }, [open, initialLoanId])
 
   async function load() {
     setLoading(true)
@@ -370,14 +365,22 @@ export default function LoanTracker({ propertyId, propertyAddress, open, onClose
       .order('loan_start_date', { ascending: true })
     setLoans(data || [])
     setLoading(false)
-    if (initialLoanId === null) startEditing('new')
+    if (initialLoanId) {
+      const found = (data||[]).find(l => l.id === initialLoanId)
+      selectLoan(found || 'new')
+    } else {
+      selectLoan('new')
+    }
   }
 
-  function startEditing(mode) {
-    setEditing(mode)
-    if (mode === 'new' || mode?.refinanceFor) setEditForm(EMPTY_LOAN)
-    else setEditForm({ ...EMPTY_LOAN, ...mode })
+  function selectLoan(sel) {
+    setSelection(sel)
+    if (sel === 'new' || sel?.refinanceFor) setEditForm(EMPTY_LOAN)
+    else setEditForm({ ...EMPTY_LOAN, ...sel })
   }
+
+  const isNew = selection === 'new' || !!selection?.refinanceFor
+  const existingLoan = !isNew && selection ? selection : null
 
   async function saveLoan() {
     const form = editForm
@@ -396,16 +399,20 @@ export default function LoanTracker({ propertyId, propertyAddress, open, onClose
     }
     if (form.id) {
       await supabase.from('cashoffer_loans').update(payload).eq('id', form.id)
-    } else if (editing?.refinanceFor) {
+      const { data } = await supabase.from('cashoffer_loans').select('*').eq('id', form.id).single()
+      if (data) { setLoans(ls => ls.map(l => l.id===data.id ? data : l)); selectLoan(data) }
+    } else if (selection?.refinanceFor) {
       await supabase.from('cashoffer_loans').update({
         is_active: false, closed_reason: 'Refinanced', refinanced_date: new Date().toISOString().split('T')[0],
-      }).eq('id', editing.refinanceFor)
-      await supabase.from('cashoffer_loans').insert(payload)
+      }).eq('id', selection.refinanceFor)
+      const { data } = await supabase.from('cashoffer_loans').insert(payload).select().single()
+      await load()
+      if (data) selectLoan(data)
     } else {
-      await supabase.from('cashoffer_loans').insert(payload)
+      const { data } = await supabase.from('cashoffer_loans').insert(payload).select().single()
+      await load()
+      if (data) selectLoan(data)
     }
-    setEditing(null)
-    load()
   }
 
   async function markPaidOff(loan) {
@@ -420,146 +427,97 @@ export default function LoanTracker({ propertyId, propertyAddress, open, onClose
   async function deleteLoan(id) {
     if (!confirm('Delete this loan record?')) return
     await supabase.from('cashoffer_loans').delete().eq('id', id)
-    setEditing(null)
-    load()
+    onClose()
   }
 
   if (!open) return null
 
-  const focusLoan = focusId ? loans.find(l => l.id === focusId) : null
-
-  // ── Footer content, computed per mode so it's always sticky ──
-  let footer = null
-  if (editing) {
-    footer = (
-      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-        {editing !== 'new' && !editing?.refinanceFor && <Btn variant="danger" onClick={()=>deleteLoan(editForm.id)}>Delete Loan</Btn>}
-        <div style={{ display:'flex', gap:8, marginLeft:'auto' }}>
-          <Btn variant="outline" onClick={()=>setEditing(null)}>Cancel</Btn>
-          <Btn onClick={saveLoan}>Save Loan</Btn>
-        </div>
+  const footer = (
+    <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+      {existingLoan ? (
+        <Btn variant="danger" onClick={()=>deleteLoan(existingLoan.id)}>Delete Loan</Btn>
+      ) : <span />}
+      <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+        {existingLoan?.is_active && (
+          <Btn variant="outline" onClick={()=>setClosingId(closingId===existingLoan.id?null:existingLoan.id)}>
+            {closingId===existingLoan.id ? 'Cancel Close' : 'Close Loan'}
+          </Btn>
+        )}
+        <Btn variant="outline" onClick={onClose}>Cancel</Btn>
+        <Btn onClick={saveLoan}>Save Loan</Btn>
       </div>
-    )
-  } else if (focusLoan) {
-    footer = (
-      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-        <Btn variant="danger" onClick={async ()=>{ await deleteLoan(focusLoan.id); onClose() }}>Delete Loan</Btn>
-        <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-          {focusLoan.is_active && (
-            <Btn variant="outline" onClick={()=>setClosingId(closingId===focusLoan.id?null:focusLoan.id)}>
-              {closingId===focusLoan.id ? 'Cancel Close' : 'Close Loan'}
-            </Btn>
-          )}
-          <Btn onClick={()=>startEditing(focusLoan)}>Edit Loan</Btn>
-        </div>
-      </div>
-    )
-  }
+    </div>
+  )
 
   return (
     <Modal title={`Loan Tracker — ${propertyAddress?.split(',')[0] || ''}`} onClose={onClose} width={1240} footer={footer}>
       {loading ? (
         <div style={{ textAlign:'center', padding:32, color:'#B8892A', fontSize:24 }}>⟳</div>
-      ) : editing ? (
+      ) : (
         <>
-          <div style={{ fontSize:13, fontWeight:700, color:'#2C2C2C', marginBottom:16 }}>
-            {editing?.refinanceFor ? 'Add Refinance Loan' : editing==='new' ? 'Add Loan' : 'Edit Loan'}
-          </div>
-          {editing?.refinanceFor && (
+          {selection?.refinanceFor && (
             <div style={{ background:'#fff3cd', borderRadius:6, padding:'10px 14px', fontSize:12, color:'#856404', marginBottom:12 }}>
               Saving will mark that loan as refinanced and add this as a new active loan.
             </div>
           )}
-          <LoanForm form={editForm} setForm={setEditForm} isNew={editing==='new' || !!editing?.refinanceFor} />
-        </>
-      ) : focusLoan ? (
-        <>
-          <div style={{ background:'#FAFAF8', borderRadius:8, padding:'14px 16px', border:'0.5px solid #D6D2CA' }}>
-            <div style={{ marginBottom:12 }}>
-              <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:4 }}>
-                <span style={{ fontSize:14, fontWeight:700, color:'#2C2C2C' }}>{focusLoan.lender_name || focusLoan.bank || 'Unnamed Lender'}</span>
-                <span style={{ background:TYPE_COLOR[focusLoan.loan_type]+'18', color:TYPE_COLOR[focusLoan.loan_type], border:`1px solid ${TYPE_COLOR[focusLoan.loan_type]}40`, borderRadius:4, padding:'2px 8px', fontSize:10, fontWeight:700 }}>{focusLoan.loan_type}</span>
-                {!focusLoan.is_active && (
-                  <span style={{ background:'#9ca3af18', color:'#6b7280', border:'1px solid #9ca3af40', borderRadius:4, padding:'2px 8px', fontSize:10, fontWeight:700 }}>{focusLoan.closed_reason || 'Closed'}</span>
-                )}
-              </div>
-              <div style={{ fontSize:12, color:'#6b7280' }}>
-                {focusLoan.loan_start_date ? new Date(focusLoan.loan_start_date+'T12:00:00').toLocaleDateString('en-US',{month:'short',year:'numeric'}) : ''}
-                {focusLoan.loan_start_date && focusLoan.loan_term_months ? ` · ${focusLoan.loan_term_months/12}yr term` : ''}
-              </div>
+
+          {existingLoan && (
+            <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:12 }}>
+              {!existingLoan.is_active && (
+                <span style={{ background:'#9ca3af18', color:'#6b7280', border:'1px solid #9ca3af40', borderRadius:4, padding:'2px 8px', fontSize:10, fontWeight:700 }}>{existingLoan.closed_reason || 'Closed'}</span>
+              )}
+              {!existingLoan.is_active && existingLoan.closed_reason === 'Refinanced' && (
+                <span style={{ fontSize:11, color:'#9ca3af' }}>Refinanced {existingLoan.refinanced_date ? new Date(existingLoan.refinanced_date+'T12:00:00').toLocaleDateString('en-US',{month:'short',year:'numeric'}) : ''}</span>
+              )}
+              {!existingLoan.is_active && existingLoan.closed_reason === 'Paid Off' && (
+                <span style={{ fontSize:11, color:'#9ca3af' }}>Paid Off {existingLoan.paid_off_date ? new Date(existingLoan.paid_off_date+'T12:00:00').toLocaleDateString('en-US',{month:'short',year:'numeric'}) : ''} · Total Interest Paid: {fmt(existingLoan.total_interest_paid)}</span>
+              )}
             </div>
+          )}
 
-            {closingId === focusLoan.id && (
-              <div style={{ background:'#fff', border:'1px solid #D6D2CA', borderRadius:6, padding:'12px 14px', marginBottom:12 }}>
-                <div style={{ fontSize:11, fontWeight:700, color:'#6b7280', textTransform:'uppercase', letterSpacing:0.6, marginBottom:8 }}>
-                  Close This Loan
-                </div>
-                <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:10, marginBottom:10 }}>
-                  <div style={{ background:'#F0EDE6', borderRadius:6, padding:'8px 10px' }}>
-                    <div style={{ fontSize:9, color:'#9ca3af', textTransform:'uppercase' }}>Total Paid to Date</div>
-                    <div style={{ fontSize:14, fontWeight:700, fontFamily:'monospace', color:'#2C2C2C' }}>{fmt(payoffTotals.total)}</div>
-                    <div style={{ fontSize:9, color:'#9ca3af' }}>{payoffTotals.count} payment{payoffTotals.count===1?'':'s'} recorded</div>
-                  </div>
-                  <div style={{ background:'#F0EDE6', borderRadius:6, padding:'8px 10px' }}>
-                    <div style={{ fontSize:9, color:'#9ca3af', textTransform:'uppercase' }}>Interest Paid to Date</div>
-                    <div style={{ fontSize:14, fontWeight:700, fontFamily:'monospace', color:'#B91C1C' }}>{fmt(payoffTotals.totalInterest)}</div>
-                  </div>
-                  {['BPV','Bob','Eric'].filter(p=>payoffTotals.byPerson[p]>0).map(p=>(
-                    <div key={p} style={{ background:'#F0EDE6', borderRadius:6, padding:'8px 10px' }}>
-                      <div style={{ fontSize:9, color:'#9ca3af', textTransform:'uppercase' }}>Paid by {p}</div>
-                      <div style={{ fontSize:14, fontWeight:700, fontFamily:'monospace', color:'#2C2C2C' }}>{fmt(payoffTotals.byPerson[p])}</div>
-                    </div>
-                  ))}
-                </div>
-                <FieldRow>
-                  <Field label="Payoff Date"><DatePicker style={inp} value={payoffDate} onChange={e=>setPayoffDate(e.target.value)} /></Field>
-                  <div style={{ display:'flex', alignItems:'flex-end', gap:8 }}>
-                    <button onClick={()=>markPaidOff(focusLoan)} style={{ background:'#3B6D11', color:'#fff', border:'none', borderRadius:6, padding:'8px 14px', fontSize:12, fontWeight:700, cursor:'pointer', fontFamily:'inherit', flex:1 }}>Mark Paid Off</button>
-                    <button onClick={()=>{ startEditing({ refinanceFor: focusLoan.id }); setClosingId(null) }} style={{ background:'#2D6FAF', color:'#fff', border:'none', borderRadius:6, padding:'8px 14px', fontSize:12, fontWeight:700, cursor:'pointer', fontFamily:'inherit', flex:1 }}>Refinance Instead</button>
-                  </div>
-                </FieldRow>
+          <LoanForm form={editForm} setForm={setEditForm} isNew={isNew} />
+
+          {closingId === existingLoan?.id && (
+            <div style={{ background:'#fff', border:'1px solid #D6D2CA', borderRadius:6, padding:'12px 14px', marginTop:16 }}>
+              <div style={{ fontSize:11, fontWeight:700, color:'#6b7280', textTransform:'uppercase', letterSpacing:0.6, marginBottom:8 }}>
+                Close This Loan
               </div>
-            )}
-
-            <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:10 }}>
-              {[
-                { label:'Original Amount',  value:fmt(focusLoan.loan_amount),   color:'#2C2C2C' },
-                { label:'Rate',             value:`${focusLoan.interest_rate}%`, color:'#2C2C2C' },
-                { label:'Monthly Payment',  value:fmt(focusLoan.monthly_payment || (()=>{ const s=buildSchedule(focusLoan.loan_amount,focusLoan.interest_rate,focusLoan.loan_term_months,null); return s[0]?.payment })()), color:'#D97825' },
-                { label:'Current Balance',  value:fmt(currentBalance(buildSchedule(focusLoan.loan_amount,focusLoan.interest_rate,focusLoan.loan_term_months,focusLoan.monthly_payment),focusLoan.loan_start_date)), color:'#2D6FAF' },
-              ].map(({label,value,color})=>(
-                <div key={label} style={{ textAlign:'center', background:'#fff', borderRadius:6, padding:'8px 10px', border:'0.5px solid #D6D2CA' }}>
-                  <div style={{ fontSize:9, color:'#9ca3af', textTransform:'uppercase', letterSpacing:0.7, marginBottom:3 }}>{label}</div>
-                  <div style={{ fontSize:14, fontWeight:700, fontFamily:'monospace', color }}>{value||'—'}</div>
+              <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:10, marginBottom:10 }}>
+                <div style={{ background:'#F0EDE6', borderRadius:6, padding:'8px 10px' }}>
+                  <div style={{ fontSize:9, color:'#9ca3af', textTransform:'uppercase' }}>Total Paid to Date</div>
+                  <div style={{ fontSize:14, fontWeight:700, fontFamily:'monospace', color:'#2C2C2C' }}>{fmt(payoffTotals.total)}</div>
+                  <div style={{ fontSize:9, color:'#9ca3af' }}>{payoffTotals.count} payment{payoffTotals.count===1?'':'s'} recorded</div>
                 </div>
-              ))}
+                <div style={{ background:'#F0EDE6', borderRadius:6, padding:'8px 10px' }}>
+                  <div style={{ fontSize:9, color:'#9ca3af', textTransform:'uppercase' }}>Interest Paid to Date</div>
+                  <div style={{ fontSize:14, fontWeight:700, fontFamily:'monospace', color:'#B91C1C' }}>{fmt(payoffTotals.totalInterest)}</div>
+                </div>
+                {['BPV','Bob','Eric'].filter(p=>payoffTotals.byPerson[p]>0).map(p=>(
+                  <div key={p} style={{ background:'#F0EDE6', borderRadius:6, padding:'8px 10px' }}>
+                    <div style={{ fontSize:9, color:'#9ca3af', textTransform:'uppercase' }}>Paid by {p}</div>
+                    <div style={{ fontSize:14, fontWeight:700, fontFamily:'monospace', color:'#2C2C2C' }}>{fmt(payoffTotals.byPerson[p])}</div>
+                  </div>
+                ))}
+              </div>
+              <FieldRow>
+                <Field label="Payoff Date"><DatePicker style={inp} value={payoffDate} onChange={e=>setPayoffDate(e.target.value)} /></Field>
+                <div style={{ display:'flex', alignItems:'flex-end', gap:8 }}>
+                  <button onClick={()=>markPaidOff(existingLoan)} style={{ background:'#3B6D11', color:'#fff', border:'none', borderRadius:6, padding:'8px 14px', fontSize:12, fontWeight:700, cursor:'pointer', fontFamily:'inherit', flex:1 }}>Mark Paid Off</button>
+                  <button onClick={()=>{ selectLoan({ refinanceFor: existingLoan.id }); setClosingId(null) }} style={{ background:'#2D6FAF', color:'#fff', border:'none', borderRadius:6, padding:'8px 14px', fontSize:12, fontWeight:700, cursor:'pointer', fontFamily:'inherit', flex:1 }}>Refinance Instead</button>
+                </div>
+              </FieldRow>
             </div>
+          )}
 
-            {focusLoan.notes && (
-              <div style={{ fontSize:11, color:'#6b7280', marginTop:10, fontStyle:'italic' }}>{focusLoan.notes}</div>
-            )}
-
-            {!focusLoan.is_active && (focusLoan.closed_reason === 'Refinanced'
-              ? <div style={{ fontSize:11, color:'#9ca3af', marginTop:10 }}>Refinanced {focusLoan.refinanced_date ? new Date(focusLoan.refinanced_date+'T12:00:00').toLocaleDateString('en-US',{month:'short',year:'numeric'}) : ''}</div>
-              : focusLoan.closed_reason === 'Paid Off'
-                ? (
-                  <div style={{ fontSize:11, color:'#9ca3af', marginTop:10 }}>Paid Off {focusLoan.paid_off_date ? new Date(focusLoan.paid_off_date+'T12:00:00').toLocaleDateString('en-US',{month:'short',year:'numeric'}) : ''} · Total Interest Paid: {fmt(focusLoan.total_interest_paid)}</div>
-                )
-                : null)}
-          </div>
-
-          <AmortizationTable
-            schedule={buildSchedule(focusLoan.loan_amount, focusLoan.interest_rate, focusLoan.loan_term_months, focusLoan.monthly_payment)}
-            startDate={focusLoan.loan_start_date}
-            loanId={focusLoan.id}
-            onTotals={setPayoffTotals}
-          />
+          {existingLoan && (
+            <AmortizationTable
+              schedule={buildSchedule(editForm.loan_amount, editForm.interest_rate, editForm.loan_term_months, editForm.monthly_payment)}
+              startDate={editForm.loan_start_date}
+              loanId={existingLoan.id}
+              onTotals={setPayoffTotals}
+            />
+          )}
         </>
-      ) : (
-        <div style={{ background:'#F0EDE6', borderRadius:8, padding:'20px', textAlign:'center' }}>
-          <div style={{ fontSize:13, color:'#6b7280', marginBottom:8 }}>No loan selected.</div>
-          <Btn variant="outline" onClick={onClose} style={{ fontSize:12 }}>Close</Btn>
-        </div>
       )}
     </Modal>
   )
