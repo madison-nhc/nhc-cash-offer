@@ -124,7 +124,7 @@ export default function PartnerLedgerModal({ propertyId, property, closingDate, 
   const loanRows = loanPayments.map(p => ({ label:p.due_date ? `Due ${p.due_date}` : 'Payment', amount:p.amount, paidBy:p.paid_by, datePaid:p.date_paid, sourceType:'loan_payment', sourceId:p.id, ...commonRow }))
 
   return (
-    <Modal title={`Partner Ledger — ${property?.address?.split(',')[0] || ''}`} onClose={onClose} width={900}>
+    <Modal title={`Partner Ledger — ${property?.address?.split(',')[0] || ''}`} onClose={onClose} width={1240}>
       {loading ? (
         <div style={{ textAlign:'center', padding:30, color:'#9ca3af', fontSize:12 }}>Loading…</div>
       ) : (
