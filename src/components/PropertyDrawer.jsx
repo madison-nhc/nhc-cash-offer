@@ -27,7 +27,7 @@ const TYPE_TO_DISP = { 'Analyzing':null, 'Flip':'flip', 'Hold':'hold', 'Retail L
 
 // Stages scoped per type — As-Is Retail Listing skips the two Reno stages
 const STAGE_BY_TYPE = {
-  'Analyzing':      [],
+  'Analyzing':      ['New Lead','Needs Cash Offer','Offer Submitted','Offer Accepted'],
   'Flip':           ['Purchased','Rehab','Listed','Under Contract','Sold'],
   'Hold':           ['Purchased','Rehab','Rent Ready','Leased','Sold'],
   'Retail Listing': { 'As-Is':['Listed','Under Contract','Sold'], 'Reno':['Reno In Progress','Reno Completed','Listed','Under Contract','Sold'] },
@@ -35,6 +35,7 @@ const STAGE_BY_TYPE = {
   'Lost':           [],
 }
 const STAGE_COLOR = {
+  'New Lead':'#9ca3af', 'Needs Cash Offer':'#D97825', 'Offer Submitted':'#B8892A', 'Offer Accepted':'#3B6D11',
   Purchased:'#D97825', Rehab:'#6b21a8', Listed:'#3B6D11', 'Under Contract':'#2D6FAF', Sold:'#3B6D11',
   'Rent Ready':'#B8892A', Leased:'#3B6D11', 'Reno In Progress':'#D97825', 'Reno Completed':'#B8892A',
   Assigned:'#6b21a8', Closed:'#3B6D11',
