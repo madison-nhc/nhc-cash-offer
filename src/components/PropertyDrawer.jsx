@@ -306,8 +306,8 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
   const TABS = [
     { key:'analyzer',    label:'Analyzer' },
     { key:'acquisition', label:'Acquisition' },
-    { key:'rehab',       label:'Rehab' },
     ...(showLoanTab ? [{ key:'loan', label:'Loan' }] : []),
+    { key:'rehab',       label:'Rehab' },
     ...(showRentTab ? [{ key:'rent', label:'Lease' }] : []),
     { key:'disposition', label:'Disposition' },
   ]
@@ -553,19 +553,14 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
       {/* ══════════════ ACQUISITION TAB ══════════════ */}
       {tab==='acquisition' && (
         <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
-          <div className="drawer-section">Purchase</div>
-          <FieldRow>
-            <Field label="Purchase Price ($)"><input style={monoInp} type="number" value={form.purchase_price||''} onChange={set('purchase_price')} /></Field>
-            <Field label="Purchase Date"><DatePicker style={inp} value={form.purchase_date||''} onChange={set('purchase_date')} /></Field>
-          </FieldRow>
           <Toggle
             on={form.acquisition_type==='Pre-Owned'}
             onToggle={()=>setVal('acquisition_type', form.acquisition_type==='Pre-Owned' ? 'Purchased' : 'Pre-Owned')}
             label="Pre-Owned"
-            sub="Already owned before this deal, not purchased on the open market"
+            sub="This property was already in Bob or Eric's personal portfolio — it's not being purchased through this deal."
           />
 
-          {form.acquisition_type==='Pre-Owned' && (
+          {form.acquisition_type==='Pre-Owned' ? (
             <div style={{ background:'#FAFAF8', borderRadius:8, padding:'12px 14px', border:'0.5px solid #D6D2CA' }}>
               <div style={{ fontSize:11, fontWeight:700, color:'#6b7280', textTransform:'uppercase', letterSpacing:0.8, marginBottom:4 }}>Known History (Optional)</div>
               <div style={{ fontSize:11, color:'#9ca3af', marginBottom:10 }}>
@@ -577,6 +572,14 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
               </FieldRow>
               <Field label="Notes"><textarea style={{ ...inp, minHeight:52, resize:'vertical' }} value={form.prior_history_notes||''} onChange={set('prior_history_notes')} placeholder="e.g. bought in 2019, kitchen redone in 2021" /></Field>
             </div>
+          ) : (
+            <>
+              <div className="drawer-section">Purchase</div>
+              <FieldRow>
+                <Field label="Purchase Price ($)"><input style={monoInp} type="number" value={form.purchase_price||''} onChange={set('purchase_price')} /></Field>
+                <Field label="Purchase Date"><DatePicker style={inp} value={form.purchase_date||''} onChange={set('purchase_date')} /></Field>
+              </FieldRow>
+            </>
           )}
 
           <div className="drawer-section">Closing Costs</div>
@@ -938,6 +941,7 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
     </Drawer>
   )
 }
+
 
 
 
