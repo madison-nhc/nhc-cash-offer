@@ -621,7 +621,7 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
           </div>
 
           {form.id ? (<>
-            <RehabStatCards propertyId={form.id} onOpenFull={()=>setRehabOpen(true)} />
+            <RehabStatCards propertyId={form.id} onOpenFull={()=>setRehabOpen(true)} closingDate={form.disposition_date || form.sale_date || null} />
           </>) : (
             <div style={{ background:'#F0EDE6', borderRadius:8, padding:'14px', textAlign:'center', fontSize:12, color:'#9ca3af' }}>
               Save the property first to track rehab line items.
@@ -920,6 +920,7 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
     </Drawer>
   )
 }
+
 
 
 

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase.js'
-import { fmt } from './ui.jsx'
+import { fmt, calcOwed, PARTNERS } from './ui.jsx'
 
 const PAID_BY_COLOR = { Bob: '#2D6FAF', Eric: '#D97825', BPV: '#B8892A' }
 
@@ -25,10 +25,11 @@ function StatCard({ topColor, label, value, sub, onClick }) {
   )
 }
 
-export default function RehabStatCards({ propertyId, onOpenFull }) {
+export default function RehabStatCards({ propertyId, onOpenFull, closingDate }) {
   const [items, setItems]       = useState([])
   const [supplies, setSupplies] = useState([])
   const [bills, setBills]       = useState([])
+  const [repayments, setRepayments] = useState([])
   const [loading, setLoading]   = useState(true)
 
   useEffect(() => { if (propertyId) load() }, [propertyId])
@@ -36,13 +37,25 @@ export default function RehabStatCards({ propertyId, onOpenFull }) {
   async function load() {
     setLoading(true)
     const [i, s, b] = await Promise.all([
-      supabase.from('cashoffer_rehab_items').select('status, estimated_cost, actual_cost, paid_by').eq('property_id', propertyId),
-      supabase.from('cashoffer_supplies').select('status, unit_cost, quantity, paid_by').eq('property_id', propertyId),
-      supabase.from('cashoffer_utility_bills').select('amount, paid_by').eq('property_id', propertyId),
+      supabase.from('cashoffer_rehab_items').select('id, status, estimated_cost, actual_cost, paid_by, date_paid').eq('property_id', propertyId),
+      supabase.from('cashoffer_supplies').select('id, status, unit_cost, quantity, paid_by, date_paid').eq('property_id', propertyId),
+      supabase.from('cashoffer_utility_bills').select('id, amount, paid_by, date_paid').eq('property_id', propertyId),
     ])
     setItems(i.data || [])
     setSupplies(s.data || [])
     setBills(b.data || [])
+
+    const ids = [
+      ...(i.data||[]).map(r=>r.id),
+      ...(s.data||[]).map(r=>r.id),
+      ...(b.data||[]).map(r=>r.id),
+    ]
+    if (ids.length) {
+      const { data: rp } = await supabase.from('cashoffer_partner_repayments').select('*').in('source_id', ids)
+      setRepayments(rp || [])
+    } else {
+      setRepayments([])
+    }
     setLoading(false)
   }
 
@@ -75,10 +88,21 @@ export default function RehabStatCards({ propertyId, onOpenFull }) {
 
   const utilitiesTotal = bills.reduce((s,b)=>s+(parseFloat(b.amount)||0), 0)
 
-  const paidByTotals = { Bob:0, Eric:0, BPV:0 }
-  items.forEach(r => { if (paidByTotals[r.paid_by] !== undefined) paidByTotals[r.paid_by] += itemCost(r) })
-  supplies.forEach(r => { if (paidByTotals[r.paid_by] !== undefined) paidByTotals[r.paid_by] += supplyCost(r) })
-  bills.forEach(b => { if (paidByTotals[b.paid_by] !== undefined) paidByTotals[b.paid_by] += parseFloat(b.amount)||0 })
+  // Principal + accrued interest per person
+  const paidByPrincipal = { Bob:0, Eric:0, BPV:0 }
+  const paidByInterest  = { Bob:0, Eric:0, BPV:0 }
+  function addRow(who, amount, datePaid, sourceId) {
+    if (paidByPrincipal[who] === undefined) return
+    paidByPrincipal[who] += amount
+    if (PARTNERS.includes(who)) {
+      const rp = repayments.filter(r => r.source_id === sourceId)
+      const { accruedInterest } = calcOwed(amount, datePaid, rp, closingDate ? new Date(Math.min(new Date(), new Date(closingDate+'T12:00:00'))) : new Date())
+      paidByInterest[who] += accruedInterest
+    }
+  }
+  items.forEach(r => addRow(r.paid_by, itemCost(r), r.date_paid, r.id))
+  supplies.forEach(r => addRow(r.paid_by, supplyCost(r), r.date_paid, r.id))
+  bills.forEach(r => addRow(r.paid_by, parseFloat(r.amount)||0, r.date_paid, r.id))
 
   return (
     <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
@@ -99,23 +123,29 @@ export default function RehabStatCards({ propertyId, onOpenFull }) {
           onClick={onOpenFull}
         />
       </div>
-      <div
-        onClick={onOpenFull}
-        style={{ background:'#fff', borderRadius:8, padding:'12px 14px', cursor:'pointer', border:'0.5px solid #D6D2CA', borderTop:'3px solid #6b21a8', transition:'border-color 0.15s' }}
-        onMouseEnter={e=>e.currentTarget.style.borderColor='#6b21a8'}
-        onMouseLeave={e=>e.currentTarget.style.borderColor='#D6D2CA'}
-      >
-        <div style={{ fontSize:10, fontWeight:700, color:'#9ca3af', textTransform:'uppercase', letterSpacing:0.8, marginBottom:8 }}>Who's In</div>
-        <div style={{ display:'flex', justifyContent:'space-between' }}>
-          {Object.entries(paidByTotals).map(([who, total]) => (
-            <div key={who}>
-              <div style={{ fontSize:10, fontWeight:700, color:PAID_BY_COLOR[who] }}>{who}</div>
-              <div style={{ fontSize:16, fontWeight:700, color:'#2C2C2C', fontFamily:'monospace' }}>{fmt(total)}</div>
-            </div>
-          ))}
-        </div>
+
+      <div style={{ fontSize:11, fontWeight:700, color:'#9ca3af', textTransform:'uppercase', letterSpacing:0.8, marginTop:2 }}>Who's In</div>
+      <div style={{ display:'grid', gridTemplateColumns:'repeat(3, 1fr)', gap:10 }}>
+        {Object.keys(paidByPrincipal).map(who => (
+          <div
+            key={who}
+            onClick={onOpenFull}
+            style={{ background:'#fff', borderRadius:8, padding:'12px 14px', cursor:'pointer', border:'0.5px solid #D6D2CA', borderTop:`3px solid ${PAID_BY_COLOR[who]}`, transition:'border-color 0.15s' }}
+            onMouseEnter={e=>e.currentTarget.style.borderColor=PAID_BY_COLOR[who]}
+            onMouseLeave={e=>e.currentTarget.style.borderColor='#D6D2CA'}
+          >
+            <div style={{ fontSize:10, fontWeight:700, color:PAID_BY_COLOR[who], textTransform:'uppercase', letterSpacing:0.6, marginBottom:6 }}>{who}</div>
+            <div style={{ fontSize:9, color:'#9ca3af', textTransform:'uppercase', letterSpacing:0.5 }}>Amount</div>
+            <div style={{ fontSize:16, fontWeight:700, color:'#2C2C2C', fontFamily:'monospace', marginBottom:6 }}>{fmt(paidByPrincipal[who])}</div>
+            {PARTNERS.includes(who) && (
+              <>
+                <div style={{ fontSize:9, color:'#9ca3af', textTransform:'uppercase', letterSpacing:0.5 }}>Interest</div>
+                <div style={{ fontSize:14, fontWeight:700, color:'#B8892A', fontFamily:'monospace' }}>{fmt(paidByInterest[who])}</div>
+              </>
+            )}
+          </div>
+        ))}
       </div>
     </div>
   )
 }
-
