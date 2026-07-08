@@ -4,18 +4,13 @@ import { fmt, calcOwed } from './ui.jsx'
 
 const PAID_BY_COLOR = { Bob: '#2D6FAF', Eric: '#D97825', BPV: '#B8892A' }
 
-function StatCard({ topColor, label, value, sub, onClick }) {
-  const [hover, setHover] = useState(false)
+function StatCard({ topColor, label, value, sub }) {
   return (
     <div
-      onClick={onClick}
-      onMouseEnter={()=>setHover(true)}
-      onMouseLeave={()=>setHover(false)}
       style={{
-        background:'#fff', borderRadius:8, padding:'12px 14px', cursor:'pointer',
-        border: hover ? `1.5px solid ${topColor}` : '0.5px solid #D6D2CA',
+        background:'#fff', borderRadius:8, padding:'12px 14px',
+        border:'0.5px solid #D6D2CA',
         borderTop:`3px solid ${topColor}`,
-        transition:'border-color 0.15s',
       }}
     >
       <div style={{ fontSize:10, fontWeight:700, color:'#9ca3af', textTransform:'uppercase', letterSpacing:0.8, marginBottom:6 }}>{label}</div>
@@ -108,21 +103,26 @@ export default function RehabStatCards({ propertyId, onOpenFull, closingDate }) 
 
   return (
     <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+      <button onClick={onOpenFull} style={{
+        background:'#B8892A', color:'#fff', border:'none', borderRadius:8, padding:'10px 14px',
+        fontSize:12.5, fontWeight:700, cursor:'pointer', fontFamily:'inherit',
+        display:'flex', alignItems:'center', justifyContent:'center', gap:6,
+      }}>
+        Open Rehab Dashboard <span>→</span>
+      </button>
+
       <div style={{ display:'grid', gridTemplateColumns:'repeat(3, 1fr)', gap:10 }}>
         <StatCard
           topColor="#B8892A" label="Services" value={fmt(servicesTotal)}
           sub={`${servicesDone} of ${items.length} completed`}
-          onClick={onOpenFull}
         />
         <StatCard
           topColor="#2D6FAF" label="Supplies" value={fmt(suppliesTotal)}
           sub={`${suppliesReceived} of ${supplies.length} received`}
-          onClick={onOpenFull}
         />
         <StatCard
           topColor="#3B6D11" label="Utilities" value={fmt(utilitiesTotal)}
           sub={`${bills.length} bill${bills.length===1?'':'s'} logged`}
-          onClick={onOpenFull}
         />
       </div>
 
@@ -132,10 +132,7 @@ export default function RehabStatCards({ propertyId, onOpenFull, closingDate }) 
         const PersonCard = (who) => (
           <div
             key={who}
-            onClick={onOpenFull}
-            style={{ background:'#fff', borderRadius:8, padding:'12px 14px', cursor:'pointer', border:'0.5px solid #D6D2CA', borderTop:`3px solid ${PAID_BY_COLOR[who]||'#9ca3af'}`, transition:'border-color 0.15s' }}
-            onMouseEnter={e=>e.currentTarget.style.borderColor=PAID_BY_COLOR[who]||'#9ca3af'}
-            onMouseLeave={e=>e.currentTarget.style.borderColor='#D6D2CA'}
+            style={{ background:'#fff', borderRadius:8, padding:'12px 14px', border:'0.5px solid #D6D2CA', borderTop:`3px solid ${PAID_BY_COLOR[who]||'#9ca3af'}` }}
           >
             <div style={{ fontSize:10, fontWeight:700, color:PAID_BY_COLOR[who]||'#9ca3af', textTransform:'uppercase', letterSpacing:0.6, marginBottom:6 }}>{who}</div>
             <div style={{ fontSize:9, color:'#9ca3af', textTransform:'uppercase', letterSpacing:0.5 }}>Amount</div>
