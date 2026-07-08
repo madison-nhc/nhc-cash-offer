@@ -240,6 +240,8 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
       commission_min:form.commission_min||5000,
       nhc_notes:form.nhc_notes||null,
       purchase_price:form.purchase_price||null, closing_costs:form.closing_costs||null,
+      prior_acquisition_cost:form.prior_acquisition_cost||null, prior_renovation_cost:form.prior_renovation_cost||null,
+      prior_history_notes:form.prior_history_notes||null,
       closing_costs_paid_by:form.closing_costs_paid_by||null, closing_costs_date_paid:form.closing_costs_date_paid||null,
       rehab_cost:rehab, sale_price:form.sale_price||null, sale_date:form.sale_date||null,
       days_on_market:form.days_on_market||null, bpv_notes:form.bpv_notes||null,
@@ -562,6 +564,20 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
             label="Pre-Owned"
             sub="Already owned before this deal, not purchased on the open market"
           />
+
+          {form.acquisition_type==='Pre-Owned' && (
+            <div style={{ background:'#FAFAF8', borderRadius:8, padding:'12px 14px', border:'0.5px solid #D6D2CA' }}>
+              <div style={{ fontSize:11, fontWeight:700, color:'#6b7280', textTransform:'uppercase', letterSpacing:0.8, marginBottom:4 }}>Known History (Optional)</div>
+              <div style={{ fontSize:11, color:'#9ca3af', marginBottom:10 }}>
+                No purchase price is tracked for pre-owned properties. If you happen to know what was originally paid or already renovated, jot it down here — it's not used in any calculations yet, just kept for reference.
+              </div>
+              <FieldRow>
+                <Field label="Original Acquisition Cost ($)"><input style={monoInp} type="number" value={form.prior_acquisition_cost||''} onChange={set('prior_acquisition_cost')} /></Field>
+                <Field label="Prior Renovation Spend ($)"><input style={monoInp} type="number" value={form.prior_renovation_cost||''} onChange={set('prior_renovation_cost')} /></Field>
+              </FieldRow>
+              <Field label="Notes"><textarea style={{ ...inp, minHeight:52, resize:'vertical' }} value={form.prior_history_notes||''} onChange={set('prior_history_notes')} placeholder="e.g. bought in 2019, kitchen redone in 2021" /></Field>
+            </div>
+          )}
 
           <div className="drawer-section">Closing Costs</div>
           <div style={{ fontSize:11, color:'#9ca3af', marginTop:-8 }}>
@@ -922,6 +938,7 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
     </Drawer>
   )
 }
+
 
 
 
