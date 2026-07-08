@@ -480,11 +480,11 @@ export default function RentTracker({ propertyId, propertyAddress, open, onClose
             <div style={{ fontSize:11, color:'#9ca3af', marginBottom:8 }}>Turnover/make-ready costs between tenants — cleaning, repairs, touch-up paint, etc.</div>
             {expenses.length > 0 && (
               <div style={{ border:'0.5px solid #D6D2CA', borderRadius:8, overflow:'hidden', marginBottom:8 }}>
-                <div style={{ display:'grid', gridTemplateColumns:'2fr 1.4fr 0.9fr 0.8fr 0.9fr 1.1fr 0.9fr 28px', background:'#F0EDE6', padding:'6px 10px' }}>
-                  {['Name','Vendor','Status','Amount','Paid By','Date Paid','Interest',''].map((h,idx)=><div key={h} style={{ fontSize:10, fontWeight:600, color:'#6b7280', textTransform:'uppercase', textAlign: idx===3?'right':'left' }}>{h}</div>)}
+                <div style={{ display:'grid', gridTemplateColumns:'2fr 1.4fr 0.9fr 0.9fr 0.9fr 1.1fr 0.9fr 28px', gap:14, background:'#F0EDE6', padding:'8px 10px' }}>
+                  {['Name','Vendor','Status','Amount','Paid By','Date Paid','Interest',''].map(h=><div key={h} style={{ fontSize:10, fontWeight:600, color:'#6b7280', textTransform:'uppercase' }}>{h}</div>)}
                 </div>
                 {expenses.map((e,i) => (
-                  <div key={e.id} style={{ display:'grid', gridTemplateColumns:'2fr 1.4fr 0.9fr 0.8fr 0.9fr 1.1fr 0.9fr 28px', padding:'6px 10px', alignItems:'center', background:i%2===0?'#fff':'#FAFAF8', borderTop:i>0?'0.5px solid #F0EDE6':'none' }}>
+                  <div key={e.id} style={{ display:'grid', gridTemplateColumns:'2fr 1.4fr 0.9fr 0.9fr 0.9fr 1.1fr 0.9fr 28px', gap:14, padding:'8px 10px', alignItems:'center', background:i%2===0?'#fff':'#FAFAF8', borderTop:i>0?'0.5px solid #F0EDE6':'none' }}>
                     <input style={{ ...inp, fontSize:12, padding:'4px 6px', marginRight:6 }} value={e.name||''} onChange={ev=>updateExpense(e.id,'name',ev.target.value)} />
                     <input style={{ ...inp, fontSize:12, padding:'4px 6px', marginRight:6 }} value={e.vendor||''} onChange={ev=>updateExpense(e.id,'vendor',ev.target.value)} />
                     <select style={{ border:'0.5px solid #D6D2CA', borderRadius:4, padding:'4px 6px', fontSize:11, color:TURN_STATUS_COLORS[e.status], fontWeight:700, marginRight:6, background:'#fff' }} value={e.status||'Scheduled'} onChange={ev=>updateExpense(e.id,'status',ev.target.value)}>
