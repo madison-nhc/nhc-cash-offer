@@ -121,6 +121,18 @@ export default function App() {
   const [active, setActive] = useState(initialTab)
   const [targetProperty, setTargetProperty] = useState(null)
   const [newPropertyOpen, setNewPropertyOpen] = useState(false)
+
+  // Number inputs respond to mouse-wheel scroll when focused, silently changing the value —
+  // this blurs the field on scroll instead, app-wide, so scrolling the page never edits a number.
+  useEffect(() => {
+    function onWheel(e) {
+      if (document.activeElement && document.activeElement.type === 'number') {
+        document.activeElement.blur()
+      }
+    }
+    document.addEventListener('wheel', onWheel, { passive: true })
+    return () => document.removeEventListener('wheel', onWheel)
+  }, [])
   const mobile = useIsMobile()
 
   const navigate = useCallback((tab) => {
@@ -274,5 +286,6 @@ export default function App() {
     </div>
   )
 }
+
 
 
