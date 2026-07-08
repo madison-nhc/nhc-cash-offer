@@ -124,6 +124,33 @@ function ProfitBox({ label, value, sub, color }) {
   )
 }
 
+function LoanVsPurchaseCheck({ propertyId, purchasePrice, downPayment }) {
+  const [loanTotal, setLoanTotal] = useState(null)
+  useEffect(() => {
+    if (!propertyId) return
+    supabase.from('cashoffer_loans').select('loan_amount').eq('property_id', propertyId).eq('is_active', true)
+      .then(({ data }) => setLoanTotal((data||[]).reduce((s,l)=>s+(parseFloat(l.loan_amount)||0), 0)))
+  }, [propertyId])
+
+  if (loanTotal === null || loanTotal === 0) return null
+  const pp = parseFloat(purchasePrice) || 0
+  const dp = parseFloat(downPayment) || 0
+  const combined = loanTotal + dp
+  const diff = pp - combined
+  const matches = pp > 0 && Math.abs(diff) < 1
+
+  return (
+    <div style={{ fontSize:11, padding:'8px 12px', borderRadius:6, background: matches ? '#eef7ea' : '#fff3cd', color: matches ? '#3B6D11' : '#856404', display:'flex', justifyContent:'space-between', gap:10, flexWrap:'wrap' }}>
+      <span>Loan ({fmt(loanTotal)}) + Down Payment ({fmt(dp)}) = {fmt(combined)}</span>
+      {pp > 0 && (
+        <span style={{ fontWeight:700 }}>
+          {matches ? '✓ Matches Purchase Price' : `${diff > 0 ? 'Short by' : 'Over by'} ${fmt(Math.abs(diff))} vs Purchase Price`}
+        </span>
+      )}
+    </div>
+  )
+}
+
 function Toggle({ on, onToggle, label, sub }) {
   return (
     <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'10px 0' }}>
@@ -243,6 +270,7 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
       prior_acquisition_cost:form.prior_acquisition_cost||null, prior_renovation_cost:form.prior_renovation_cost||null,
       prior_history_notes:form.prior_history_notes||null,
       closing_costs_paid_by:form.closing_costs_paid_by||null, closing_costs_date_paid:form.closing_costs_date_paid||null,
+      down_payment:form.down_payment||null, down_payment_paid_by:form.down_payment_paid_by||null, down_payment_date_paid:form.down_payment_date_paid||null,
       rehab_cost:rehab, sale_price:form.sale_price||null, sale_date:form.sale_date||null,
       days_on_market:form.days_on_market||null, bpv_notes:form.bpv_notes||null,
       purchase_date:form.purchase_date||null, sold_date:form.sold_date||null,
@@ -431,32 +459,6 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
             )}
           </FieldRow>
 
-          <div style={{ background:'#FAFAF8', borderRadius:8, padding:'4px 14px 12px', border:'0.5px solid #D6D2CA' }}>
-            <Toggle
-              on={!!form.post_occupancy}
-              onToggle={()=>setForm(f=>({
-                ...f,
-                post_occupancy: f.post_occupancy ? null : 'owner',
-                ...(f.post_occupancy ? { post_occupancy_end_date:null, post_occupancy_months:null, post_occupancy_payment:null } : {}),
-              }))}
-              label="Post-Occupancy"
-              sub="Seller stays in the home after closing"
-            />
-            {form.post_occupancy && (<>
-              <Field label="Type">
-                <select style={inp} value={form.post_occupancy||'owner'} onChange={e=>setVal('post_occupancy',e.target.value)}>
-                  <option value="owner">Owner Staying</option>
-                  <option value="renting_back">Renting Back</option>
-                </select>
-              </Field>
-              <FieldRow>
-                <Field label="# of Months"><input style={monoInp} type="number" value={form.post_occupancy_months||''} onChange={set('post_occupancy_months')} /></Field>
-                <Field label="Payment ($)"><input style={monoInp} type="number" value={form.post_occupancy_payment||''} onChange={set('post_occupancy_payment')} /></Field>
-              </FieldRow>
-              <Field label="End Date"><DatePicker style={inp} value={form.post_occupancy_end_date||''} onChange={set('post_occupancy_end_date')} /></Field>
-            </>)}
-          </div>
-
           <div className="drawer-section">Valuation</div>
           <Field label="After Renovation Value ($)">
             <input style={{ ...monoInp, borderLeft:'3px solid #D97825' }} type="number" value={form.arv||''} onChange={set('arv')} />
@@ -579,11 +581,25 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
                 <Field label="Purchase Price ($)"><input style={monoInp} type="number" value={form.purchase_price||''} onChange={set('purchase_price')} /></Field>
                 <Field label="Purchase Date"><DatePicker style={inp} value={form.purchase_date||''} onChange={set('purchase_date')} /></Field>
               </FieldRow>
-            </>
-          )}
 
-          {form.acquisition_type!=='Pre-Owned' && (
-            <>
+              <div className="drawer-section">Down Payment</div>
+              <div style={{ fontSize:11, color:'#9ca3af', marginTop:-8 }}>
+                The cash portion of the purchase not covered by the loan. Separate from Closing Costs.
+              </div>
+              <FieldRow>
+                <Field label="Down Payment ($)"><input style={monoInp} type="number" value={form.down_payment||''} onChange={set('down_payment')} /></Field>
+                <Field label="Paid By">
+                  <select style={inp} value={form.down_payment_paid_by||''} onChange={set('down_payment_paid_by')}>
+                    <option value="">—</option>
+                    {PAID_BY_OPTIONS.map(p=><option key={p} value={p}>{p}</option>)}
+                  </select>
+                </Field>
+              </FieldRow>
+              {PARTNERS.includes(form.down_payment_paid_by) && (
+                <Field label="Date Paid"><DatePicker style={inp} value={form.down_payment_date_paid||''} onChange={set('down_payment_date_paid')} /></Field>
+              )}
+              <LoanVsPurchaseCheck propertyId={form.id} purchasePrice={form.purchase_price} downPayment={form.down_payment} />
+
               <div className="drawer-section">Closing Costs</div>
               <div style={{ fontSize:11, color:'#9ca3af', marginTop:-8 }}>
                 This is the same figure shown on the Rehab tab — editing it here updates it there too.
@@ -600,6 +616,32 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
               {PARTNERS.includes(form.closing_costs_paid_by) && (
                 <Field label="Date Paid"><DatePicker style={inp} value={form.closing_costs_date_paid||''} onChange={set('closing_costs_date_paid')} /></Field>
               )}
+
+              <div style={{ background:'#FAFAF8', borderRadius:8, padding:'4px 14px 12px', border:'0.5px solid #D6D2CA' }}>
+                <Toggle
+                  on={!!form.post_occupancy}
+                  onToggle={()=>setForm(f=>({
+                    ...f,
+                    post_occupancy: f.post_occupancy ? null : 'owner',
+                    ...(f.post_occupancy ? { post_occupancy_end_date:null, post_occupancy_months:null, post_occupancy_payment:null } : {}),
+                  }))}
+                  label="Post-Occupancy"
+                  sub="Seller stays in the home after closing"
+                />
+                {form.post_occupancy && (<>
+                  <Field label="Type">
+                    <select style={inp} value={form.post_occupancy||'owner'} onChange={e=>setVal('post_occupancy',e.target.value)}>
+                      <option value="owner">Owner Staying</option>
+                      <option value="renting_back">Renting Back</option>
+                    </select>
+                  </Field>
+                  <FieldRow>
+                    <Field label="# of Months"><input style={monoInp} type="number" value={form.post_occupancy_months||''} onChange={set('post_occupancy_months')} /></Field>
+                    <Field label="Payment ($)"><input style={monoInp} type="number" value={form.post_occupancy_payment||''} onChange={set('post_occupancy_payment')} /></Field>
+                  </FieldRow>
+                  <Field label="End Date"><DatePicker style={inp} value={form.post_occupancy_end_date||''} onChange={set('post_occupancy_end_date')} /></Field>
+                </>)}
+              </div>
             </>
           )}
         </div>
@@ -945,6 +987,7 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
     </Drawer>
   )
 }
+
 
 
 

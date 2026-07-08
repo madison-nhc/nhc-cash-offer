@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
 import { supabase } from '../lib/supabase.js'
-import { Modal, Field, FieldRow, inp, monoInp, Btn, fmt, fmtK, DatePicker } from './ui.jsx'
+import { Modal, Field, FieldRow, inp, monoInp, Btn, fmt, fmtK, DatePicker, PAID_BY_OPTIONS, PARTNERS, PartnerLedger, NoPartnerCells } from './ui.jsx'
 
 // ── Amortization engine ───────────────────────────────────────────────────────
 // Returns array of { month, payment, principal, interest, balance } for every month
@@ -166,6 +166,76 @@ function AmortizationTable({ schedule, startDate }) {
           <div />
         </div>
       </div>
+    </div>
+  )
+}
+
+function LoanPaymentsLog({ loanId, closingDate }) {
+  const [payments, setPayments] = useState([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => { load() }, [loanId])
+
+  async function load() {
+    setLoading(true)
+    const { data } = await supabase.from('cashoffer_loan_payments').select('*').eq('loan_id', loanId).order('due_date', { ascending: true })
+    setPayments(data || [])
+    setLoading(false)
+  }
+
+  async function addPayment() {
+    const { data } = await supabase.from('cashoffer_loan_payments').insert({ loan_id: loanId, amount: 0, paid_by: 'BPV' }).select().single()
+    if (data) setPayments(p => [...p, data])
+  }
+  async function updatePayment(id, field, value) {
+    setPayments(p => p.map(x => x.id===id ? {...x,[field]:value} : x))
+    await supabase.from('cashoffer_loan_payments').update({ [field]: value }).eq('id', id)
+  }
+  async function removePayment(id) {
+    await supabase.from('cashoffer_loan_payments').delete().eq('id', id)
+    setPayments(p => p.filter(x => x.id!==id))
+  }
+
+  if (loading) return null
+
+  return (
+    <div style={{ marginTop:16 }}>
+      <div style={{ fontSize:11, fontWeight:700, color:'#B8892A', textTransform:'uppercase', letterSpacing:0.8, marginBottom:6 }}>
+        Loan Payments — who covered each one
+      </div>
+      <div style={{ fontSize:10, color:'#9ca3af', marginBottom:8 }}>
+        Log each monthly principal+interest payment. If Bob or Eric covered it personally, we track what's owed back to them (that amount + our 10%/yr) separately from the bank's own interest above.
+      </div>
+      {payments.length > 0 && (
+        <div style={{ border:'0.5px solid #D6D2CA', borderRadius:8, overflow:'hidden', marginBottom:8 }}>
+          <div style={{ display:'grid', gridTemplateColumns:'110px 90px 90px 115px 90px 24px', background:'#F0EDE6', padding:'6px 10px' }}>
+            {['Due Date','Amount','Paid By','Date Paid','Interest',''].map(h=><div key={h} style={{ fontSize:10, fontWeight:600, color:'#6b7280', textTransform:'uppercase' }}>{h}</div>)}
+          </div>
+          {payments.map((p,i) => (
+            <div key={p.id} style={{ display:'grid', gridTemplateColumns:'110px 90px 90px 115px 90px 24px', padding:'6px 10px', alignItems:'center', background:i%2===0?'#fff':'#FAFAF8', borderTop:i>0?'0.5px solid #F0EDE6':'none' }}>
+              <DatePicker value={p.due_date||''} onChange={e=>updatePayment(p.id,'due_date',e.target.value)} style={{ fontSize:11, padding:'4px 6px', marginRight:6 }} />
+              <div style={{ position:'relative', marginRight:6 }}>
+                <span style={{ position:'absolute', left:6, top:'50%', transform:'translateY(-50%)', fontSize:12, color:'#9ca3af', fontFamily:'monospace', pointerEvents:'none' }}>$</span>
+                <input style={{ ...monoInp, fontSize:12, padding:'4px 6px 4px 16px', textAlign:'right', width:'100%' }} type="number" value={p.amount??''} onChange={e=>updatePayment(p.id,'amount', e.target.value===''?0:parseFloat(e.target.value)||0)} />
+              </div>
+              <select value={p.paid_by||'BPV'} onChange={e=>updatePayment(p.id,'paid_by',e.target.value)} style={{ border:'0.5px solid #D6D2CA', borderRadius:4, padding:'4px 6px', fontSize:11, fontFamily:'inherit', background:'#fff', cursor:'pointer', marginRight:6 }}>
+                {PAID_BY_OPTIONS.map(o=><option key={o} value={o}>{o}</option>)}
+              </select>
+              {PARTNERS.includes(p.paid_by) ? (
+                <PartnerLedger
+                  sourceType="loan_payment" sourceId={p.id}
+                  originalAmount={p.amount}
+                  datePaid={p.date_paid}
+                  onDatePaidChange={v=>updatePayment(p.id,'date_paid',v)}
+                  closingDate={closingDate}
+                />
+              ) : <NoPartnerCells />}
+              <button onClick={()=>removePayment(p.id)} style={{ background:'none', border:'none', color:'#D6D2CA', cursor:'pointer', fontSize:18, padding:0 }}>×</button>
+            </div>
+          ))}
+        </div>
+      )}
+      <button onClick={addPayment} style={{ background:'transparent', border:'1px dashed #D6D2CA', borderRadius:6, padding:'7px', color:'#9ca3af', fontSize:12, cursor:'pointer', fontFamily:'inherit', width:'100%' }}>+ Add Payment</button>
     </div>
   )
 }
@@ -445,6 +515,8 @@ export default function LoanTracker({ propertyId, propertyAddress, open, onClose
             />
           </div>
 
+          <LoanPaymentsLog loanId={focusLoan.id} closingDate={null} />
+
           <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginTop:18, paddingTop:16, borderTop:'1px solid #F0EDE6' }}>
             <Btn variant="danger" onClick={async ()=>{ await deleteLoan(focusLoan.id); onClose() }}>Delete Loan</Btn>
             <div style={{ display:'flex', alignItems:'center', gap:8 }}>
@@ -464,6 +536,7 @@ export default function LoanTracker({ propertyId, propertyAddress, open, onClose
     </Modal>
   )
 }
+
 
 
 
