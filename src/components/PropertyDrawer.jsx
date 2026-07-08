@@ -124,6 +124,52 @@ function ProfitBox({ label, value, sub, color }) {
   )
 }
 
+// Money input with a fixed "$" prefix baked into the field, instead of the unit in the label
+function MoneyInput({ value, onChange, disabled=false }) {
+  return (
+    <div style={{ position:'relative' }}>
+      <span style={{
+        position:'absolute', left:10, top:'50%', transform:'translateY(-50%)',
+        fontSize:13, fontFamily:"'DM Mono', monospace", color:disabled?'#c7c2b8':'#9ca3af', pointerEvents:'none',
+      }}>$</span>
+      <input
+        style={{ ...monoInp, paddingLeft:20, background:disabled?'#F0EDE6':monoInp.background, color:disabled?'#9ca3af':monoInp.color }}
+        type="number" value={value||''} onChange={onChange} disabled={disabled}
+      />
+    </div>
+  )
+}
+
+// Read-only, clickable snapshot of Acquisition-tab data shown inside Disposition
+function AcquisitionSummaryCard({ rows, onClick }) {
+  return (
+    <div
+      onClick={onClick}
+      style={{
+        background:'#FAFAF8', borderRadius:8, border:'0.5px solid #D6D2CA',
+        cursor:'pointer', transition:'border-color 0.15s, background 0.15s',
+      }}
+      onMouseEnter={e=>{ e.currentTarget.style.borderColor='#B8892A'; e.currentTarget.style.background='#FAF6EC' }}
+      onMouseLeave={e=>{ e.currentTarget.style.borderColor='#D6D2CA'; e.currentTarget.style.background='#FAFAF8' }}
+    >
+      <div style={{ display:'flex', flexDirection:'column' }}>
+        {rows.map((r,i)=>(
+          <div key={r.label} style={{
+            display:'flex', justifyContent:'space-between', alignItems:'center',
+            padding:'8px 14px', borderTop: i===0 ? 'none' : '0.5px solid #E8E4DB',
+          }}>
+            <span style={{ fontSize:11, color:'#9ca3af', textTransform:'uppercase', letterSpacing:0.5 }}>{r.label}</span>
+            <span style={{ fontSize:13, fontFamily:"'DM Mono', monospace", fontWeight:600, color:'#4b5563' }}>{r.value||'—'}</span>
+          </div>
+        ))}
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:5, padding:'6px 14px', borderTop:'0.5px solid #E8E4DB', fontSize:10, color:'#B8892A', fontWeight:700 }}>
+          Edit on Acquisition tab <span>→</span>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function LoanVsPurchaseCheck({ propertyId, purchasePrice, downPayment }) {
   const [loanTotal, setLoanTotal] = useState(null)
   useEffect(() => {
@@ -585,8 +631,8 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
                 No purchase price is tracked for pre-owned properties. If you happen to know what was originally paid or already renovated, jot it down here — it's not used in any calculations yet, just kept for reference.
               </div>
               <FieldRow>
-                <Field label="Original Acquisition Cost ($)"><input style={monoInp} type="number" value={form.prior_acquisition_cost||''} onChange={set('prior_acquisition_cost')} /></Field>
-                <Field label="Prior Renovation Spend ($)"><input style={monoInp} type="number" value={form.prior_renovation_cost||''} onChange={set('prior_renovation_cost')} /></Field>
+                <Field label="Original Acquisition Cost"><MoneyInput value={form.prior_acquisition_cost} onChange={set('prior_acquisition_cost')} /></Field>
+                <Field label="Prior Renovation Spend"><MoneyInput value={form.prior_renovation_cost} onChange={set('prior_renovation_cost')} /></Field>
               </FieldRow>
               <Field label="Notes"><textarea style={{ ...inp, minHeight:52, resize:'vertical' }} value={form.prior_history_notes||''} onChange={set('prior_history_notes')} placeholder="e.g. bought in 2019, kitchen redone in 2021" /></Field>
             </div>
@@ -594,7 +640,7 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
             <>
               <div className="drawer-section">Purchase</div>
               <FieldRow>
-                <Field label="Purchase Price ($)"><input style={monoInp} type="number" value={form.purchase_price||''} onChange={set('purchase_price')} /></Field>
+                <Field label="Purchase Price"><MoneyInput value={form.purchase_price} onChange={set('purchase_price')} /></Field>
                 <Field label="Purchase Date"><DatePicker style={inp} value={form.purchase_date||''} onChange={set('purchase_date')} /></Field>
               </FieldRow>
 
@@ -603,7 +649,7 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
                 The cash portion of the purchase not covered by the loan. Separate from Closing Costs.
               </div>
               <FieldRow>
-                <Field label="Down Payment ($)"><input style={monoInp} type="number" value={form.down_payment||''} onChange={set('down_payment')} /></Field>
+                <Field label="Down Payment"><MoneyInput value={form.down_payment} onChange={set('down_payment')} /></Field>
                 <Field label="Paid By">
                   <select style={inp} value={form.down_payment_paid_by||''} onChange={set('down_payment_paid_by')}>
                     <option value="">—</option>
@@ -621,7 +667,7 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
                 This is the same figure shown on the Rehab tab — editing it here updates it there too.
               </div>
               <FieldRow>
-                <Field label="Closing Costs ($)"><input style={monoInp} type="number" value={form.closing_costs||''} onChange={set('closing_costs')} /></Field>
+                <Field label="Closing Costs"><MoneyInput value={form.closing_costs} onChange={set('closing_costs')} /></Field>
                 <Field label="Paid By">
                   <select style={inp} value={form.closing_costs_paid_by||''} onChange={set('closing_costs_paid_by')}>
                     <option value="">—</option>
@@ -635,16 +681,39 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
 
               {(type==='Flip' || type==='Hold') && (<>
                 <div className="drawer-section">NHC Commission</div>
-                <div style={{ fontSize:11, color:'#9ca3af', marginTop:-8 }}>
+                <div style={{ fontSize:11, color:'#9ca3af', marginTop:-8, marginBottom:2 }}>
                   Paid by BPV to the NHC team as part of this purchase.
                 </div>
-                <FieldRow>
-                  <Field label="Commission %">
-                    <input style={monoInp} type="number" value={form.commission_pct||''}
-                      onChange={e=>{ const e2=calcCommission(e.target.value,form.purchase_price); setForm(f=>({...f,commission_pct:e.target.value,commission_earned:e2?e2.toFixed(2):f.commission_earned})) }} />
-                  </Field>
-                  <Field label="Commission ($) — auto-calc, edit to override"><input style={monoInp} type="number" value={form.commission_earned||''} onChange={set('commission_earned')} /></Field>
-                </FieldRow>
+                <div style={{ display:'flex', gap:6, marginBottom:2 }}>
+                  {['pct','flat'].map(m=>(
+                    <button key={m} type="button"
+                      onClick={()=>{
+                        if (m==='flat') {
+                          const flat = form.commission_earned || 5000
+                          setForm(f=>({...f, commission_mode:'flat', commission_earned:String(flat), commission_pct:''}))
+                        } else {
+                          setForm(f=>({...f, commission_mode:'pct'}))
+                        }
+                      }}
+                      style={{
+                        flex:1, padding:'6px 10px', borderRadius:6, fontSize:11, fontWeight:700, fontFamily:'inherit', cursor:'pointer',
+                        border:`1.5px solid ${(form.commission_mode||'pct')===m?'#B8892A':'#D6D2CA'}`,
+                        background:(form.commission_mode||'pct')===m?'#B8892A18':'#fff',
+                        color:(form.commission_mode||'pct')===m?'#B8892A':'#6b7280',
+                      }}>{m==='pct' ? 'Percentage' : 'Flat Fee'}</button>
+                  ))}
+                </div>
+                {(form.commission_mode||'pct')==='pct' ? (
+                  <FieldRow>
+                    <Field label="Commission %">
+                      <input style={monoInp} type="number" value={form.commission_pct||''}
+                        onChange={e=>{ const e2=calcCommission(e.target.value,form.purchase_price); setForm(f=>({...f,commission_pct:e.target.value,commission_earned:e2?e2.toFixed(2):f.commission_earned})) }} />
+                    </Field>
+                    <Field label="Commission"><MoneyInput value={form.commission_earned} onChange={set('commission_earned')} /></Field>
+                  </FieldRow>
+                ) : (
+                  <Field label="Commission"><MoneyInput value={form.commission_earned} onChange={set('commission_earned')} /></Field>
+                )}
               </>)}
 
               <div style={{ background:'#FAFAF8', borderRadius:8, padding:'4px 14px 12px', border:'0.5px solid #D6D2CA' }}>
@@ -667,7 +736,7 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
                   </Field>
                   <FieldRow>
                     <Field label="# of Months"><input style={monoInp} type="number" value={form.post_occupancy_months||''} onChange={set('post_occupancy_months')} /></Field>
-                    <Field label="Payment ($)"><input style={monoInp} type="number" value={form.post_occupancy_payment||''} onChange={set('post_occupancy_payment')} /></Field>
+                    <Field label="Payment"><MoneyInput value={form.post_occupancy_payment} onChange={set('post_occupancy_payment')} /></Field>
                   </FieldRow>
                   <Field label="End Date"><DatePicker style={inp} value={form.post_occupancy_end_date||''} onChange={set('post_occupancy_end_date')} /></Field>
                 </>)}
@@ -765,7 +834,7 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
               <input style={monoInp} type="number" value={form.commission_pct||''}
                 onChange={e=>{ const e2=calcCommission(e.target.value,form.sale_price||form.arv); setForm(f=>({...f,commission_pct:e.target.value,commission_earned:e2?e2.toFixed(2):f.commission_earned})) }} />
             </Field>
-            <Field label="Commission Earned ($) — auto-calculated, edit to override"><input style={monoInp} type="number" value={form.commission_earned||''} onChange={set('commission_earned')} /></Field>
+            <Field label="Commission"><MoneyInput value={form.commission_earned} onChange={set('commission_earned')} /></Field>
             <div className="drawer-section">Sale</div>
             <FieldRow>
               <Field label="Sale Price ($)"><input style={monoInp} type="number" value={form.sale_price||''} onChange={set('sale_price')} /></Field>
@@ -797,7 +866,7 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
                 <input style={monoInp} type="number" value={form.commission_pct||''}
                   onChange={e=>{ const e2=calcCommission(e.target.value,form.purchase_price); setForm(f=>({...f,commission_pct:e.target.value,commission_earned:e2?e2.toFixed(2):f.commission_earned})) }} />
               </Field>
-              <Field label="Commission Earned ($) — auto-calc, edit to override"><input style={monoInp} type="number" value={form.commission_earned||''} onChange={set('commission_earned')} /></Field>
+              <Field label="Commission"><MoneyInput value={form.commission_earned} onChange={set('commission_earned')} /></Field>
             </FieldRow>
             {(form.wholesale_fee||form.commission_earned) && (
               <div style={{ display:'flex', gap:8, marginTop:4 }}>
@@ -810,17 +879,19 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
           {/* ── FLIP ── */}
           {disp==='flip' && (<>
             <div className="drawer-section">Acquisition</div>
-            <div style={{ fontSize:10, color:'#9ca3af', marginTop:-10, marginBottom:2 }}>Set on the Acquisition tab — read only here.</div>
-            <div style={{ background:'#FAFAF8', borderRadius:8, padding:'10px 14px', border:'0.5px solid #D6D2CA', fontSize:12, color:'#4b5563', display:'flex', flexDirection:'column', gap:5 }}>
-              <div style={{ display:'flex', justifyContent:'space-between' }}><span>Purchase Date</span><strong>{form.purchase_date||'—'}</strong></div>
-              <div style={{ display:'flex', justifyContent:'space-between' }}><span>Purchase Price</span><strong>{fmt(form.purchase_price)||'—'}</strong></div>
-              <div style={{ display:'flex', justifyContent:'space-between' }}><span>Closing Costs</span><strong>{fmt(form.closing_costs)||'—'}</strong></div>
-              <div style={{ display:'flex', justifyContent:'space-between' }}><span>NHC Commission</span><strong>{fmt(form.commission_earned)||'—'}</strong></div>
-              <div style={{ display:'flex', justifyContent:'space-between' }}><span>Rehab Cost</span><strong>{fmt(rc)||'—'}</strong></div>
-            </div>
+            <AcquisitionSummaryCard
+              onClick={()=>setTab('acquisition')}
+              rows={[
+                { label:'Purchase Date', value:form.purchase_date },
+                { label:'Purchase Price', value:fmt(form.purchase_price) },
+                { label:'Closing Costs', value:fmt(form.closing_costs) },
+                { label:'NHC Commission', value:fmt(form.commission_earned) },
+                { label:'Rehab Cost', value:fmt(rc) },
+              ]}
+            />
             <div className="drawer-section">Flip</div>
             <FieldRow>
-              <Field label="Sale Price ($)"><input style={monoInp} type="number" value={form.sale_price||''} onChange={set('sale_price')} /></Field>
+              <Field label="Sale Price"><MoneyInput value={form.sale_price} onChange={set('sale_price')} /></Field>
               <Field label="Sale Date"><DatePicker style={inp} value={form.sale_date||''} onChange={set('sale_date')} /></Field>
             </FieldRow>
             <Field label="Days on Market"><input style={monoInp} type="number" value={form.days_on_market||''} onChange={set('days_on_market')} /></Field>
@@ -837,13 +908,15 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
           {/* ── HOLD ── */}
           {disp==='hold' && (<>
             <div className="drawer-section">Acquisition</div>
-            <div style={{ fontSize:10, color:'#9ca3af', marginTop:-10, marginBottom:2 }}>Set on the Acquisition tab — read only here.</div>
-            <div style={{ background:'#FAFAF8', borderRadius:8, padding:'10px 14px', border:'0.5px solid #D6D2CA', fontSize:12, color:'#4b5563', display:'flex', flexDirection:'column', gap:5 }}>
-              <div style={{ display:'flex', justifyContent:'space-between' }}><span>Purchase Date</span><strong>{form.purchase_date||'—'}</strong></div>
-              <div style={{ display:'flex', justifyContent:'space-between' }}><span>Purchase Price</span><strong>{fmt(form.purchase_price)||'—'}</strong></div>
-              <div style={{ display:'flex', justifyContent:'space-between' }}><span>Closing Costs</span><strong>{fmt(form.closing_costs)||'—'}</strong></div>
-              <div style={{ display:'flex', justifyContent:'space-between' }}><span>NHC Commission</span><strong>{fmt(form.commission_earned)||'—'}</strong></div>
-            </div>
+            <AcquisitionSummaryCard
+              onClick={()=>setTab('acquisition')}
+              rows={[
+                { label:'Purchase Date', value:form.purchase_date },
+                { label:'Purchase Price', value:fmt(form.purchase_price) },
+                { label:'Closing Costs', value:fmt(form.closing_costs) },
+                { label:'NHC Commission', value:fmt(form.commission_earned) },
+              ]}
+            />
             <div className="drawer-section">Sale</div>
             <div style={{ background:'#FAFAF8', borderRadius:8, padding:'12px 14px', border:'0.5px solid #D6D2CA' }}>
               {stage==='Sold' ? (<>
