@@ -582,21 +582,25 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
             </>
           )}
 
-          <div className="drawer-section">Closing Costs</div>
-          <div style={{ fontSize:11, color:'#9ca3af', marginTop:-8 }}>
-            This is the same figure shown on the Rehab tab — editing it here updates it there too.
-          </div>
-          <FieldRow>
-            <Field label="Closing Costs ($)"><input style={monoInp} type="number" value={form.closing_costs||''} onChange={set('closing_costs')} /></Field>
-            <Field label="Paid By">
-              <select style={inp} value={form.closing_costs_paid_by||''} onChange={set('closing_costs_paid_by')}>
-                <option value="">—</option>
-                {PAID_BY_OPTIONS.map(p=><option key={p} value={p}>{p}</option>)}
-              </select>
-            </Field>
-          </FieldRow>
-          {PARTNERS.includes(form.closing_costs_paid_by) && (
-            <Field label="Date Paid"><DatePicker style={inp} value={form.closing_costs_date_paid||''} onChange={set('closing_costs_date_paid')} /></Field>
+          {form.acquisition_type!=='Pre-Owned' && (
+            <>
+              <div className="drawer-section">Closing Costs</div>
+              <div style={{ fontSize:11, color:'#9ca3af', marginTop:-8 }}>
+                This is the same figure shown on the Rehab tab — editing it here updates it there too.
+              </div>
+              <FieldRow>
+                <Field label="Closing Costs ($)"><input style={monoInp} type="number" value={form.closing_costs||''} onChange={set('closing_costs')} /></Field>
+                <Field label="Paid By">
+                  <select style={inp} value={form.closing_costs_paid_by||''} onChange={set('closing_costs_paid_by')}>
+                    <option value="">—</option>
+                    {PAID_BY_OPTIONS.map(p=><option key={p} value={p}>{p}</option>)}
+                  </select>
+                </Field>
+              </FieldRow>
+              {PARTNERS.includes(form.closing_costs_paid_by) && (
+                <Field label="Date Paid"><DatePicker style={inp} value={form.closing_costs_date_paid||''} onChange={set('closing_costs_date_paid')} /></Field>
+              )}
+            </>
           )}
         </div>
       )}
@@ -941,6 +945,7 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
     </Drawer>
   )
 }
+
 
 
 

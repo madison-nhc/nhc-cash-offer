@@ -375,7 +375,8 @@ export default function RehabRoundTracker({ property, repairItems = [], onChange
 
         <LoanSnapshot propertyId={propertyId} />
 
-        {/* Closing Costs — shared with the Acquisition tab, same underlying property fields */}
+        {/* Closing Costs — shared with the Acquisition tab, same underlying property fields. Hidden for Pre-Owned since there's no closing/purchase to speak of. */}
+        {property?.acquisition_type !== 'Pre-Owned' && (
         <div style={{ background:'#FAFAF8', borderRadius:8, padding:'14px 16px', border:'0.5px solid #D6D2CA' }}>
           <div style={{ fontSize:11, fontWeight:700, color:'#6b7280', textTransform:'uppercase', letterSpacing:0.8, marginBottom:10 }}>Closing Costs (Acquisition)</div>
           <div style={{ display:'grid', gridTemplateColumns:'140px 110px 130px 90px', gap:10, alignItems:'end' }}>
@@ -412,6 +413,7 @@ export default function RehabRoundTracker({ property, repairItems = [], onChange
             ) : <><span /><span /></>}
           </div>
         </div>
+        )}
 
         {/* Budget + progress header */}
         <div style={{ background:'#FAFAF8', borderRadius:8, padding:'14px 16px', border:'0.5px solid #D6D2CA' }}>
@@ -602,6 +604,7 @@ export default function RehabRoundTracker({ property, repairItems = [], onChange
     </>
   )
 }
+
 
 
 
