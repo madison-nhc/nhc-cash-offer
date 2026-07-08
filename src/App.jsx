@@ -85,8 +85,10 @@ function GlobalSearch({ onSelect, mobile }) {
   )
 }
 
-const PIPELINE_TABS = [
+const MARKETING_TABS = [
   { id:'mailings',   label:'Mailing Tracker',  short:'Mailers',   path:'/mailings' },
+]
+const PIPELINE_TABS = [
   { id:'analyzer',   label:'Analyzer',        short:'Analyze',   path:'/analyzer' },
   { id:'rehabs',     label:'Rehabs',           short:'Rehabs',    path:'/rehabs' },
   { id:'holds',      label:'Holds',            short:'Holds',     path:'/holds' },
@@ -100,7 +102,7 @@ const OPS_TABS = [
   { id:'inventory',  label:'Inventory',        short:'Inventory', path:'/inventory' },
   { id:'opslog',     label:'Improvements',     short:'Improvements', path:'/ops-log' },
 ]
-const TABS = [...PIPELINE_TABS, ...OPS_TABS]
+const TABS = [...MARKETING_TABS, ...PIPELINE_TABS, ...OPS_TABS]
 const ALL_ROUTES = TABS
 
 function tabForPath(pathname) {
@@ -193,6 +195,18 @@ export default function App() {
 
           {!mobile && (
             <div style={{ display:'flex', alignItems:'center', gap:2, marginLeft:16 }}>
+              {MARKETING_TABS.map(t => (
+                <button key={t.id} onClick={() => navigate(t.id)} style={{
+                  background: active === t.id ? '#B8892A' : 'transparent',
+                  color: active === t.id ? '#fff' : '#6b7280',
+                  border:'none', borderRadius:4, padding:'5px 12px',
+                  cursor:'pointer', fontSize:12, fontWeight: active === t.id ? 700 : 400,
+                  letterSpacing:0.3, whiteSpace:'nowrap', fontFamily:'inherit', transition:'all 0.15s'
+                }}>
+                  {t.label}
+                </button>
+              ))}
+              <div style={{ width:1, height:20, background:'#D6D2CA', margin:'0 8px' }} />
               {PIPELINE_TABS.map(t => (
                 <button key={t.id} onClick={() => navigate(t.id)} style={{
                   background: active === t.id ? '#B8892A' : 'transparent',
@@ -252,6 +266,16 @@ export default function App() {
 
         {mobile && (
           <div style={{ display:'flex', alignItems:'center', overflowX:'auto', padding:'0 8px 8px', gap:6, WebkitOverflowScrolling:'touch', scrollbarWidth:'none' }}>
+            {MARKETING_TABS.map(t => (
+              <button key={t.id} onClick={() => navigate(t.id)} style={{
+                background: active === t.id ? '#B8892A' : '#F0EDE6',
+                color: active === t.id ? '#fff' : '#6b7280',
+                border:'none', borderRadius:20, padding:'5px 14px',
+                cursor:'pointer', fontSize:12, fontWeight: active === t.id ? 700 : 500,
+                whiteSpace:'nowrap', fontFamily:'inherit', flexShrink:0, transition:'all 0.15s'
+              }}>{t.short}</button>
+            ))}
+            <div style={{ width:1, height:20, background:'#D6D2CA', margin:'0 4px', flexShrink:0 }} />
             {PIPELINE_TABS.map(t => (
               <button key={t.id} onClick={() => navigate(t.id)} style={{
                 background: active === t.id ? '#B8892A' : '#F0EDE6',
