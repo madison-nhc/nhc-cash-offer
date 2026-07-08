@@ -14,8 +14,8 @@ import PartnerLedgerModal from './PartnerLedgerModal.jsx'
 // ── Type options (primary) ────────────────────────────────────────────────────
 const TYPE_OPTIONS = [
   { value:'Analyzing',       color:'#B8892A' },
-  { value:'Flip',            color:'#D97825', label:'Buy & Flip' },
-  { value:'Hold',            color:'#B8892A', label:'Buy & Hold' },
+  { value:'Flip',            color:'#D97825' },
+  { value:'Hold',            color:'#B8892A' },
   { value:'Retail Listing',  color:'#3B6D11' },
   { value:'Wholesale',       color:'#6b21a8' },
   { value:'Lost',            color:'#9ca3af' },
