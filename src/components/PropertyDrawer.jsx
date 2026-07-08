@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase.js'
-import { Field, FieldRow, inp, monoInp, Btn, fmt, fmtK, DatePicker, PAID_BY_OPTIONS, PARTNERS } from './ui.jsx'
+import { Field, FieldRow, inp, monoInp, Btn, fmt, fmtK, DatePicker, PAID_BY_OPTIONS, PARTNERS, calcOwed } from './ui.jsx'
 import Drawer from './Drawer.jsx'
 import AddressInput from './AddressInput.jsx'
 import RehabRoundTracker from './RehabRoundTracker.jsx'
@@ -152,7 +152,7 @@ function MoneyInput({ value, onChange, disabled=false }) {
 }
 
 // Read-only, clickable snapshot of Acquisition-tab data shown inside Disposition
-function AcquisitionSummaryCard({ rows, onClick }) {
+function SummaryCard({ rows, onClick, footerLabel }) {
   return (
     <div
       onClick={onClick}
@@ -170,12 +170,114 @@ function AcquisitionSummaryCard({ rows, onClick }) {
             padding:'8px 14px', borderTop: i===0 ? 'none' : '0.5px solid #E8E4DB',
           }}>
             <span style={{ fontSize:11, color:'#9ca3af', textTransform:'uppercase', letterSpacing:0.5 }}>{r.label}</span>
-            <span style={{ fontSize:13, fontFamily:"'DM Mono', monospace", fontWeight:600, color:'#4b5563' }}>{r.value||'—'}</span>
+            <span style={{ display:'flex', alignItems:'center', gap:6 }}>
+              <span style={{ fontSize:13, fontFamily:"'DM Mono', monospace", fontWeight:600, color:'#4b5563' }}>{r.value||'—'}</span>
+              {r.tag && (
+                <span style={{ fontSize:9, fontWeight:700, color:'#B8892A', background:'#B8892A18', border:'1px solid #B8892A40', borderRadius:4, padding:'1px 6px', textTransform:'uppercase', letterSpacing:0.3 }}>
+                  {r.tag}
+                </span>
+              )}
+            </span>
           </div>
         ))}
         <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:5, padding:'6px 14px', borderTop:'0.5px solid #E8E4DB', fontSize:10, color:'#B8892A', fontWeight:700 }}>
-          Edit on Acquisition tab <span>→</span>
+          {footerLabel} <span>→</span>
         </div>
+      </div>
+    </div>
+  )
+}
+
+// Fetches active loan(s) for the property and renders a click-through summary card
+function LoanSummaryCard({ propertyId, onClick }) {
+  const [loans, setLoans] = useState(null)
+  useEffect(() => {
+    if (!propertyId) return
+    supabase.from('cashoffer_loans').select('funded_by, loan_amount, lender_name, bank')
+      .eq('property_id', propertyId).eq('is_active', true)
+      .then(({ data }) => setLoans(data || []))
+  }, [propertyId])
+
+  if (loans === null || loans.length === 0) return null
+  const totalAmount = loans.reduce((s,l)=>s+(parseFloat(l.loan_amount)||0), 0)
+  const funders = [...new Set(loans.map(l=>l.funded_by).filter(f=>f && f!=='BPV'))]
+
+  return (
+    <SummaryCard
+      onClick={onClick}
+      footerLabel="Edit on Loan tab"
+      rows={[
+        { label: loans.length>1 ? `Loan Amount (${loans.length} loans)` : 'Loan Amount', value: fmt(totalAmount), tag: funders.length ? funders.join(', ') : null },
+      ]}
+    />
+  )
+}
+
+// Aggregates what's owed back to Bob/Eric personally across Closing Costs, Rehab
+// line items, and any loans they funded — one net number per partner.
+function PartnerPaybackSummary({ propertyId, property, closingDate }) {
+  const [totals, setTotals] = useState(null)
+
+  useEffect(() => { if (propertyId) load() }, [propertyId, property?.closing_costs, property?.closing_costs_paid_by, property?.closing_costs_date_paid, closingDate]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function load() {
+    const asOf = closingDate ? new Date(Math.min(new Date(), new Date(closingDate+'T12:00:00'))) : new Date()
+    const t = { Bob:{principal:0,interest:0}, Eric:{principal:0,interest:0} }
+
+    async function addRow(who, amount, datePaid, sourceType, sourceId) {
+      if (!PARTNERS.includes(who) || !amount) return
+      const { data: rp } = await supabase.from('cashoffer_partner_repayments').select('*').eq('source_type', sourceType).eq('source_id', sourceId)
+      const { balance, accruedInterest } = calcOwed(amount, datePaid, rp||[], asOf)
+      t[who].principal += balance
+      t[who].interest += accruedInterest
+    }
+
+    // Closing costs
+    if (property?.closing_costs) {
+      await addRow(property.closing_costs_paid_by, parseFloat(property.closing_costs)||0, property.closing_costs_date_paid, 'closing_costs', propertyId)
+    }
+
+    // Rehab items / supplies / utility bills
+    const [items, supplies, bills] = await Promise.all([
+      supabase.from('cashoffer_rehab_items').select('id, estimated_cost, actual_cost, paid_by, date_paid').eq('property_id', propertyId),
+      supabase.from('cashoffer_supplies').select('id, unit_cost, quantity, paid_by, date_paid').eq('property_id', propertyId),
+      supabase.from('cashoffer_utility_bills').select('id, amount, paid_by, date_paid').eq('property_id', propertyId),
+    ])
+    await Promise.all([
+      ...(items.data||[]).map(r => addRow(r.paid_by, r.actual_cost!=null?parseFloat(r.actual_cost):(parseFloat(r.estimated_cost)||0), r.date_paid, 'rehab_item', r.id)),
+      ...(supplies.data||[]).map(r => addRow(r.paid_by, (parseFloat(r.unit_cost)||0)*(parseFloat(r.quantity)||0), r.date_paid, 'supply', r.id)),
+      ...(bills.data||[]).map(r => addRow(r.paid_by, parseFloat(r.amount)||0, r.date_paid, 'utility_bill', r.id)),
+    ])
+
+    // Loans — principal + interest actually paid so far, owed back at closing
+    const { data: loans } = await supabase.from('cashoffer_loans').select('funded_by, loan_amount, total_interest_paid').eq('property_id', propertyId)
+    ;(loans||[]).forEach(l => {
+      if (PARTNERS.includes(l.funded_by)) {
+        t[l.funded_by].principal += parseFloat(l.loan_amount)||0
+        t[l.funded_by].interest += parseFloat(l.total_interest_paid)||0
+      }
+    })
+
+    setTotals(t)
+  }
+
+  if (!totals) return null
+  const active = PARTNERS.filter(p => totals[p].principal > 0 || totals[p].interest > 0)
+  if (active.length === 0) return null
+
+  return (
+    <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+      <div className="drawer-section">Partner Payback</div>
+      <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
+        {active.map(p => (
+          <ProfitBox
+            key={p}
+            label={`Owed to ${p}`}
+            value={fmt(totals[p].principal + totals[p].interest)}
+            sub={`Principal ${fmt(totals[p].principal)} + Interest ${fmt(totals[p].interest)}`}
+            color={p==='Bob' ? '#2D6FAF' : '#D97825'}
+          />
+        ))}
       </div>
     </div>
   )
@@ -894,16 +996,23 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
           {/* ── FLIP ── */}
           {disp==='flip' && (<>
             <div className="drawer-section">Acquisition</div>
-            <AcquisitionSummaryCard
+            <SummaryCard
               onClick={()=>setTab('acquisition')}
+              footerLabel="Edit on Acquisition tab"
               rows={[
                 { label:'Purchase Date', value:form.purchase_date },
                 { label:'Purchase Price', value:fmt(form.purchase_price) },
-                { label:'Closing Costs', value:fmt(form.closing_costs) },
-                { label:'NHC Commission', value:fmt(form.commission_earned) },
-                { label:'Rehab Cost', value:fmt(rc) },
+                { label:'Closing Costs', value:fmt(form.closing_costs), tag:PARTNERS.includes(form.closing_costs_paid_by)?form.closing_costs_paid_by:null },
               ]}
             />
+            <LoanSummaryCard propertyId={form.id} onClick={()=>setTab('loan')} />
+            <SummaryCard
+              onClick={()=>setTab('rehab')}
+              footerLabel="Edit on Rehab tab"
+              rows={[{ label:'Total Rehab Cost', value:fmt(rc) }]}
+            />
+            <PartnerPaybackSummary propertyId={form.id} property={form} closingDate={form.disposition_date || form.sale_date || null} />
+
             <div className="drawer-section">Flip</div>
             <FieldRow>
               <Field label="Sale Price"><MoneyInput value={form.sale_price} onChange={set('sale_price')} /></Field>
@@ -913,7 +1022,7 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
             {flipProfit!==null && (
               <div style={{ display:'flex', gap:8, flexWrap:'wrap', marginTop:4 }}>
                 <ProfitBox label="BPV Profit" value={`${flipProfit>=0?'+':''}${fmt(flipProfit)}`} color={flipProfit>=0?'#3B6D11':'#B91C1C'} sub={flipROI?`${flipROI}% ROI`:null} />
-                <ProfitBox label="NHC Commission" value={fmt(form.commission_earned)||'—'} color="#B8892A" />
+                <ProfitBox label="NHC Commission Paid" value={fmt(form.commission_earned)||'—'} color="#B8892A" />
                 <ProfitBox label="Total Cost" value={fmt(totalCost)} color="#6b7280" />
               </div>
             )}
@@ -923,15 +1032,23 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
           {/* ── HOLD ── */}
           {disp==='hold' && (<>
             <div className="drawer-section">Acquisition</div>
-            <AcquisitionSummaryCard
+            <SummaryCard
               onClick={()=>setTab('acquisition')}
+              footerLabel="Edit on Acquisition tab"
               rows={[
                 { label:'Purchase Date', value:form.purchase_date },
                 { label:'Purchase Price', value:fmt(form.purchase_price) },
-                { label:'Closing Costs', value:fmt(form.closing_costs) },
-                { label:'NHC Commission', value:fmt(form.commission_earned) },
+                { label:'Closing Costs', value:fmt(form.closing_costs), tag:PARTNERS.includes(form.closing_costs_paid_by)?form.closing_costs_paid_by:null },
               ]}
             />
+            <LoanSummaryCard propertyId={form.id} onClick={()=>setTab('loan')} />
+            <SummaryCard
+              onClick={()=>setTab('rehab')}
+              footerLabel="Edit on Rehab tab"
+              rows={[{ label:'Total Rehab Cost', value:fmt(rc) }]}
+            />
+            <PartnerPaybackSummary propertyId={form.id} property={form} closingDate={form.disposition_date || form.sale_date || null} />
+
             <div className="drawer-section">Sale</div>
             <div style={{ background:'#FAFAF8', borderRadius:8, padding:'12px 14px', border:'0.5px solid #D6D2CA' }}>
               {stage==='Sold' ? (<>
