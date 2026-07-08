@@ -85,7 +85,7 @@ function GlobalSearch({ onSelect, mobile }) {
   )
 }
 
-const TABS = [
+const PIPELINE_TABS = [
   { id:'mailings',   label:'Mailing Tracker',  short:'Mailers',   path:'/mailings' },
   { id:'analyzer',   label:'Analyzer',        short:'Analyze',   path:'/analyzer' },
   { id:'rehabs',     label:'Rehabs',           short:'Rehabs',    path:'/rehabs' },
@@ -93,16 +93,15 @@ const TABS = [
   { id:'listings',   label:'Listings',         short:'Listings',  path:'/listings' },
   { id:'wholesale',  label:'Wholesale',        short:'Wholesale', path:'/wholesale' },
   { id:'sold',       label:'Sold',             short:'Sold',      path:'/sold' },
+]
+const OPS_TABS = [
   { id:'vendors',    label:'Vendors',          short:'Vendors',   path:'/vendors' },
+  { id:'supplies',   label:'Supplies',         short:'Supplies',  path:'/supplies' },
   { id:'inventory',  label:'Inventory',        short:'Inventory', path:'/inventory' },
   { id:'opslog',     label:'Improvements',     short:'Improvements', path:'/ops-log' },
 ]
-
-// Routes reachable but not shown as a top-level nav tab (e.g. accessed via a button elsewhere)
-const HIDDEN_ROUTES = [
-  { id:'supplies', label:'Supplies', path:'/supplies' },
-]
-const ALL_ROUTES = [...TABS, ...HIDDEN_ROUTES]
+const TABS = [...PIPELINE_TABS, ...OPS_TABS]
+const ALL_ROUTES = TABS
 
 function tabForPath(pathname) {
   const match = ALL_ROUTES.find(t => t.path === pathname)
@@ -193,8 +192,20 @@ export default function App() {
           {!mobile && <span style={{ fontSize:12, fontWeight:700, letterSpacing:1.5, color:'#2C2C2C', whiteSpace:'nowrap' }}>CASH OFFER HUB</span>}
 
           {!mobile && (
-            <div style={{ display:'flex', gap:2, marginLeft:16 }}>
-              {TABS.map(t => (
+            <div style={{ display:'flex', alignItems:'center', gap:2, marginLeft:16 }}>
+              {PIPELINE_TABS.map(t => (
+                <button key={t.id} onClick={() => navigate(t.id)} style={{
+                  background: active === t.id ? '#B8892A' : 'transparent',
+                  color: active === t.id ? '#fff' : '#6b7280',
+                  border:'none', borderRadius:4, padding:'5px 12px',
+                  cursor:'pointer', fontSize:12, fontWeight: active === t.id ? 700 : 400,
+                  letterSpacing:0.3, whiteSpace:'nowrap', fontFamily:'inherit', transition:'all 0.15s'
+                }}>
+                  {t.label}
+                </button>
+              ))}
+              <div style={{ width:1, height:20, background:'#D6D2CA', margin:'0 8px' }} />
+              {OPS_TABS.map(t => (
                 <button key={t.id} onClick={() => navigate(t.id)} style={{
                   background: active === t.id ? '#B8892A' : 'transparent',
                   color: active === t.id ? '#fff' : '#6b7280',
@@ -240,8 +251,18 @@ export default function App() {
         </div>
 
         {mobile && (
-          <div style={{ display:'flex', overflowX:'auto', padding:'0 8px 8px', gap:6, WebkitOverflowScrolling:'touch', scrollbarWidth:'none' }}>
-            {TABS.map(t => (
+          <div style={{ display:'flex', alignItems:'center', overflowX:'auto', padding:'0 8px 8px', gap:6, WebkitOverflowScrolling:'touch', scrollbarWidth:'none' }}>
+            {PIPELINE_TABS.map(t => (
+              <button key={t.id} onClick={() => navigate(t.id)} style={{
+                background: active === t.id ? '#B8892A' : '#F0EDE6',
+                color: active === t.id ? '#fff' : '#6b7280',
+                border:'none', borderRadius:20, padding:'5px 14px',
+                cursor:'pointer', fontSize:12, fontWeight: active === t.id ? 700 : 500,
+                whiteSpace:'nowrap', fontFamily:'inherit', flexShrink:0, transition:'all 0.15s'
+              }}>{t.short}</button>
+            ))}
+            <div style={{ width:1, height:20, background:'#D6D2CA', margin:'0 4px', flexShrink:0 }} />
+            {OPS_TABS.map(t => (
               <button key={t.id} onClick={() => navigate(t.id)} style={{
                 background: active === t.id ? '#B8892A' : '#F0EDE6',
                 color: active === t.id ? '#fff' : '#6b7280',
