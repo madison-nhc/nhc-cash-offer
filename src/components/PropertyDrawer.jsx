@@ -229,7 +229,7 @@ function LoanSummaryCard({ propertyId, onClick }) {
 function PartnerPaybackSummary({ propertyId, property, closingDate }) {
   const [totals, setTotals] = useState(null)
 
-  useEffect(() => { if (propertyId) load() }, [propertyId, property?.closing_costs, property?.closing_costs_paid_by, property?.closing_costs_date_paid, closingDate]) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (propertyId) load() }, [propertyId, property?.closing_costs, property?.closing_costs_paid_by, property?.closing_costs_date_paid, property?.down_payment, property?.down_payment_paid_by, property?.down_payment_date_paid, closingDate]) // eslint-disable-line react-hooks/exhaustive-deps
 
   async function load() {
     const asOf = closingDate ? new Date(Math.min(new Date(), new Date(closingDate+'T12:00:00'))) : new Date()
@@ -246,6 +246,10 @@ function PartnerPaybackSummary({ propertyId, property, closingDate }) {
     // Closing costs
     if (property?.closing_costs) {
       await addRow(property.closing_costs_paid_by, parseFloat(property.closing_costs)||0, property.closing_costs_date_paid, 'closing_costs', propertyId)
+    }
+    // Down payment
+    if (property?.down_payment) {
+      await addRow(property.down_payment_paid_by, parseFloat(property.down_payment)||0, property.down_payment_date_paid, 'down_payment', propertyId)
     }
 
     // Rehab items / supplies / utility bills
@@ -1013,6 +1017,7 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
               rows={[
                 { label:'Purchase Date', value:form.purchase_date },
                 { label:'Purchase Price', value:fmt(form.purchase_price) },
+                { label:'Down Payment', value:fmt(form.down_payment), tag:PARTNERS.includes(form.down_payment_paid_by)?form.down_payment_paid_by:null },
                 { label:'Closing Costs', value:fmt(form.closing_costs), tag:PARTNERS.includes(form.closing_costs_paid_by)?form.closing_costs_paid_by:null },
               ]}
             />
@@ -1049,6 +1054,7 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
               rows={[
                 { label:'Purchase Date', value:form.purchase_date },
                 { label:'Purchase Price', value:fmt(form.purchase_price) },
+                { label:'Down Payment', value:fmt(form.down_payment), tag:PARTNERS.includes(form.down_payment_paid_by)?form.down_payment_paid_by:null },
                 { label:'Closing Costs', value:fmt(form.closing_costs), tag:PARTNERS.includes(form.closing_costs_paid_by)?form.closing_costs_paid_by:null },
               ]}
             />
