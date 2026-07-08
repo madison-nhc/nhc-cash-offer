@@ -103,14 +103,6 @@ export default function RehabStatCards({ propertyId, onOpenFull, closingDate }) 
 
   return (
     <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
-      <button onClick={onOpenFull} style={{
-        background:'#B8892A', color:'#fff', border:'none', borderRadius:8, padding:'10px 14px',
-        fontSize:12.5, fontWeight:700, cursor:'pointer', fontFamily:'inherit',
-        display:'flex', alignItems:'center', justifyContent:'center', gap:6,
-      }}>
-        Open Rehab Dashboard <span>→</span>
-      </button>
-
       <div style={{ display:'grid', gridTemplateColumns:'repeat(3, 1fr)', gap:10 }}>
         <StatCard
           topColor="#B8892A" label="Services" value={fmt(servicesTotal)}
@@ -154,6 +146,14 @@ export default function RehabStatCards({ propertyId, onOpenFull, closingDate }) 
           </>
         )
       })()}
+
+      <button onClick={onOpenFull} style={{
+        background:'#B8892A', color:'#fff', border:'none', borderRadius:8, padding:'10px 14px',
+        fontSize:12.5, fontWeight:700, cursor:'pointer', fontFamily:'inherit',
+        display:'flex', alignItems:'center', justifyContent:'center', gap:6, marginTop:2,
+      }}>
+        Open Rehab Dashboard <span>→</span>
+      </button>
     </div>
   )
 }

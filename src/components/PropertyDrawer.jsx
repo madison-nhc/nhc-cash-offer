@@ -743,26 +743,24 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
       {/* ══════════════ REHAB TAB ══════════════ */}
       {tab==='rehab' && (
         <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
-          <div style={{ background:'#FAFAF8', borderRadius:8, padding:'12px 14px', border:'0.5px solid #D6D2CA' }}>
-            <FieldRow>
-              <Field label="Rehab Stage">
-                <select
-                  value={form.rehab_stage||'Not Started'}
-                  onChange={e=>setVal('rehab_stage', e.target.value)}
-                  style={{
-                    ...inp, fontWeight:700, color:'#fff',
-                    background: REHAB_COLOR[form.rehab_stage||'Not Started'],
-                    border:`1.5px solid ${REHAB_COLOR[form.rehab_stage||'Not Started']}`,
-                  }}
-                >
-                  {REHAB_STAGES.map(st=><option key={st} value={st} style={{ background:'#fff', color:'#2C2C2C', fontWeight:400 }}>{st}</option>)}
-                </select>
-              </Field>
-              <Field label="Rehab Start Date">
-                <DatePicker style={inp} value={form.rehab_start_date||''} onChange={set('rehab_start_date')} />
-              </Field>
-            </FieldRow>
-          </div>
+          <FieldRow>
+            <Field label="Rehab Stage">
+              <select
+                value={form.rehab_stage||'Not Started'}
+                onChange={e=>setVal('rehab_stage', e.target.value)}
+                style={{
+                  ...inp, fontWeight:700, color:'#fff',
+                  background: REHAB_COLOR[form.rehab_stage||'Not Started'],
+                  border:`1.5px solid ${REHAB_COLOR[form.rehab_stage||'Not Started']}`,
+                }}
+              >
+                {REHAB_STAGES.map(st=><option key={st} value={st} style={{ background:'#fff', color:'#2C2C2C', fontWeight:400 }}>{st}</option>)}
+              </select>
+            </Field>
+            <Field label="Rehab Start Date">
+              <DatePicker style={inp} value={form.rehab_start_date||''} onChange={set('rehab_start_date')} />
+            </Field>
+          </FieldRow>
 
           {form.id ? (<>
             <RehabStatCards propertyId={form.id} onOpenFull={()=>setRehabOpen(true)} closingDate={form.disposition_date || form.sale_date || null} />
