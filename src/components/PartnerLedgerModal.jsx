@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase.js'
 import { Modal, fmt, calcOwed } from './ui.jsx'
 
-const GRID = '2fr 100px 80px 110px 60px 90px'
+const GRID = '1.8fr 1fr 0.8fr 1fr 0.6fr 0.9fr'
 
 // Parses 'YYYY-MM-DD' manually (avoids new Date(str) timezone off-by-one).
 function daysBetween(startStr, endStr) {
