@@ -213,9 +213,9 @@ function AmortizationTable({ schedule, startDate, loanId, onTotals }) {
 
               {isExpanded && (
                 <div>
-                  <div style={{ display:'grid', gridTemplateColumns:'100px 90px 90px 90px 90px 90px 120px', gap:8, padding:'6px 12px 6px 24px', background:'#F0EDE6', borderTop:'0.5px solid #D6D2CA' }}>
-                    {['Due Date','Payment','Principal','Interest','Balance','Paid By','Date Paid'].map(h=>(
-                      <div key={h} style={{ fontSize:9, fontWeight:700, color:'#6b7280', textTransform:'uppercase' }}>{h}</div>
+                  <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr 1fr 1fr 1fr 1.4fr', gap:10, padding:'8px 16px 8px 28px', background:'#F0EDE6', borderTop:'0.5px solid #D6D2CA' }}>
+                    {['Due Date','Payment','Principal','Interest','Balance','Paid By','Date Paid'].map((h,i)=>(
+                      <div key={h} style={{ fontSize:9, fontWeight:700, color:'#6b7280', textTransform:'uppercase', textAlign: i>=1&&i<=4 ? 'right' : i===5 ? 'center' : 'left' }}>{h}</div>
                     ))}
                   </div>
                   {yr.months.map(m=>{
@@ -223,8 +223,8 @@ function AmortizationTable({ schedule, startDate, loanId, onTotals }) {
                     const payment = dueDate ? findPayment(dueDate) : null
                     return (
                       <div key={m.month} style={{
-                        display:'grid', gridTemplateColumns:'100px 90px 90px 90px 90px 90px 120px', gap:8,
-                        padding:'6px 12px 6px 24px', alignItems:'center',
+                        display:'grid', gridTemplateColumns:'1fr 1fr 1fr 1fr 1fr 1fr 1.4fr', gap:10,
+                        padding:'8px 16px 8px 28px', alignItems:'center',
                         background:'#fff', borderTop:'0.5px solid #F0EDE6',
                       }}>
                         <div style={{ fontSize:11, color:'#6b7280' }}>{dueDate || `Mo ${m.month}`}</div>
@@ -232,17 +232,19 @@ function AmortizationTable({ schedule, startDate, loanId, onTotals }) {
                         <div style={{ fontSize:11, fontFamily:'monospace', textAlign:'right', color:'#3B6D11' }}>{fmt(m.principal)}</div>
                         <div style={{ fontSize:11, fontFamily:'monospace', textAlign:'right', color:'#B91C1C' }}>{fmt(m.interest)}</div>
                         <div style={{ fontSize:11, fontFamily:'monospace', textAlign:'right' }}>{fmt(m.balance)}</div>
-                        <select
-                          disabled={loading || !dueDate}
-                          value={payment?.paid_by || ''}
-                          onChange={e=>setPaidBy(dueDate, m.payment, e.target.value || null)}
-                          style={{ border:'0.5px solid #D6D2CA', borderRadius:4, padding:'3px 4px', fontSize:10, fontFamily:'inherit', background:'#fff', cursor:'pointer' }}
-                        >
-                          <option value="">— unpaid —</option>
-                          {PAID_BY_OPTIONS.map(o=><option key={o} value={o}>{o}</option>)}
-                        </select>
+                        <div style={{ display:'flex', justifyContent:'center' }}>
+                          <select
+                            disabled={loading || !dueDate}
+                            value={payment?.paid_by || ''}
+                            onChange={e=>setPaidBy(dueDate, m.payment, e.target.value || null)}
+                            style={{ border:'0.5px solid #D6D2CA', borderRadius:4, padding:'3px 6px', fontSize:10, fontFamily:'inherit', background:'#fff', cursor:'pointer', width:'100%', textAlign:'center' }}
+                          >
+                            <option value="">— unpaid —</option>
+                            {PAID_BY_OPTIONS.map(o=><option key={o} value={o}>{o}</option>)}
+                          </select>
+                        </div>
                         {payment ? (
-                          <div style={{ display:'flex', flexDirection:'column', gap:2 }}>
+                          <div style={{ display:'flex', alignItems:'center', gap:8 }}>
                             <DatePicker value={payment.date_paid||''} onChange={e=>setDatePaid(dueDate, e.target.value)} style={{ fontSize:10, padding:'3px 5px' }} />
                             {PARTNERS.includes(payment.paid_by) && <InterestBadge paymentId={payment.id} amount={payment.amount} datePaid={payment.date_paid} />}
                           </div>
