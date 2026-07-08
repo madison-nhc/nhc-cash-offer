@@ -465,6 +465,7 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
     const rehab = rehabCost !== null ? rehabCost : (form.rehab_cost||null)
     const payload = {
       address:form.address, beds:form.beds||null, baths:form.baths||null,
+      seller_name:form.seller_name||null, seller_fub_link:form.seller_fub_link||null,
       photos_drive_link:form.photos_drive_link||null,
       sqft:form.sqft||null, unit_count:parseInt(form.unit_count)||null,
       arv:form.arv||null, asis_pct:form.asis_pct||50, asis_override:form.asis_override||null,
@@ -607,6 +608,23 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
           <Field label="Address">
             <AddressInput value={form.address||''} onChange={v=>setForm(f=>({...f,address:v}))} />
           </Field>
+
+          <div className="drawer-section">Owner / Seller</div>
+          <FieldRow>
+            <Field label="Name"><input style={inp} value={form.seller_name||''} onChange={set('seller_name')} /></Field>
+            <Field label="FUB Link">
+              <div style={{ display:'flex', gap:6 }}>
+                <input style={inp} placeholder="https://…" value={form.seller_fub_link||''} onChange={set('seller_fub_link')} />
+                {form.seller_fub_link && (
+                  <button
+                    onClick={() => window.open(form.seller_fub_link, 'nhc_fub', 'width=1400,height=950,noopener,noreferrer')}
+                    style={{ background:'#fff', border:'1.5px solid #2D6FAF', borderRadius:8, padding:'0 12px', cursor:'pointer', color:'#2D6FAF', fontSize:14, flexShrink:0 }}
+                  >↗</button>
+                )}
+              </div>
+            </Field>
+          </FieldRow>
+
           {zillowUrl(form.address) && (
             <button
               onClick={() => window.open(zillowUrl(form.address), 'nhc_zillow', 'width=1400,height=950,noopener,noreferrer')}
