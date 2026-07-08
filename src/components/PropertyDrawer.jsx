@@ -1034,7 +1034,6 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
               <Field label="Sale Price"><MoneyInput value={form.sale_price} onChange={set('sale_price')} /></Field>
               <Field label="Sale Date"><DatePicker style={inp} value={form.sale_date||''} onChange={set('sale_date')} /></Field>
             </FieldRow>
-            <Field label="Days on Market"><input style={monoInp} type="number" value={form.days_on_market||''} onChange={set('days_on_market')} /></Field>
             {flipProfit!==null && (
               <div style={{ display:'flex', gap:8, flexWrap:'wrap', marginTop:4 }}>
                 <ProfitBox label="BPV Profit" value={`${flipProfit>=0?'+':''}${fmt(flipProfit)}`} color={flipProfit>=0?'#3B6D11':'#B91C1C'} sub={flipROI?`${flipROI}% ROI`:null} />
