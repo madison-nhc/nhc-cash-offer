@@ -480,6 +480,7 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
       mailing_id:form.mailing_id||null,
       source:form.source||null,
       commission_pct:form.commission_pct||null, commission_earned:form.commission_earned||null,
+      sale_commission_pct:form.sale_commission_pct||null, sale_commission_earned:form.sale_commission_earned||null,
       commission_min:form.commission_min||5000,
       nhc_notes:form.nhc_notes||null,
       purchase_price:form.purchase_price||null, closing_costs:form.closing_costs||null,
@@ -1079,9 +1080,16 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
               <Field label="Sale Price"><MoneyInput value={form.sale_price} onChange={set('sale_price')} /></Field>
               <Field label="Sale Date"><DatePicker style={inp} value={form.sale_date||''} onChange={set('sale_date')} /></Field>
             </FieldRow>
+            <FieldRow>
+              <Field label="Commission % (on Sale)">
+                <input style={monoInp} type="number" value={form.sale_commission_pct||''}
+                  onChange={e=>{ const e2=calcCommission(e.target.value,form.sale_price); setForm(f=>({...f,sale_commission_pct:e.target.value,sale_commission_earned:e2?e2.toFixed(2):f.sale_commission_earned})) }} />
+              </Field>
+              <Field label="Commission ($)"><MoneyInput value={form.sale_commission_earned} onChange={set('sale_commission_earned')} /></Field>
+            </FieldRow>
             {form.sale_price && (
               <ProfitWaterfall
-                salePrice={form.sale_price} commission={form.commission_earned}
+                salePrice={form.sale_price} commission={form.sale_commission_earned}
                 loanPayoff={loanPayoffTotal} partnerPayback={partnerPaybackTotal}
               />
             )}
@@ -1120,10 +1128,17 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
                   <Field label="Sale Price ($)"><input style={monoInp} type="number" value={form.sale_price||''} onChange={set('sale_price')} /></Field>
                   <Field label="Sale Date"><DatePicker style={inp} value={form.sale_date||''} onChange={set('sale_date')} /></Field>
                 </FieldRow>
+                <FieldRow>
+                  <Field label="Commission % (on Sale)">
+                    <input style={monoInp} type="number" value={form.sale_commission_pct||''}
+                      onChange={e=>{ const e2=calcCommission(e.target.value,form.sale_price); setForm(f=>({...f,sale_commission_pct:e.target.value,sale_commission_earned:e2?e2.toFixed(2):f.sale_commission_earned})) }} />
+                  </Field>
+                  <Field label="Commission ($)"><MoneyInput value={form.sale_commission_earned} onChange={set('sale_commission_earned')} /></Field>
+                </FieldRow>
                 {form.sale_price && (
                   <div style={{ marginTop:10 }}>
                     <ProfitWaterfall
-                      salePrice={form.sale_price} commission={form.commission_earned}
+                      salePrice={form.sale_price} commission={form.sale_commission_earned}
                       loanPayoff={loanPayoffTotal} partnerPayback={partnerPaybackTotal}
                     />
                   </div>
