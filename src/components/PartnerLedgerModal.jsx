@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase.js'
 import { Modal, fmt, calcOwed } from './ui.jsx'
 
-const GRID = '1fr 110px 90px 110px 90px'
+const GRID = '1fr 100px 80px 100px 90px'
 
 // View-only interest readout — fetches repayments and computes accrued interest,
 // no editing here.
@@ -22,14 +22,14 @@ function InterestCell({ sourceType, sourceId, amount, datePaid, closingDate }) {
   return <span style={{ fontSize:12, fontFamily:"'DM Mono', monospace", fontWeight:700, color: interest>0 ? '#B8892A' : '#9ca3af' }}>{interest>0 ? fmt(interest) : '—'}</span>
 }
 
-function Row({ label, amount, paidBy, datePaid, sourceType, sourceId, closingDate }) {
+function Row({ label, amount, paidBy, datePaid, sourceType, sourceId, closingDate, zebra }) {
   const isPartner = paidBy === 'Bob' || paidBy === 'Eric'
   return (
-    <div style={{ display:'grid', gridTemplateColumns:GRID, gap:8, alignItems:'center', padding:'9px 4px', borderTop:'0.5px solid #F0EDE6' }}>
-      <div style={{ fontSize:13, color:'#2C2C2C' }}>{label}</div>
-      <div style={{ fontSize:13, fontFamily:"'DM Mono', monospace", textAlign:'right', color:'#4b5563' }}>{fmt(amount)}</div>
-      <div style={{ fontSize:12, fontWeight:600, color: isPartner ? (paidBy==='Bob'?'#2D6FAF':'#D97825') : '#9ca3af' }}>{paidBy || 'BPV'}</div>
-      <div style={{ fontSize:12, color:'#6b7280' }}>{isPartner ? (datePaid || '—') : '—'}</div>
+    <div style={{ display:'grid', gridTemplateColumns:GRID, gap:10, alignItems:'center', padding:'8px 12px', background: zebra ? '#FAFAF8' : '#fff' }}>
+      <div style={{ fontSize:12.5, color:'#2C2C2C' }}>{label}</div>
+      <div style={{ fontSize:12.5, fontFamily:"'DM Mono', monospace", textAlign:'right', color:'#4b5563' }}>{fmt(amount)}</div>
+      <div style={{ fontSize:11.5, fontWeight:600, color: isPartner ? (paidBy==='Bob'?'#2D6FAF':'#D97825') : '#9ca3af' }}>{paidBy || 'BPV'}</div>
+      <div style={{ fontSize:11.5, color:'#6b7280' }}>{isPartner ? (datePaid || '—') : '—'}</div>
       <div style={{ textAlign:'right' }}>
         {isPartner ? <InterestCell sourceType={sourceType} sourceId={sourceId} amount={amount} datePaid={datePaid} closingDate={closingDate} /> : <span style={{ fontSize:12, color:'#D6D2CA' }}>—</span>}
       </div>
@@ -37,22 +37,30 @@ function Row({ label, amount, paidBy, datePaid, sourceType, sourceId, closingDat
   )
 }
 
-function SectionHeader({ children, onClick }) {
+function SectionHeader({ children, onClick, first }) {
   return (
     <div
       onClick={onClick}
       style={{
-        display:'grid', gridTemplateColumns:GRID, gap:8, padding:'2px 4px 6px', marginTop:18,
+        padding: first ? '2px 12px 8px' : '18px 12px 8px',
         cursor: onClick ? 'pointer' : 'default',
+        display:'flex', alignItems:'center', gap:5,
       }}
     >
-      <div style={{ fontSize:11, fontWeight:700, color:'#B8892A', textTransform:'uppercase', letterSpacing:0.7, display:'flex', alignItems:'center', gap:5 }}>
-        {children} {onClick && <span style={{ fontSize:10 }}>→</span>}
-      </div>
-      <div />
-      <div style={{ fontSize:10, fontWeight:600, color:'#9ca3af', textTransform:'uppercase' }}>Paid By</div>
-      <div style={{ fontSize:10, fontWeight:600, color:'#9ca3af', textTransform:'uppercase' }}>Date Paid</div>
-      <div style={{ fontSize:10, fontWeight:600, color:'#9ca3af', textTransform:'uppercase', textAlign:'right' }}>Interest</div>
+      <span style={{ fontSize:11, fontWeight:700, color:'#B8892A', textTransform:'uppercase', letterSpacing:0.7 }}>{children}</span>
+      {onClick && <span style={{ fontSize:10, color:'#B8892A' }}>→</span>}
+    </div>
+  )
+}
+
+function ColumnLabels() {
+  return (
+    <div style={{ display:'grid', gridTemplateColumns:GRID, gap:10, padding:'0 12px 6px', borderBottom:'1px solid #D6D2CA' }}>
+      <div style={{ fontSize:9, fontWeight:700, color:'#9ca3af', textTransform:'uppercase', letterSpacing:0.6 }}>Item</div>
+      <div style={{ fontSize:9, fontWeight:700, color:'#9ca3af', textTransform:'uppercase', letterSpacing:0.6, textAlign:'right' }}>Amount</div>
+      <div style={{ fontSize:9, fontWeight:700, color:'#9ca3af', textTransform:'uppercase', letterSpacing:0.6 }}>Paid By</div>
+      <div style={{ fontSize:9, fontWeight:700, color:'#9ca3af', textTransform:'uppercase', letterSpacing:0.6 }}>Date Paid</div>
+      <div style={{ fontSize:9, fontWeight:700, color:'#9ca3af', textTransform:'uppercase', letterSpacing:0.6, textAlign:'right' }}>Interest</div>
     </div>
   )
 }
@@ -92,53 +100,63 @@ export default function PartnerLedgerModal({ propertyId, property, closingDate, 
 
   const nothing = items.length===0 && supplies.length===0 && bills.length===0 && loanPayments.length===0 && !property?.down_payment && !property?.closing_costs
 
+  // Flatten everything into one zebra-striped list so alternating rows read cleanly
+  // across section boundaries.
+  let rowIndex = 0
+  const nextZebra = () => (rowIndex++ % 2 === 1)
+
   return (
     <Modal title={`Partner Ledger — ${property?.address?.split(',')[0] || ''}`} onClose={onClose} width={1240}>
       {loading ? (
         <div style={{ textAlign:'center', padding:30, color:'#9ca3af', fontSize:12 }}>Loading…</div>
       ) : (
-        <div style={{ display:'flex', flexDirection:'column' }}>
-          <div style={{ fontSize:11, color:'#9ca3af', marginBottom:2 }}>
+        <div style={{ maxWidth:760, margin:'0 auto' }}>
+          <div style={{ fontSize:11, color:'#9ca3af', marginBottom:14 }}>
             View only — click a section name to jump there and make edits.
           </div>
 
-          <SectionHeader onClick={()=>onNavigate('acquisition')}>Acquisition</SectionHeader>
-          <Row label="Down Payment" amount={property?.down_payment} paidBy={property?.down_payment_paid_by} datePaid={property?.down_payment_date_paid} sourceType="down_payment" sourceId={propertyId} closingDate={closingDate} />
-          <Row label="Closing Costs" amount={property?.closing_costs} paidBy={property?.closing_costs_paid_by} datePaid={property?.closing_costs_date_paid} sourceType="closing_costs" sourceId={propertyId} closingDate={closingDate} />
+          <div style={{ border:'0.5px solid #D6D2CA', borderRadius:8, overflow:'hidden' }}>
+            <ColumnLabels />
 
-          {items.length > 0 && (<>
-            <SectionHeader onClick={()=>onNavigate('rehab')}>Rehab — Services</SectionHeader>
-            {items.map(r => (
-              <Row key={r.id} label={r.name || 'Unnamed'} amount={itemCost(r)} paidBy={r.paid_by} datePaid={r.date_paid} sourceType="rehab_item" sourceId={r.id} closingDate={closingDate} />
-            ))}
-          </>)}
+            <SectionHeader first onClick={()=>onNavigate('acquisition')}>Acquisition</SectionHeader>
+            <Row zebra={nextZebra()} label="Down Payment" amount={property?.down_payment} paidBy={property?.down_payment_paid_by} datePaid={property?.down_payment_date_paid} sourceType="down_payment" sourceId={propertyId} closingDate={closingDate} />
+            <Row zebra={nextZebra()} label="Closing Costs" amount={property?.closing_costs} paidBy={property?.closing_costs_paid_by} datePaid={property?.closing_costs_date_paid} sourceType="closing_costs" sourceId={propertyId} closingDate={closingDate} />
 
-          {supplies.length > 0 && (<>
-            <SectionHeader onClick={()=>onNavigate('rehab')}>Rehab — Supplies</SectionHeader>
-            {supplies.map(r => (
-              <Row key={r.id} label={r.name || 'Unnamed'} amount={supplyCost(r)} paidBy={r.paid_by} datePaid={r.date_paid} sourceType="supply" sourceId={r.id} closingDate={closingDate} />
-            ))}
-          </>)}
+            {items.length > 0 && (<>
+              <SectionHeader onClick={()=>onNavigate('rehab')}>Rehab — Services</SectionHeader>
+              {items.map(r => (
+                <Row key={r.id} zebra={nextZebra()} label={r.name || 'Unnamed'} amount={itemCost(r)} paidBy={r.paid_by} datePaid={r.date_paid} sourceType="rehab_item" sourceId={r.id} closingDate={closingDate} />
+              ))}
+            </>)}
 
-          {bills.length > 0 && (<>
-            <SectionHeader onClick={()=>onNavigate('rehab')}>Rehab — Utilities</SectionHeader>
-            {bills.map(r => (
-              <Row key={r.id} label={r.utility_type || 'Utility'} amount={r.amount} paidBy={r.paid_by} datePaid={r.date_paid} sourceType="utility_bill" sourceId={r.id} closingDate={closingDate} />
-            ))}
-          </>)}
+            {supplies.length > 0 && (<>
+              <SectionHeader onClick={()=>onNavigate('rehab')}>Rehab — Supplies</SectionHeader>
+              {supplies.map(r => (
+                <Row key={r.id} zebra={nextZebra()} label={r.name || 'Unnamed'} amount={supplyCost(r)} paidBy={r.paid_by} datePaid={r.date_paid} sourceType="supply" sourceId={r.id} closingDate={closingDate} />
+              ))}
+            </>)}
 
-          {loanPayments.length > 0 && (<>
-            <SectionHeader onClick={()=>onNavigate('loan')}>Loan Payments</SectionHeader>
-            {loanPayments.map(p => (
-              <Row key={p.id} label={p.due_date ? `Due ${p.due_date}` : 'Payment'} amount={p.amount} paidBy={p.paid_by} datePaid={p.date_paid} sourceType="loan_payment" sourceId={p.id} closingDate={closingDate} />
-            ))}
-          </>)}
+            {bills.length > 0 && (<>
+              <SectionHeader onClick={()=>onNavigate('rehab')}>Rehab — Utilities</SectionHeader>
+              {bills.map(r => (
+                <Row key={r.id} zebra={nextZebra()} label={r.utility_type || 'Utility'} amount={r.amount} paidBy={r.paid_by} datePaid={r.date_paid} sourceType="utility_bill" sourceId={r.id} closingDate={closingDate} />
+              ))}
+            </>)}
 
-          {nothing && (
-            <div style={{ textAlign:'center', padding:20, color:'#9ca3af', fontSize:12 }}>Nothing tracked yet.</div>
-          )}
+            {loanPayments.length > 0 && (<>
+              <SectionHeader onClick={()=>onNavigate('loan')}>Loan Payments</SectionHeader>
+              {loanPayments.map(p => (
+                <Row key={p.id} zebra={nextZebra()} label={p.due_date ? `Due ${p.due_date}` : 'Payment'} amount={p.amount} paidBy={p.paid_by} datePaid={p.date_paid} sourceType="loan_payment" sourceId={p.id} closingDate={closingDate} />
+              ))}
+            </>)}
+
+            {nothing && (
+              <div style={{ textAlign:'center', padding:20, color:'#9ca3af', fontSize:12 }}>Nothing tracked yet.</div>
+            )}
+          </div>
         </div>
       )}
     </Modal>
   )
 }
+
