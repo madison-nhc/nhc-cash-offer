@@ -9,6 +9,7 @@ import LoanTracker from './LoanTracker.jsx'
 import RentTracker from './RentTracker.jsx'
 import LoanOverview from './LoanOverview.jsx'
 import RentOverview from './RentOverview.jsx'
+import PartnerLedgerModal from './PartnerLedgerModal.jsx'
 
 // ── Type options (primary) ────────────────────────────────────────────────────
 const TYPE_OPTIONS = [
@@ -135,6 +136,37 @@ function ProfitBox({ label, value, sub, color }) {
   )
 }
 
+// Simple cash waterfall: Sale Price − NHC Commission − Loan Payoff − Partner Payback = Profit
+function ProfitWaterfall({ salePrice, commission, loanPayoff, partnerPayback }) {
+  const sp = parseFloat(salePrice) || 0
+  const c  = parseFloat(commission) || 0
+  const lp = loanPayoff || 0
+  const pb = partnerPayback || 0
+  const profit = sp - c - lp - pb
+
+  const rows = [
+    { label:'Sale Price', value:fmt(sp), sign:'' },
+    { label:'NHC Commission', value:fmt(c), sign:'−' },
+    { label:'Loan Payoff', value:fmt(lp), sign:'−' },
+    { label:'Partner Payback', value:fmt(pb), sign:'−' },
+  ]
+
+  return (
+    <div style={{ background:'#FAFAF8', borderRadius:8, border:'0.5px solid #D6D2CA', padding:'2px 14px' }}>
+      {rows.map((r,i)=>(
+        <div key={r.label} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'8px 0', borderTop:i===0?'none':'0.5px solid #E8E4DB' }}>
+          <span style={{ fontSize:12, color:'#6b7280' }}>{r.sign ? `${r.sign} ${r.label}` : r.label}</span>
+          <span style={{ fontSize:13, fontFamily:"'DM Mono', monospace", fontWeight:600, color:'#4b5563' }}>{r.value}</span>
+        </div>
+      ))}
+      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'10px 0', borderTop:'1.5px solid #B8892A' }}>
+        <span style={{ fontSize:13, fontWeight:700, color:'#2C2C2C' }}>Profit</span>
+        <span style={{ fontSize:17, fontWeight:700, fontFamily:"'DM Mono', monospace", color: profit>=0?'#3B6D11':'#B91C1C' }}>{profit>=0?'+':''}{fmt(profit)}</span>
+      </div>
+    </div>
+  )
+}
+
 // Money input with a fixed "$" prefix baked into the field, instead of the unit in the label
 function MoneyInput({ value, onChange, disabled=false }) {
   return (
@@ -191,7 +223,7 @@ function SummaryCard({ rows, onClick, footerLabel }) {
 // Fetches active loan(s) for the property and renders a click-through summary card.
 // Loans are always taken out through BPV — individual monthly payments may be
 // personally covered by Bob/Eric, which is tracked in cashoffer_loan_payments, not here.
-function LoanSummaryCard({ propertyId, onClick }) {
+function LoanSummaryCard({ propertyId, onClick, onTotal }) {
   const [loans, setLoans] = useState(null)
   const [coveredCount, setCoveredCount] = useState(0)
 
@@ -201,13 +233,15 @@ function LoanSummaryCard({ propertyId, onClick }) {
       .eq('property_id', propertyId).eq('is_active', true)
       .then(async ({ data }) => {
         setLoans(data || [])
+        const total = (data||[]).reduce((s,l)=>s+(parseFloat(l.loan_amount)||0), 0)
+        if (onTotal) onTotal(total)
         const loanIds = (data||[]).map(l=>l.id)
         if (loanIds.length) {
           const { data: payments } = await supabase.from('cashoffer_loan_payments').select('paid_by').in('loan_id', loanIds)
           setCoveredCount((payments||[]).filter(p=>PARTNERS.includes(p.paid_by)).length)
         }
       })
-  }, [propertyId])
+  }, [propertyId]) // eslint-disable-line react-hooks/exhaustive-deps
 
   if (loans === null || loans.length === 0) return null
   const totalAmount = loans.reduce((s,l)=>s+(parseFloat(l.loan_amount)||0), 0)
@@ -226,7 +260,7 @@ function LoanSummaryCard({ propertyId, onClick }) {
 
 // Aggregates what's owed back to Bob/Eric personally across Closing Costs, Rehab
 // line items, and any individual loan payments they covered — one net number per partner.
-function PartnerPaybackSummary({ propertyId, property, closingDate }) {
+function PartnerPaybackSummary({ propertyId, property, closingDate, onOpenLedger, onTotal }) {
   const [totals, setTotals] = useState(null)
 
   useEffect(() => { if (propertyId) load() }, [propertyId, property?.closing_costs, property?.closing_costs_paid_by, property?.closing_costs_date_paid, property?.down_payment, property?.down_payment_paid_by, property?.down_payment_date_paid, closingDate]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -274,6 +308,7 @@ function PartnerPaybackSummary({ propertyId, property, closingDate }) {
     }
 
     setTotals(t)
+    if (onTotal) onTotal(t.Bob.principal + t.Bob.interest + t.Eric.principal + t.Eric.interest)
   }
 
   if (!totals) return null
@@ -281,7 +316,10 @@ function PartnerPaybackSummary({ propertyId, property, closingDate }) {
   if (active.length === 0) return null
 
   return (
-    <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+    <div
+      onClick={onOpenLedger}
+      style={{ display:'flex', flexDirection:'column', gap:8, cursor:'pointer' }}
+    >
       <div className="drawer-section">Partner Payback</div>
       <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
         {active.map(p => (
@@ -294,6 +332,7 @@ function PartnerPaybackSummary({ propertyId, property, closingDate }) {
           />
         ))}
       </div>
+      <div style={{ fontSize:10, color:'#B8892A', fontWeight:700, textAlign:'center' }}>View / edit full partner ledger →</div>
     </div>
   )
 }
@@ -355,6 +394,9 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
   const [selectedLoanId, setSelectedLoanId] = useState(null)
   const [rehabOpen, setRehabOpen] = useState(false)
   const [rentOpen, setRentOpen] = useState(false)
+  const [ledgerOpen, setLedgerOpen] = useState(false)
+  const [loanPayoffTotal, setLoanPayoffTotal] = useState(0)
+  const [partnerPaybackTotal, setPartnerPaybackTotal] = useState(0)
   const [editingPhotosLink, setEditingPhotosLink] = useState(false)
 
   const isNew   = !form.id
@@ -1021,25 +1063,27 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
                 { label:'Closing Costs', value:fmt(form.closing_costs), tag:PARTNERS.includes(form.closing_costs_paid_by)?form.closing_costs_paid_by:null },
               ]}
             />
-            <LoanSummaryCard propertyId={form.id} onClick={()=>setTab('loan')} />
+            <LoanSummaryCard propertyId={form.id} onClick={()=>setTab('loan')} onTotal={setLoanPayoffTotal} />
             <SummaryCard
               onClick={()=>setTab('rehab')}
               footerLabel="Edit on Rehab tab"
               rows={[{ label:'Total Rehab Cost', value:fmt(rc) }]}
             />
-            <PartnerPaybackSummary propertyId={form.id} property={form} closingDate={form.disposition_date || form.sale_date || null} />
+            <PartnerPaybackSummary
+              propertyId={form.id} property={form} closingDate={form.disposition_date || form.sale_date || null}
+              onOpenLedger={()=>setLedgerOpen(true)} onTotal={setPartnerPaybackTotal}
+            />
 
             <div className="drawer-section">Flip</div>
             <FieldRow>
               <Field label="Sale Price"><MoneyInput value={form.sale_price} onChange={set('sale_price')} /></Field>
               <Field label="Sale Date"><DatePicker style={inp} value={form.sale_date||''} onChange={set('sale_date')} /></Field>
             </FieldRow>
-            {flipProfit!==null && (
-              <div style={{ display:'flex', gap:8, flexWrap:'wrap', marginTop:4 }}>
-                <ProfitBox label="BPV Profit" value={`${flipProfit>=0?'+':''}${fmt(flipProfit)}`} color={flipProfit>=0?'#3B6D11':'#B91C1C'} sub={flipROI?`${flipROI}% ROI`:null} />
-                <ProfitBox label="NHC Commission Paid" value={fmt(form.commission_earned)||'—'} color="#B8892A" />
-                <ProfitBox label="Total Cost" value={fmt(totalCost)} color="#6b7280" />
-              </div>
+            {form.sale_price && (
+              <ProfitWaterfall
+                salePrice={form.sale_price} commission={form.commission_earned}
+                loanPayoff={loanPayoffTotal} partnerPayback={partnerPaybackTotal}
+              />
             )}
             <Field label="BPV Notes"><textarea style={{ ...inp, minHeight:56, resize:'vertical' }} value={form.bpv_notes||''} onChange={set('bpv_notes')} /></Field>
           </>)}
@@ -1057,13 +1101,16 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
                 { label:'Closing Costs', value:fmt(form.closing_costs), tag:PARTNERS.includes(form.closing_costs_paid_by)?form.closing_costs_paid_by:null },
               ]}
             />
-            <LoanSummaryCard propertyId={form.id} onClick={()=>setTab('loan')} />
+            <LoanSummaryCard propertyId={form.id} onClick={()=>setTab('loan')} onTotal={setLoanPayoffTotal} />
             <SummaryCard
               onClick={()=>setTab('rehab')}
               footerLabel="Edit on Rehab tab"
               rows={[{ label:'Total Rehab Cost', value:fmt(rc) }]}
             />
-            <PartnerPaybackSummary propertyId={form.id} property={form} closingDate={form.disposition_date || form.sale_date || null} />
+            <PartnerPaybackSummary
+              propertyId={form.id} property={form} closingDate={form.disposition_date || form.sale_date || null}
+              onOpenLedger={()=>setLedgerOpen(true)} onTotal={setPartnerPaybackTotal}
+            />
 
             <div className="drawer-section">Sale</div>
             <div style={{ background:'#FAFAF8', borderRadius:8, padding:'12px 14px', border:'0.5px solid #D6D2CA' }}>
@@ -1073,6 +1120,14 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
                   <Field label="Sale Price ($)"><input style={monoInp} type="number" value={form.sale_price||''} onChange={set('sale_price')} /></Field>
                   <Field label="Sale Date"><DatePicker style={inp} value={form.sale_date||''} onChange={set('sale_date')} /></Field>
                 </FieldRow>
+                {form.sale_price && (
+                  <div style={{ marginTop:10 }}>
+                    <ProfitWaterfall
+                      salePrice={form.sale_price} commission={form.commission_earned}
+                      loanPayoff={loanPayoffTotal} partnerPayback={partnerPaybackTotal}
+                    />
+                  </div>
+                )}
               </>) : (
                 <div style={{ fontSize:11, color:'#9ca3af' }}>Set the stage to Sold in the header to record a sale on this hold.</div>
               )}
@@ -1122,6 +1177,17 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
         onClose={()=>setRentOpen(false)}
         onRentChange={()=>onSave()}
       />
+
+      {/* Partner Ledger modal — all Bob/Eric-funded line items in one place */}
+      {ledgerOpen && (
+        <PartnerLedgerModal
+          propertyId={form.id}
+          property={form}
+          closingDate={form.disposition_date || form.sale_date || null}
+          onClose={()=>setLedgerOpen(false)}
+          onPropertyChange={fields=>setForm(f=>({...f, ...fields}))}
+        />
+      )}
 
     </>
   )
