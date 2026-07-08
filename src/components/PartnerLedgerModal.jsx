@@ -1,39 +1,63 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase.js'
-import { Modal, fmt, PAID_BY_OPTIONS, PARTNERS, PartnerLedger, NoPartnerCells } from './ui.jsx'
+import { Modal, fmt, calcOwed } from './ui.jsx'
 
-const GRID = '1fr 100px 84px 190px'
+const GRID = '1fr 110px 90px 110px 90px'
 
-function Row({ label, amount, paidBy, onPaidByChange, sourceType, sourceId, datePaid, onDatePaidChange, closingDate }) {
+// View-only interest readout — fetches repayments and computes accrued interest,
+// no editing here.
+function InterestCell({ sourceType, sourceId, amount, datePaid, closingDate }) {
+  const [interest, setInterest] = useState(null)
+  useEffect(() => {
+    if (!datePaid || !amount) { setInterest(0); return }
+    supabase.from('cashoffer_partner_repayments').select('*').eq('source_type', sourceType).eq('source_id', sourceId)
+      .then(({ data }) => {
+        const asOf = closingDate ? new Date(Math.min(new Date(), new Date(closingDate+'T12:00:00'))) : new Date()
+        const { accruedInterest } = calcOwed(amount, datePaid, data||[], asOf)
+        setInterest(accruedInterest)
+      })
+  }, [sourceType, sourceId, amount, datePaid, closingDate])
+
+  if (interest === null) return <span style={{ fontSize:11, color:'#D6D2CA' }}>…</span>
+  return <span style={{ fontSize:12, fontFamily:"'DM Mono', monospace", fontWeight:700, color: interest>0 ? '#B8892A' : '#9ca3af' }}>{interest>0 ? fmt(interest) : '—'}</span>
+}
+
+function Row({ label, amount, paidBy, datePaid, sourceType, sourceId, closingDate }) {
+  const isPartner = paidBy === 'Bob' || paidBy === 'Eric'
   return (
-    <div style={{ display:'grid', gridTemplateColumns:GRID, gap:8, alignItems:'center', padding:'7px 10px', borderTop:'0.5px solid #F0EDE6' }}>
-      <div style={{ fontSize:12, color:'#4b5563' }}>{label}</div>
-      <div style={{ fontSize:12, fontFamily:"'DM Mono', monospace", textAlign:'right', color:'#4b5563' }}>{fmt(amount)}</div>
-      <select
-        value={paidBy||'BPV'} onChange={e=>onPaidByChange(e.target.value)}
-        style={{ border:'0.5px solid #D6D2CA', borderRadius:4, padding:'4px 6px', fontSize:11, fontFamily:'inherit', background:'#fff', cursor:'pointer' }}
-      >
-        {PAID_BY_OPTIONS.map(o=><option key={o} value={o}>{o}</option>)}
-      </select>
-      {PARTNERS.includes(paidBy) ? (
-        <PartnerLedger sourceType={sourceType} sourceId={sourceId} originalAmount={amount} datePaid={datePaid} onDatePaidChange={onDatePaidChange} closingDate={closingDate} />
-      ) : <NoPartnerCells />}
+    <div style={{ display:'grid', gridTemplateColumns:GRID, gap:8, alignItems:'center', padding:'9px 4px', borderTop:'0.5px solid #F0EDE6' }}>
+      <div style={{ fontSize:13, color:'#2C2C2C' }}>{label}</div>
+      <div style={{ fontSize:13, fontFamily:"'DM Mono', monospace", textAlign:'right', color:'#4b5563' }}>{fmt(amount)}</div>
+      <div style={{ fontSize:12, fontWeight:600, color: isPartner ? (paidBy==='Bob'?'#2D6FAF':'#D97825') : '#9ca3af' }}>{paidBy || 'BPV'}</div>
+      <div style={{ fontSize:12, color:'#6b7280' }}>{isPartner ? (datePaid || '—') : '—'}</div>
+      <div style={{ textAlign:'right' }}>
+        {isPartner ? <InterestCell sourceType={sourceType} sourceId={sourceId} amount={amount} datePaid={datePaid} closingDate={closingDate} /> : <span style={{ fontSize:12, color:'#D6D2CA' }}>—</span>}
+      </div>
     </div>
   )
 }
 
-function SectionHeader({ children }) {
+function SectionHeader({ children, onClick }) {
   return (
-    <div style={{ display:'grid', gridTemplateColumns:GRID, gap:8, padding:'0 10px 4px', marginTop:14 }}>
-      <div style={{ fontSize:10, fontWeight:700, color:'#B8892A', textTransform:'uppercase', letterSpacing:0.7 }}>{children}</div>
+    <div
+      onClick={onClick}
+      style={{
+        display:'grid', gridTemplateColumns:GRID, gap:8, padding:'2px 4px 6px', marginTop:18,
+        cursor: onClick ? 'pointer' : 'default',
+      }}
+    >
+      <div style={{ fontSize:11, fontWeight:700, color:'#B8892A', textTransform:'uppercase', letterSpacing:0.7, display:'flex', alignItems:'center', gap:5 }}>
+        {children} {onClick && <span style={{ fontSize:10 }}>→</span>}
+      </div>
       <div />
-      <div style={{ fontSize:9, fontWeight:600, color:'#9ca3af', textTransform:'uppercase' }}>Paid By</div>
-      <div style={{ fontSize:9, fontWeight:600, color:'#9ca3af', textTransform:'uppercase' }}>Date Paid / Interest</div>
+      <div style={{ fontSize:10, fontWeight:600, color:'#9ca3af', textTransform:'uppercase' }}>Paid By</div>
+      <div style={{ fontSize:10, fontWeight:600, color:'#9ca3af', textTransform:'uppercase' }}>Date Paid</div>
+      <div style={{ fontSize:10, fontWeight:600, color:'#9ca3af', textTransform:'uppercase', textAlign:'right' }}>Interest</div>
     </div>
   )
 }
 
-export default function PartnerLedgerModal({ propertyId, property, closingDate, onClose, onPropertyChange }) {
+export default function PartnerLedgerModal({ propertyId, property, closingDate, onClose, onNavigate }) {
   const [items, setItems]       = useState([])
   const [supplies, setSupplies] = useState([])
   const [bills, setBills]       = useState([])
@@ -63,102 +87,54 @@ export default function PartnerLedgerModal({ propertyId, property, closingDate, 
     setLoading(false)
   }
 
-  async function updateProperty(fields) {
-    await supabase.from('cashoffer_properties').update(fields).eq('id', propertyId)
-    onPropertyChange(fields)
-  }
-
-  async function updateRow(table, id, field, value, setList) {
-    await supabase.from(table).update({ [field]: value }).eq('id', id)
-    setList(list => list.map(x => x.id===id ? { ...x, [field]: value } : x))
-  }
-
   const itemCost = r => r.actual_cost != null ? parseFloat(r.actual_cost)||0 : parseFloat(r.estimated_cost)||0
   const supplyCost = r => (parseFloat(r.unit_cost)||0) * (parseFloat(r.quantity)||0)
 
+  const nothing = items.length===0 && supplies.length===0 && bills.length===0 && loanPayments.length===0 && !property?.down_payment && !property?.closing_costs
+
   return (
-    <Modal title={`Partner Ledger — ${property?.address?.split(',')[0] || ''}`} onClose={onClose} width={720}>
+    <Modal title={`Partner Ledger — ${property?.address?.split(',')[0] || ''}`} onClose={onClose} width={1240}>
       {loading ? (
         <div style={{ textAlign:'center', padding:30, color:'#9ca3af', fontSize:12 }}>Loading…</div>
       ) : (
         <div style={{ display:'flex', flexDirection:'column' }}>
-          <div style={{ fontSize:11, color:'#9ca3af', marginBottom:4 }}>
-            Every dollar Bob or Eric personally covered on this deal, in one place — adjust Paid By or Date Paid here and it updates everywhere else too.
+          <div style={{ fontSize:11, color:'#9ca3af', marginBottom:2 }}>
+            View only — click a section name to jump there and make edits.
           </div>
 
-          <SectionHeader>Acquisition</SectionHeader>
-          <Row
-            label="Down Payment" amount={property?.down_payment}
-            paidBy={property?.down_payment_paid_by}
-            onPaidByChange={v=>updateProperty({ down_payment_paid_by: v, down_payment_date_paid: PARTNERS.includes(v) ? (property?.down_payment_date_paid || property?.purchase_date || null) : null })}
-            sourceType="down_payment" sourceId={propertyId}
-            datePaid={property?.down_payment_date_paid}
-            onDatePaidChange={v=>updateProperty({ down_payment_date_paid: v })}
-            closingDate={closingDate}
-          />
-          <Row
-            label="Closing Costs" amount={property?.closing_costs}
-            paidBy={property?.closing_costs_paid_by}
-            onPaidByChange={v=>updateProperty({ closing_costs_paid_by: v, closing_costs_date_paid: PARTNERS.includes(v) ? (property?.closing_costs_date_paid || property?.purchase_date || null) : null })}
-            sourceType="closing_costs" sourceId={propertyId}
-            datePaid={property?.closing_costs_date_paid}
-            onDatePaidChange={v=>updateProperty({ closing_costs_date_paid: v })}
-            closingDate={closingDate}
-          />
+          <SectionHeader onClick={()=>onNavigate('acquisition')}>Acquisition</SectionHeader>
+          <Row label="Down Payment" amount={property?.down_payment} paidBy={property?.down_payment_paid_by} datePaid={property?.down_payment_date_paid} sourceType="down_payment" sourceId={propertyId} closingDate={closingDate} />
+          <Row label="Closing Costs" amount={property?.closing_costs} paidBy={property?.closing_costs_paid_by} datePaid={property?.closing_costs_date_paid} sourceType="closing_costs" sourceId={propertyId} closingDate={closingDate} />
 
           {items.length > 0 && (<>
-            <SectionHeader>Rehab — Services</SectionHeader>
+            <SectionHeader onClick={()=>onNavigate('rehab')}>Rehab — Services</SectionHeader>
             {items.map(r => (
-              <Row key={r.id}
-                label={r.name || 'Unnamed'} amount={itemCost(r)}
-                paidBy={r.paid_by} onPaidByChange={v=>updateRow('cashoffer_rehab_items', r.id, 'paid_by', v, setItems)}
-                sourceType="rehab_item" sourceId={r.id}
-                datePaid={r.date_paid} onDatePaidChange={v=>updateRow('cashoffer_rehab_items', r.id, 'date_paid', v, setItems)}
-                closingDate={closingDate}
-              />
+              <Row key={r.id} label={r.name || 'Unnamed'} amount={itemCost(r)} paidBy={r.paid_by} datePaid={r.date_paid} sourceType="rehab_item" sourceId={r.id} closingDate={closingDate} />
             ))}
           </>)}
 
           {supplies.length > 0 && (<>
-            <SectionHeader>Rehab — Supplies</SectionHeader>
+            <SectionHeader onClick={()=>onNavigate('rehab')}>Rehab — Supplies</SectionHeader>
             {supplies.map(r => (
-              <Row key={r.id}
-                label={r.name || 'Unnamed'} amount={supplyCost(r)}
-                paidBy={r.paid_by} onPaidByChange={v=>updateRow('cashoffer_supplies', r.id, 'paid_by', v, setSupplies)}
-                sourceType="supply" sourceId={r.id}
-                datePaid={r.date_paid} onDatePaidChange={v=>updateRow('cashoffer_supplies', r.id, 'date_paid', v, setSupplies)}
-                closingDate={closingDate}
-              />
+              <Row key={r.id} label={r.name || 'Unnamed'} amount={supplyCost(r)} paidBy={r.paid_by} datePaid={r.date_paid} sourceType="supply" sourceId={r.id} closingDate={closingDate} />
             ))}
           </>)}
 
           {bills.length > 0 && (<>
-            <SectionHeader>Rehab — Utilities</SectionHeader>
+            <SectionHeader onClick={()=>onNavigate('rehab')}>Rehab — Utilities</SectionHeader>
             {bills.map(r => (
-              <Row key={r.id}
-                label={r.utility_type || 'Utility'} amount={r.amount}
-                paidBy={r.paid_by} onPaidByChange={v=>updateRow('cashoffer_utility_bills', r.id, 'paid_by', v, setBills)}
-                sourceType="utility_bill" sourceId={r.id}
-                datePaid={r.date_paid} onDatePaidChange={v=>updateRow('cashoffer_utility_bills', r.id, 'date_paid', v, setBills)}
-                closingDate={closingDate}
-              />
+              <Row key={r.id} label={r.utility_type || 'Utility'} amount={r.amount} paidBy={r.paid_by} datePaid={r.date_paid} sourceType="utility_bill" sourceId={r.id} closingDate={closingDate} />
             ))}
           </>)}
 
           {loanPayments.length > 0 && (<>
-            <SectionHeader>Loan Payments</SectionHeader>
+            <SectionHeader onClick={()=>onNavigate('loan')}>Loan Payments</SectionHeader>
             {loanPayments.map(p => (
-              <Row key={p.id}
-                label={p.due_date ? `Due ${p.due_date}` : 'Payment'} amount={p.amount}
-                paidBy={p.paid_by} onPaidByChange={v=>updateRow('cashoffer_loan_payments', p.id, 'paid_by', v, setLoanPayments)}
-                sourceType="loan_payment" sourceId={p.id}
-                datePaid={p.date_paid} onDatePaidChange={v=>updateRow('cashoffer_loan_payments', p.id, 'date_paid', v, setLoanPayments)}
-                closingDate={closingDate}
-              />
+              <Row key={p.id} label={p.due_date ? `Due ${p.due_date}` : 'Payment'} amount={p.amount} paidBy={p.paid_by} datePaid={p.date_paid} sourceType="loan_payment" sourceId={p.id} closingDate={closingDate} />
             ))}
           </>)}
 
-          {items.length===0 && supplies.length===0 && bills.length===0 && loanPayments.length===0 && !property?.down_payment && !property?.closing_costs && (
+          {nothing && (
             <div style={{ textAlign:'center', padding:20, color:'#9ca3af', fontSize:12 }}>Nothing tracked yet.</div>
           )}
         </div>
