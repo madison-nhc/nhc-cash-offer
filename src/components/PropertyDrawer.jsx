@@ -1185,7 +1185,11 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
           property={form}
           closingDate={form.disposition_date || form.sale_date || null}
           onClose={()=>setLedgerOpen(false)}
-          onNavigate={tabKey=>{ setLedgerOpen(false); setTab(tabKey) }}
+          onNavigate={tabKey=>{
+            setLedgerOpen(false)
+            setTab(tabKey)
+            if (tabKey==='rehab') setRehabOpen(true)
+          }}
         />
       )}
 
