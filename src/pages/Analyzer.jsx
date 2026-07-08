@@ -24,6 +24,10 @@ const BOARD_COLUMNS = [
   { key:'Needs Cash Offer',  color:'#D97825' },
   { key:'Offer Submitted',   color:'#B8892A' },
   { key:'Offer Accepted',    color:'#3B6D11' },
+  // Display-only: deals already under contract (any type). Not a drag target --
+  // dropping here would require a type-specific payload, and dragging OUT would
+  // demote a Flip/Hold back to Analyzing. These move stages via the drawer.
+  { key:'Under Contract',    color:'#2D6FAF', locked:true },
   { key:'Rejected / Lost',   color:'#B91C1C' },
 ]
 
@@ -33,17 +37,17 @@ function daysAgo(dateStr) {
   return Math.max(0, Math.floor(diff / 86400000))
 }
 
-function BoardCard({ p, onOpen, onDragStart }) {
+function BoardCard({ p, onOpen, onDragStart, locked=false }) {
   const cashOffer = calcCashOffer(p)
   const days = daysAgo(p.updated_at)
   return (
     <div
-      draggable
-      onDragStart={e => onDragStart(e, p.id)}
+      draggable={!locked}
+      onDragStart={locked ? undefined : e => onDragStart(e, p.id)}
       onClick={() => onOpen(p)}
       style={{
         background:'#fff', border:'0.5px solid #D6D2CA', borderRadius:8, padding:'10px 12px',
-        marginBottom:8, cursor:'grab',
+        marginBottom:8, cursor: locked ? 'pointer' : 'grab',
       }}
     >
       <div style={{ fontSize:13, fontWeight:700, color:'#2C2C2C', marginBottom:4 }}>{p.address || 'New Property'}</div>
@@ -65,18 +69,21 @@ function AnalyzerBoard({ properties, onOpen, onMoved }) {
 
   const columnFor = p => {
     if (p.type === 'Lost') return 'Rejected / Lost'
+    if (p.stage === 'Under Contract') return 'Under Contract'
     return (p.stage && p.stage !== 'Analyzing') ? p.stage : 'New Lead'
   }
 
   async function handleDrop(e, columnKey) {
     e.preventDefault()
     setDragOverCol(null)
+    if (BOARD_COLUMNS.find(c => c.key === columnKey)?.locked) return
     const id = e.dataTransfer.getData('text/plain')
     if (!id) return
     const payload = columnKey === 'Rejected / Lost'
       ? { type:'Lost', stage:null, disposition:'lost' }
       : { type:'Analyzing', stage:columnKey, disposition:null }
-    await supabase.from('cashoffer_properties').update(payload).eq('id', id)
+    const { error } = await supabase.from('cashoffer_properties').update(payload).eq('id', id)
+    if (error) alert(`Could not move deal: ${error.message}`)
     onMoved()
   }
 
@@ -87,9 +94,9 @@ function AnalyzerBoard({ properties, onOpen, onMoved }) {
         return (
           <div
             key={col.key}
-            onDragOver={e => { e.preventDefault(); setDragOverCol(col.key) }}
-            onDragLeave={() => setDragOverCol(null)}
-            onDrop={e => handleDrop(e, col.key)}
+            onDragOver={col.locked ? undefined : e => { e.preventDefault(); setDragOverCol(col.key) }}
+            onDragLeave={col.locked ? undefined : () => setDragOverCol(null)}
+            onDrop={col.locked ? undefined : e => handleDrop(e, col.key)}
             style={{
               flex:'0 0 260px', minWidth:260, background: dragOverCol===col.key ? '#fef9f0' : '#F0EDE6',
               borderRadius:8, padding:10, transition:'background 0.1s',
@@ -101,7 +108,7 @@ function AnalyzerBoard({ properties, onOpen, onMoved }) {
             </div>
             <div style={{ minHeight:40 }}>
               {items.map(p => (
-                <BoardCard key={p.id} p={p} onOpen={onOpen} onDragStart={(e,id)=>e.dataTransfer.setData('text/plain', id)} />
+                <BoardCard key={p.id} p={p} onOpen={onOpen} locked={!!col.locked} onDragStart={(e,id)=>e.dataTransfer.setData('text/plain', id)} />
               ))}
               {items.length===0 && (
                 <div style={{ fontSize:11, color:'#9ca3af', textAlign:'center', padding:'12px 0' }}>No deals</div>
