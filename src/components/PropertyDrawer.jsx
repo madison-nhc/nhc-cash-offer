@@ -413,20 +413,6 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
             <Field label="Units"><input style={monoInp} type="number" value={form.unit_count||''} onChange={set('unit_count')} /></Field>
           </FieldRow>
           <FieldRow>
-            <Field label="Owner">
-              <select style={inp} value={form.owner||'BPV'} onChange={set('owner')}>
-                {['BPV','Bob Sophiea','Eric Kimble','Other'].map(o=><option key={o}>{o}</option>)}
-              </select>
-            </Field>
-            <Field label="Acquisition">
-              <select style={inp} value={form.acquisition_type||'Purchased'} onChange={set('acquisition_type')}>
-                <option value="Purchased">Purchased</option>
-                <option value="Pre-Owned">Pre-Owned</option>
-              </select>
-            </Field>
-          </FieldRow>
-
-          <FieldRow>
             <Field label="Source">
               <select style={inp} value={form.source||''} onChange={set('source')}>
                 <option value="">— Select —</option>
@@ -570,12 +556,19 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
             <Field label="Purchase Price ($)"><input style={monoInp} type="number" value={form.purchase_price||''} onChange={set('purchase_price')} /></Field>
             <Field label="Purchase Date"><DatePicker style={inp} value={form.purchase_date||''} onChange={set('purchase_date')} /></Field>
           </FieldRow>
-          <Field label="Acquisition Type">
-            <select style={inp} value={form.acquisition_type||'Purchased'} onChange={set('acquisition_type')}>
-              <option value="Purchased">Purchased</option>
-              <option value="Pre-Owned">Pre-Owned</option>
-            </select>
-          </Field>
+          <FieldRow>
+            <Field label="Owner">
+              <select style={inp} value={form.owner||'BPV'} onChange={set('owner')}>
+                {['BPV','Bob Sophiea','Eric Kimble','Other'].map(o=><option key={o}>{o}</option>)}
+              </select>
+            </Field>
+            <Field label="Acquisition Type">
+              <select style={inp} value={form.acquisition_type||'Purchased'} onChange={set('acquisition_type')}>
+                <option value="Purchased">Purchased</option>
+                <option value="Pre-Owned">Pre-Owned</option>
+              </select>
+            </Field>
+          </FieldRow>
 
           <div className="drawer-section">Closing Costs</div>
           <div style={{ fontSize:11, color:'#9ca3af', marginTop:-8 }}>
@@ -920,6 +913,7 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
     </Drawer>
   )
 }
+
 
 
 
