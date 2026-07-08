@@ -65,6 +65,17 @@ const DEFAULT_REPAIRS = [
 ]
 
 // Truncate "123 Main Street, Lexington, KY 40502" → "123 Main Street"
+// Parses 'YYYY-MM-DD' manually (avoids new Date(str) timezone off-by-one) and
+// returns whole days between two such date strings, or null if either is missing.
+function daysBetween(startStr, endStr) {
+  if (!startStr || !endStr) return null
+  const [sy,sm,sd] = startStr.split('-').map(Number)
+  const [ey,em,ed] = endStr.split('-').map(Number)
+  const start = Date.UTC(sy, sm-1, sd)
+  const end   = Date.UTC(ey, em-1, ed)
+  return Math.round((end-start) / 86400000)
+}
+
 function zillowUrl(address) {
   if (!address || !address.trim()) return null
   return `https://www.zillow.com/homes/${address.trim().replace(/\s+/g,'-')}_rb/`
@@ -338,6 +349,7 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
       rehab_active:stage==='Rehab', // keep in sync
       rehab_stage:form.rehab_stage||'Not Started',
       rehab_start_date:form.rehab_start_date||null,
+      rehab_complete_date:form.rehab_complete_date||null,
       converted_to_sale:form.converted_to_sale||false,
       conversion_date:form.conversion_date||null,
       conversion_disposition:form.conversion_disposition||null,
@@ -757,10 +769,27 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
                 {REHAB_STAGES.map(st=><option key={st} value={st} style={{ background:'#fff', color:'#2C2C2C', fontWeight:400 }}>{st}</option>)}
               </select>
             </Field>
+          </FieldRow>
+          <FieldRow>
             <Field label="Rehab Start Date">
               <DatePicker style={inp} value={form.rehab_start_date||''} onChange={set('rehab_start_date')} />
             </Field>
+            <Field label="Rehab Complete Date">
+              <DatePicker style={inp} value={form.rehab_complete_date||''} onChange={set('rehab_complete_date')} />
+            </Field>
           </FieldRow>
+          {form.rehab_start_date && (() => {
+            const end = form.rehab_complete_date || new Date().toISOString().slice(0,10)
+            const days = daysBetween(form.rehab_start_date, end)
+            if (days === null) return null
+            return (
+              <div style={{ fontSize:11, color:'#9ca3af', marginTop:-8 }}>
+                {form.rehab_complete_date
+                  ? `Rehab took ${days} day${days===1?'':'s'} (${form.rehab_start_date} → ${form.rehab_complete_date})`
+                  : `${days} day${days===1?'':'s'} in progress so far`}
+              </div>
+            )
+          })()}
 
           {form.id ? (<>
             <RehabStatCards propertyId={form.id} onOpenFull={()=>setRehabOpen(true)} closingDate={form.disposition_date || form.sale_date || null} />

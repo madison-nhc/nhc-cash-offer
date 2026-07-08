@@ -101,8 +101,18 @@ export default function RehabStatCards({ propertyId, onOpenFull, closingDate }) 
   supplies.forEach(r => addRow(r.paid_by, supplyCost(r), r.date_paid, r.id))
   bills.forEach(r => addRow(r.paid_by, parseFloat(r.amount)||0, r.date_paid, r.id))
 
+  const totalRehabCost = servicesTotal + suppliesTotal + utilitiesTotal
+
   return (
     <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+      <div style={{
+        background:'#B8892A12', border:'1px solid #B8892A30', borderRadius:8,
+        padding:'12px 14px', display:'flex', justifyContent:'space-between', alignItems:'center',
+      }}>
+        <div style={{ fontSize:11, fontWeight:700, color:'#B8892A', textTransform:'uppercase', letterSpacing:0.8 }}>Total Rehab Cost</div>
+        <div style={{ fontSize:20, fontWeight:700, color:'#B8892A', fontFamily:'monospace' }}>{fmt(totalRehabCost)}</div>
+      </div>
+
       <div style={{ display:'grid', gridTemplateColumns:'repeat(3, 1fr)', gap:10 }}>
         <StatCard
           topColor="#B8892A" label="Services" value={fmt(servicesTotal)}
