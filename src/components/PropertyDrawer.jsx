@@ -315,8 +315,8 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
       purchase_price:form.purchase_price||null, closing_costs:form.closing_costs||null,
       prior_acquisition_cost:form.prior_acquisition_cost||null, prior_renovation_cost:form.prior_renovation_cost||null,
       prior_history_notes:form.prior_history_notes||null,
-      closing_costs_paid_by:form.closing_costs_paid_by||null, closing_costs_date_paid:form.closing_costs_date_paid||null,
-      down_payment:form.down_payment||null, down_payment_paid_by:form.down_payment_paid_by||null, down_payment_date_paid:form.down_payment_date_paid||null,
+      closing_costs_paid_by:form.closing_costs_paid_by||null, closing_costs_date_paid:PARTNERS.includes(form.closing_costs_paid_by)?(form.purchase_date||null):null,
+      down_payment:form.down_payment||null, down_payment_paid_by:form.down_payment_paid_by||null, down_payment_date_paid:PARTNERS.includes(form.down_payment_paid_by)?(form.purchase_date||null):null,
       rehab_cost:rehab, sale_price:form.sale_price||null, sale_date:form.sale_date||null,
       days_on_market:form.days_on_market||null, bpv_notes:form.bpv_notes||null,
       purchase_date:form.purchase_date||null, sold_date:form.sold_date||null,
@@ -657,9 +657,6 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
                   </select>
                 </Field>
               </FieldRow>
-              {PARTNERS.includes(form.down_payment_paid_by) && (
-                <Field label="Date Paid"><DatePicker style={inp} value={form.down_payment_date_paid||''} onChange={set('down_payment_date_paid')} /></Field>
-              )}
               <LoanVsPurchaseCheck propertyId={form.id} purchasePrice={form.purchase_price} downPayment={form.down_payment} />
 
               <div className="drawer-section">Closing Costs</div>
@@ -675,9 +672,6 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
                   </select>
                 </Field>
               </FieldRow>
-              {PARTNERS.includes(form.closing_costs_paid_by) && (
-                <Field label="Date Paid"><DatePicker style={inp} value={form.closing_costs_date_paid||''} onChange={set('closing_costs_date_paid')} /></Field>
-              )}
 
               {(type==='Flip' || type==='Hold') && (<>
                 <div className="drawer-section">NHC Commission</div>
@@ -704,13 +698,13 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
                   ))}
                 </div>
                 {(form.commission_mode||'pct')==='pct' ? (
-                  <FieldRow>
-                    <Field label="Commission %">
-                      <input style={monoInp} type="number" value={form.commission_pct||''}
-                        onChange={e=>{ const e2=calcCommission(e.target.value,form.purchase_price); setForm(f=>({...f,commission_pct:e.target.value,commission_earned:e2?e2.toFixed(2):f.commission_earned})) }} />
-                    </Field>
-                    <Field label="Commission"><MoneyInput value={form.commission_earned} onChange={set('commission_earned')} /></Field>
-                  </FieldRow>
+                  <Field label="Commission %">
+                    <input style={monoInp} type="number" value={form.commission_pct||''}
+                      onChange={e=>{ const e2=calcCommission(e.target.value,form.purchase_price); setForm(f=>({...f,commission_pct:e.target.value,commission_earned:e2?e2.toFixed(2):f.commission_earned})) }} />
+                    {form.commission_earned && (
+                      <div style={{ fontSize:11, color:'#9ca3af', marginTop:5 }}>≈ {fmt(form.commission_earned)}</div>
+                    )}
+                  </Field>
                 ) : (
                   <Field label="Commission"><MoneyInput value={form.commission_earned} onChange={set('commission_earned')} /></Field>
                 )}
