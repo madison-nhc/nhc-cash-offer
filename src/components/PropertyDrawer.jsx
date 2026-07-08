@@ -14,8 +14,8 @@ import PartnerLedgerModal from './PartnerLedgerModal.jsx'
 // ── Type options (primary) ────────────────────────────────────────────────────
 const TYPE_OPTIONS = [
   { value:'Analyzing',       color:'#B8892A' },
-  { value:'Flip',            color:'#D97825' },
-  { value:'Hold',            color:'#B8892A' },
+  { value:'Flip',            color:'#D97825', label:'Buy & Flip' },
+  { value:'Hold',            color:'#B8892A', label:'Buy & Hold' },
   { value:'Retail Listing',  color:'#3B6D11' },
   { value:'Wholesale',       color:'#6b21a8' },
   { value:'Lost',            color:'#9ca3af' },
@@ -1243,7 +1243,7 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
                 fontSize:11, fontWeight:700, fontFamily:'inherit',
                 color:typeColor, background:typeColor+'12', cursor:'pointer', outline:'none',
               }}>
-              {TYPE_OPTIONS.map(t=><option key={t.value} value={t.value}>{t.value}</option>)}
+              {TYPE_OPTIONS.map(t=><option key={t.value} value={t.value}>{t.label || t.value}</option>)}
             </select>
           </div>
 
