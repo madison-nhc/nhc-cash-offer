@@ -413,7 +413,7 @@ export default function LoanTracker({ propertyId, propertyAddress, open, onClose
   const focusLoan = focusId ? loans.find(l => l.id === focusId) : null
 
   return (
-    <Modal title={`Loan Tracker — ${propertyAddress?.split(',')[0] || ''}`} onClose={onClose} width={720}>
+    <Modal title={`Loan Tracker — ${propertyAddress?.split(',')[0] || ''}`} onClose={onClose} width={1240}>
       {loading ? (
         <div style={{ textAlign:'center', padding:32, color:'#B8892A', fontSize:24 }}>⟳</div>
       ) : editing ? (
@@ -536,6 +536,7 @@ export default function LoanTracker({ propertyId, propertyAddress, open, onClose
     </Modal>
   )
 }
+
 
 
 

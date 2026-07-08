@@ -25,7 +25,7 @@ export default function Sold() {
     setLoading(true)
     const [{ data: p }, { data: m }] = await Promise.all([
       supabase.from('cashoffer_properties').select('*')
-        .eq('stage', 'Sold / Closed')
+        .in('stage', ['Sold', 'Closed'])
         .order('sold_date', { ascending: false }),
       supabase.from('cashoffer_mailings').select('id,campaign_name,drop_date'),
     ])
@@ -397,3 +397,4 @@ export default function Sold() {
     </PageWrap>
   )
 }
+
