@@ -381,6 +381,15 @@ export default function RentOverview({ propertyId, onOpenFull, refreshSignal, on
 
   return (
     <div style={{ display:'flex', flexDirection:'column', gap:16 }}>
+      {/* Live rent estimate lookup — placeholder for a future auto-pull-by-address feature */}
+      <div style={{
+        background:'#F5F4F0', borderRadius:8, padding:'14px 16px', border:'1px dashed #D6D2CA',
+        display:'flex', alignItems:'center', justifyContent:'center', gap:8,
+      }}>
+        <span style={{ fontSize:16 }}>🔒</span>
+        <div style={{ fontSize:12, color:'#9ca3af', fontWeight:600 }}>Estimated rent lookup by address — feature coming soon</div>
+      </div>
+
       {/* Property Snapshot — rent + loan at a glance */}
       <div style={{ display:'grid', gridTemplateColumns: loan ? 'repeat(3, 1fr)' : '1fr', gap:10 }}>
         <SnapshotCard label="Total Rent Paid" value={fmt(totalRentEarned)} color="#3B6D11" />
