@@ -692,16 +692,7 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
             <Field label="Beds"><input style={monoInp} type="number" value={form.beds||''} onChange={set('beds')} /></Field>
             <Field label="Baths"><input style={monoInp} type="number" value={form.baths||''} onChange={set('baths')} /></Field>
             <Field label="Sq Ft"><input style={monoInp} type="number" value={form.sqft||''} onChange={set('sqft')} /></Field>
-            <Field label="Units"><input style={monoInp} type="number" value={form.unit_count||''} onChange={set('unit_count')} /></Field>
           </FieldRow>
-          {parseInt(form.unit_count) > 1 && (
-            <Field label="Unit Names (comma-separated, optional)">
-              <input style={inp} value={form.unit_names||''} onChange={set('unit_names')} placeholder="e.g. A, B  or  101, 102" />
-              <div style={{ fontSize:11, color:'#9ca3af', marginTop:5 }}>
-                Used for empty unit slots on the Lease tab before a lease is added. Leave blank to default to "Unit 1", "Unit 2", etc.
-              </div>
-            </Field>
-          )}
           <div className="drawer-section">Owner / Seller</div>
           <FieldRow>
             <Field label="Name"><input style={inp} value={form.seller_name||''} onChange={set('seller_name')} /></Field>

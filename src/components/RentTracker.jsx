@@ -189,6 +189,46 @@ function MonthStrip({ months, exceptionsByMonth, onPick }) {
   )
 }
 
+// ── Editable unit section header ─────────────────────────────────────────────
+function EditableUnitHeader({ slot, onRename }) {
+  const [editing, setEditing] = useState(false)
+  const [val, setVal] = useState(slot.label)
+
+  useEffect(() => { setVal(slot.label) }, [slot.label])
+
+  function submit() {
+    setEditing(false)
+    if (val.trim() && val.trim() !== slot.label) onRename(val.trim())
+    else setVal(slot.label)
+  }
+
+  if (editing) {
+    return (
+      <div style={{ display:'flex', alignItems:'center', gap:6, marginBottom:8 }}>
+        <input
+          autoFocus
+          value={val}
+          onChange={e=>setVal(e.target.value)}
+          onKeyDown={e=>{ if (e.key==='Enter') submit(); if (e.key==='Escape') { setVal(slot.label); setEditing(false) } }}
+          onBlur={submit}
+          style={{ fontSize:13, fontWeight:700, color:'#2C2C2C', border:'1.5px solid #B8892A', borderRadius:6, padding:'3px 8px', fontFamily:'inherit', width:160 }}
+        />
+      </div>
+    )
+  }
+
+  return (
+    <div
+      onClick={()=>setEditing(true)}
+      title="Click to rename this unit"
+      style={{ display:'inline-flex', alignItems:'center', gap:6, marginBottom:8, cursor:'pointer' }}
+    >
+      <span style={{ fontSize:13, fontWeight:700, color:'#2C2C2C' }}>{slot.label}</span>
+      <span style={{ fontSize:11, color:'#D6D2CA' }}>✎</span>
+    </div>
+  )
+}
+
 const TERMINATION_REASONS = ['Lease Expired', 'Terminated Early', 'Tenant Vacated', 'Non-Renewal', 'Other']
 const DEPOSIT_OPTIONS = ['Returned', 'Kept', 'Partial']
 
@@ -504,7 +544,39 @@ export default function RentTracker({ propertyId, propertyAddress, unitCount, un
   const [expenses, setExpenses]           = useState([])
   const [deletedExpenseIds, setDeletedExpenseIds] = useState([])
   const [expensesSaving, setExpensesSaving] = useState(false)
+  const [unitCountLocal, setUnitCountLocal] = useState(unitCount || 1)
+  const [unitNamesLocal, setUnitNamesLocal] = useState(unitNames || '')
   const closingDate = null
+
+  useEffect(() => { setUnitCountLocal(unitCount || 1) }, [unitCount])
+  useEffect(() => { setUnitNamesLocal(unitNames || '') }, [unitNames])
+
+  async function changeUnitCount(delta) {
+    const next = Math.max(1, unitCountLocal + delta)
+    setUnitCountLocal(next)
+    await supabase.from('cashoffer_properties').update({ unit_count: next }).eq('id', propertyId)
+    onRentChange && onRentChange()
+  }
+
+  // Rename a unit header. Real units (backed by at least one lease) rename the
+  // underlying lease rows directly. Empty/padded slots just update their position
+  // in the property's stored unit_names list.
+  async function renameUnit(oldLabel, newLabel, isReal, emptySlotIndex) {
+    const trimmed = (newLabel || '').trim()
+    if (!trimmed || trimmed === oldLabel) return
+    if (isReal) {
+      await supabase.from('cashoffer_leases').update({ unit_label: trimmed }).eq('property_id', propertyId).eq('unit_label', oldLabel)
+    } else {
+      const names = (unitNamesLocal || '').split(',').map(s=>s.trim())
+      while (names.length <= emptySlotIndex) names.push('')
+      names[emptySlotIndex] = trimmed
+      const joined = names.filter(Boolean).join(', ')
+      setUnitNamesLocal(joined)
+      await supabase.from('cashoffer_properties').update({ unit_names: joined }).eq('id', propertyId)
+    }
+    load()
+    onRentChange && onRentChange()
+  }
 
   useEffect(() => { if (open && propertyId) load() }, [open, propertyId])
 
@@ -614,17 +686,14 @@ export default function RentTracker({ propertyId, propertyAddress, unitCount, un
     const openLease = rows.find(r => !r.actual_end_date)
     const current = openLease || null
     const past = openLease ? rows.filter(r => r.id !== current.id) : rows
-    return { label, current, past }
+    return { label, current, past, isReal:true }
   })
-  const slotCount = Math.max(unitCount || 0, unitSlots.length)
-  const customNames = (unitNames || '').split(',').map(s=>s.trim()).filter(Boolean)
-  const usedLabelsLower = new Set(unitSlots.map(s => s.label.toLowerCase()))
-  const availableCustomNames = customNames.filter(n => !usedLabelsLower.has(n.toLowerCase()))
-  let customIdx = 0
+  const slotCount = Math.max(unitCountLocal || 0, unitSlots.length)
+  const customNames = (unitNamesLocal || '').split(',').map(s=>s.trim())
   for (let i = unitSlots.length; i < slotCount; i++) {
-    const label = availableCustomNames[customIdx] || `Unit ${i+1}`
-    if (availableCustomNames[customIdx]) customIdx++
-    unitSlots.push({ label, current:null, past:[] })
+    const emptySlotIndex = i - unitSlots.length
+    const label = customNames[emptySlotIndex] || `Unit ${i+1}`
+    unitSlots.push({ label, current:null, past:[], isReal:false, emptySlotIndex })
   }
   // Current lease per unit, for the Maintenance table's Unit dropdown — tagging maintenance
   // to a specific past tenancy doesn't make sense, so only currently-open leases are offered.
@@ -665,7 +734,17 @@ export default function RentTracker({ propertyId, propertyAddress, unitCount, un
             </div>
           )}
 
-          {leases.length === 0 && !unitCount ? (
+          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:16 }}>
+            <div style={{ fontSize:13, fontWeight:700, color:'#2C2C2C' }}>Leases</div>
+            <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+              <span style={{ fontSize:11, fontWeight:700, color:'#9ca3af', textTransform:'uppercase', letterSpacing:0.7 }}>Units</span>
+              <button onClick={()=>changeUnitCount(-1)} disabled={unitCountLocal<=1} style={{ width:26, height:26, borderRadius:6, border:'1px solid #D6D2CA', background:'#fff', color:'#6b7280', fontSize:14, fontWeight:700, cursor: unitCountLocal<=1 ? 'not-allowed' : 'pointer', fontFamily:'inherit', opacity: unitCountLocal<=1 ? 0.4 : 1 }}>−</button>
+              <span style={{ fontSize:14, fontWeight:700, color:'#2C2C2C', fontFamily:'monospace', minWidth:20, textAlign:'center' }}>{unitCountLocal}</span>
+              <button onClick={()=>changeUnitCount(1)} style={{ width:26, height:26, borderRadius:6, border:'1px solid #D6D2CA', background:'#fff', color:'#6b7280', fontSize:14, fontWeight:700, cursor:'pointer', fontFamily:'inherit' }}>+</button>
+            </div>
+          </div>
+
+          {leases.length === 0 && !unitCountLocal ? (
             <div style={{ background:'#F0EDE6', borderRadius:8, padding:'24px', textAlign:'center', marginBottom:16 }}>
               <div style={{ fontSize:13, color:'#6b7280', marginBottom:10 }}>No leases for this property yet.</div>
               <Btn onClick={()=>setEditing('new')}>+ Add Lease</Btn>
@@ -673,7 +752,7 @@ export default function RentTracker({ propertyId, propertyAddress, unitCount, un
           ) : (
             unitSlots.map(slot => (
               <div key={slot.label} style={{ marginBottom:20 }}>
-                <div style={{ fontSize:13, fontWeight:700, color:'#2C2C2C', marginBottom:8 }}>{slot.label}</div>
+                <EditableUnitHeader slot={slot} onRename={(newLabel)=>renameUnit(slot.label, newLabel, slot.isReal, slot.emptySlotIndex)} />
 
                 {slot.current ? (
                   <LeaseCard
