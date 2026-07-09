@@ -4,7 +4,8 @@ import { useIsMobile } from '../hooks/useIsMobile.js'
 import { PageWrap, SectionBar, Card, EmptyState, LoadingSpinner, fmt, fmtK, useSort, SortTh } from '../components/ui.jsx'
 import PropertyDrawer from '../components/PropertyDrawer.jsx'
 import ProposalModal from '../components/ProposalModal.jsx'
-import KanbanBoard, { cardPill, cardChip, MoneyBurst } from '../components/KanbanBoard.jsx'
+import KanbanBoard, { cardPill, cardChip, cardBtn, MoneyBurst } from '../components/KanbanBoard.jsx'
+import RehabRoundTracker from '../components/RehabRoundTracker.jsx'
 
 const REHAB_STAGE_COLOR = {
   'Not Started':'#9ca3af','Demo':'#D97825','Rough Work':'#B8892A',
@@ -40,7 +41,7 @@ export default function Rehabs({ onOpenSupplies }) {
   const [drawer, setDrawer] = useState(null)
   const [drawerTab, setDrawerTab] = useState('rehab')
   const [proposal, setProposal] = useState(null)
-  const [stageFilter, setStageFilter] = useState('all')
+  const [dashboard, setDashboard] = useState(null)  // property whose Renovation Dashboard is open
   const [view, setView] = useState('board')
   const [burst, setBurst] = useState(null)
 
@@ -50,7 +51,7 @@ export default function Rehabs({ onOpenSupplies }) {
     setLoading(true)
     const [{ data: p }, { data: ri }, { data: m }] = await Promise.all([
       supabase.from('cashoffer_properties').select('*').in('stage', ['Purchased','Renovation','Reno In Progress','Reno Completed']).order('rehab_start_date', { ascending: false }),
-      supabase.from('cashoffer_rehab_items').select('property_id,estimated_cost,actual_cost,status'),
+      supabase.from('cashoffer_rehab_items').select('property_id,estimated_cost,actual_cost,status,paid_by'),
       supabase.from('cashoffer_mailings').select('id,campaign_name,drop_date'),
     ])
     setProperties(p || [])
@@ -63,6 +64,8 @@ export default function Rehabs({ onOpenSupplies }) {
   function itemsFor(id) { return rehabItems.filter(r => r.property_id === id) }
   function estCost(id)  { return itemsFor(id).reduce((s,r) => s+(parseFloat(r.estimated_cost)||0), 0) }
   function actCost(id)  { return itemsFor(id).reduce((s,r) => { const v=r.actual_cost!=null?parseFloat(r.actual_cost)||0:parseFloat(r.estimated_cost)||0; return s+v }, 0) }
+  // Real money out the door: actual costs only, no estimate fallback
+  function spentCost(id){ return itemsFor(id).reduce((s,r) => s+(r.actual_cost!=null?parseFloat(r.actual_cost)||0:0), 0) }
   function doneCount(id){ return itemsFor(id).filter(r=>r.status==='Completed').length }
   function totalCount(id){ return itemsFor(id).length }
   function pctDone(id)  {
@@ -70,9 +73,6 @@ export default function Rehabs({ onOpenSupplies }) {
     const done = itemsFor(id).filter(r=>r.status==='Completed').reduce((s,r)=>{ const v=r.actual_cost!=null?parseFloat(r.actual_cost)||0:parseFloat(r.estimated_cost)||0; return s+v },0)
     return est > 0 ? Math.min(100, Math.round((done/est)*100)) : 0
   }
-
-  const byRehabStage   = {}
-  REHAB_STAGES.forEach(st => { byRehabStage[st] = properties.filter(p=>(p.rehab_stage||'Not Started')===st).length })
 
   // ── Board handlers ──────────────────────────────────────────────────────────
   // Columns are the renovation work stages (rehab_stage); deal stage rides along.
@@ -157,8 +157,8 @@ export default function Rehabs({ onOpenSupplies }) {
     const badge = typeLabel(p)
     const pct = pctDone(p.id)
     const est = estCost(p.id)
-    const act = actCost(p.id)
-    const over = act > est && est > 0
+    const spent = spentCost(p.id)
+    const over = spent > est && est > 0
     const rehabStage = p.rehab_stage || 'Not Started'
     const daysActive = p.rehab_start_date ? Math.floor((Date.now()-new Date(p.rehab_start_date))/86400000) : null
     return (
@@ -168,10 +168,11 @@ export default function Rehabs({ onOpenSupplies }) {
           <div style={{ minWidth:0 }}>
             <div style={{ fontSize:11, color:'#6b7280' }}>{p.owner || 'BPV'}</div>
           </div>
-          {(act > 0 || est > 0) ? (
-            <span style={cardChip(over ? '#B91C1C' : '#B8892A', over ? '#FBEAEA' : '#FBF6EA', over ? '#EFC5C5' : '#E8D9B5')}>
-              {fmt(act > 0 ? act : est)}
-            </span>
+          {(spent > 0 || est > 0) ? (
+            <div style={{ display:'flex', flexDirection:'column', gap:2, alignItems:'flex-end', flexShrink:0 }}>
+              <span style={cardChip('#B8892A','#FBF6EA','#E8D9B5')}>Est {est > 0 ? fmt(est) : '\u2014'}</span>
+              <span style={cardChip(over ? '#B91C1C' : '#3B6D11', over ? '#FBEAEA' : '#EEF5E7', over ? '#EFC5C5' : '#CBDDB8')}>Spent {fmt(spent)}</span>
+            </div>
           ) : null}
         </div>
         {est > 0 && (
@@ -187,14 +188,27 @@ export default function Rehabs({ onOpenSupplies }) {
           {p.stage === 'Purchased' && <span style={cardPill('#D97825', '#FBF0E4')}>Purchased</span>}
           {daysActive !== null && <span style={{ fontSize:10, color: daysActive > 60 ? '#B91C1C' : '#9ca3af', marginLeft:'auto' }}>{daysActive}d</span>}
         </div>
+        <button style={cardBtn} onClick={e => { e.stopPropagation(); setDashboard(p) }}>Renovation Dashboard</button>
       </>
     )
   }
 
 
-  const filtered = stageFilter==='all' ? properties
-    : stageFilter==='in_progress' ? properties.filter(p=>{ const st=p.rehab_stage||'Not Started'; return st!=='Not Started' && st!=='Complete' })
-    : properties.filter(p=>(p.rehab_stage||'Not Started')===stageFilter)
+  const filtered = properties
+
+  // Page money totals (shown properties)
+  const totalEst   = properties.reduce((s,p) => s + estCost(p.id), 0)
+  const totalSpent = properties.reduce((s,p) => s + spentCost(p.id), 0)
+  const propIds = new Set(properties.map(p => p.id))
+  const contribBy = rehabItems.reduce((acc, r) => {
+    if (!propIds.has(r.property_id)) return acc
+    if (r.paid_by === 'Bob' || r.paid_by === 'Eric') {
+      const v = r.actual_cost!=null ? parseFloat(r.actual_cost)||0 : parseFloat(r.estimated_cost)||0
+      acc[r.paid_by] = (acc[r.paid_by]||0) + v
+    }
+    return acc
+  }, {})
+  const totalContrib = (contribBy.Bob||0) + (contribBy.Eric||0)
 
   const { sorted, sortKey, sortDir, toggleSort } = useSort(filtered, 'rehab_start_date', 'desc', {
     stage:       p => REHAB_STAGES.indexOf(p.rehab_stage||'Not Started'),
@@ -220,52 +234,33 @@ export default function Rehabs({ onOpenSupplies }) {
         )}
       </div>
 
-      {/* Stat cards */}
-      <div style={{ display:'grid', gridTemplateColumns:mobile?'1fr 1fr':'repeat(3,1fr)', gap:12, marginBottom:24 }}>
+      {/* Money stat cards */}
+      <div style={{ display:'grid', gridTemplateColumns:mobile?'1fr 1fr':'repeat(4,1fr)', gap:12, marginBottom:24 }}>
         {[
-          { label:'Not Started',    value:byRehabStage['Not Started']||0,                                         color:'#9ca3af', filterVal:'Not Started' },
-          { label:'In Progress',    value:properties.filter(p=>p.rehab_stage&&p.rehab_stage!=='Not Started'&&p.rehab_stage!=='Complete').length, color:'#B8892A', filterVal:'in_progress' },
-          { label:'Completed',      value:byRehabStage['Complete']||0,                                            color:'#3B6D11', filterVal:'Complete' },
-        ].map(({label,value,color,filterVal})=>{
-          const active = stageFilter===filterVal
-          return (
-            <button key={label}
-              onClick={()=>setStageFilter(active ? 'all' : filterVal)}
-              style={{
-                background: active ? color+'12' : '#fff',
-                border: active ? `1.5px solid ${color}` : '0.5px solid #D6D2CA',
-                borderTop:`3px solid ${color}`, borderRadius:8, padding:'12px 16px',
-                cursor:'pointer', textAlign:'left', fontFamily:'inherit',
-              }}>
-              <div style={{ fontSize:10, color:'#9ca3af', textTransform:'uppercase', letterSpacing:0.8, marginBottom:6 }}>{label}</div>
-              <div style={{ fontSize:24, fontWeight:700, color, fontFamily:'monospace' }}>{value}</div>
-            </button>
-          )
-        })}
+          { label:'Active Projects',   value: properties.length,                          color:'#6b21a8' },
+          { label:'Est. Rehab Budget', value: totalEst > 0 ? fmtK(totalEst) : '\u2014',     color:'#B8892A' },
+          { label:'Current Spend',     value: totalSpent > 0 ? fmtK(totalSpent) : '\u2014', color: totalSpent > totalEst && totalEst > 0 ? '#B91C1C' : '#3B6D11',
+            sub: totalEst > 0 ? `${Math.round((totalSpent/totalEst)*100)}% of budget` : null },
+          { label:'Partner Contributions', value: totalContrib > 0 ? fmtK(totalContrib) : '\u2014', color:'#2D6FAF',
+            sub: totalContrib > 0 ? `Bob ${fmtK(contribBy.Bob||0)} \u00b7 Eric ${fmtK(contribBy.Eric||0)}` : 'none on the books' },
+        ].map(({ label, value, color, sub }) => (
+          <div key={label} style={{ background:'#fff', border:'0.5px solid #D6D2CA', borderRadius:8, borderTop:`3px solid ${color}`, padding:'12px 16px' }}>
+            <div style={{ fontSize:10, color:'#9ca3af', textTransform:'uppercase', letterSpacing:0.8, marginBottom:6 }}>{label}</div>
+            <div style={{ fontSize:24, fontWeight:700, color, fontFamily:'monospace' }}>{value}</div>
+            {sub && <div style={{ fontSize:10, color:'#9ca3af', marginTop:3 }}>{sub}</div>}
+          </div>
+        ))}
       </div>
 
-      {/* Rehab stage filter pills + view toggle */}
-      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:12, marginBottom:14, flexWrap:'wrap' }}>
-        <div style={{ display:'flex', gap:4, flexWrap:'wrap' }}>
-          <button onClick={()=>setStageFilter('all')} style={{ padding:'5px 14px', border:'none', borderRadius:4, cursor:'pointer', background:stageFilter==='all'?'#2C2C2C':'#F0EDE6', color:stageFilter==='all'?'#fff':'#6b7280', fontSize:11, fontWeight:stageFilter==='all'?700:400, fontFamily:'inherit' }}>
-            All ({properties.length})
-          </button>
-          {REHAB_STAGES.map(st=>(
-            byRehabStage[st]>0 && (
-              <button key={st} onClick={()=>setStageFilter(st)} style={{ padding:'5px 14px', border:'none', borderRadius:4, cursor:'pointer', background:stageFilter===st?REHAB_STAGE_COLOR[st]:'#F0EDE6', color:stageFilter===st?'#fff':'#6b7280', fontSize:11, fontWeight:stageFilter===st?700:400, fontFamily:'inherit', whiteSpace:'nowrap' }}>
-                {st} ({byRehabStage[st]})
-              </button>
-            )
-          ))}
-        </div>
-        {!mobile && (
+      {!mobile && (
+        <div style={{ display:'flex', justifyContent:'flex-end', marginBottom:14 }}>
           <div style={{ display:'flex', gap:2 }}>
             {[['board','Board'],['table','Table']].map(([v,l]) => (
               <button key={v} onClick={() => setView(v)} style={{ padding:'6px 14px', border:'none', borderRadius:6, cursor:'pointer', background: view === v ? '#2C2C2C' : '#F0EDE6', color: view === v ? '#fff' : '#6b7280', fontSize:12, fontWeight: view === v ? 700 : 400, fontFamily:'inherit' }}>{l}</button>
             ))}
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
       {view === 'board' && !mobile ? (
         filtered.length === 0 ? (
@@ -368,6 +363,7 @@ export default function Rehabs({ onOpenSupplies }) {
       )}
 
       <PropertyDrawer property={drawer} open={!!drawer} onClose={()=>setDrawer(null)} onSave={()=>load()} mailings={mailings} initialTab={drawerTab} onViewOffer={p => setProposal(p)} />
+      <RehabRoundTracker property={dashboard} repairItems={dashboard?.repair_items || []} onChange={()=>{}} open={!!dashboard} onClose={()=>{ setDashboard(null); load() }} />
       {proposal && <ProposalModal property={proposal} onClose={() => setProposal(null)} />}
     </PageWrap>
   )
