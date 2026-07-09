@@ -61,7 +61,11 @@ function analyzerCardContent(p, onViewOffer) {
       <div style={{ display:'flex', flexWrap:'wrap', gap:4, alignItems:'center', justifyContent:'center' }}>
         {p.source && <span style={cardPill('#D97825','#FBF0E4')}>{p.source}</span>}
         {p.acquisition_type === 'Pre-Owned' && <span style={cardPill('#6b21a8','#F3EBFA')}>Pre-Owned</span>}
-        {days !== null && <span style={{ fontSize:10, color:'#9ca3af' }}>{days===0 ? 'today' : `${days}d`}</span>}
+        {days !== null && (
+          <span style={{ fontSize:10, fontWeight: days > 7 ? 700 : 400, color: days > 14 ? '#B91C1C' : days > 7 ? '#D97825' : '#9ca3af' }}>
+            {days===0 ? 'Updated today' : `Updated ${days}d ago`}
+          </span>
+        )}
       </div>
       {cashOffer ? (
         <button style={cardBtn} onClick={e => { e.stopPropagation(); onViewOffer(p) }}>View Offer PDF</button>
