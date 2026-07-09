@@ -100,6 +100,7 @@ function SnapshotCard({ label, value, color }) {
     </div>
   )
 }
+function StatCard({ topColor, label, value, sub }) {
   return (
     <div style={{ background:'#fff', borderRadius:8, padding:'12px 14px', border:'0.5px solid #D6D2CA', borderTop:`3px solid ${topColor}` }}>
       <div style={{ fontSize:10, fontWeight:700, color:'#9ca3af', textTransform:'uppercase', letterSpacing:0.8, marginBottom:6 }}>{label}</div>
@@ -387,3 +388,4 @@ export default function RentOverview({ propertyId, onOpenFull }) {
     </div>
   )
 }
+
