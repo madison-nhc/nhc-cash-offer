@@ -9,9 +9,9 @@ import RehabRoundTracker from '../components/RehabRoundTracker.jsx'
 
 const REHAB_STAGE_COLOR = {
   'Not Started':'#9ca3af','Demo':'#D97825','Rough Work':'#B8892A',
-  'Inspections':'#2D6FAF','Finishes':'#6b21a8','Punch List':'#3B6D11','Complete':'#3B6D11',
+  'Inspections':'#2D6FAF','Finishes':'#6b21a8','Complete':'#3B6D11',
 }
-const REHAB_STAGES = ['Not Started','Demo','Rough Work','Inspections','Finishes','Punch List','Complete']
+const REHAB_STAGES = ['Not Started','Demo','Rough Work','Inspections','Finishes','Complete']
 
 // ── Board: columns are the renovation work stages (rehab_stage) ───────────────
 // Dragging a card updates rehab_stage; the deal stage syncs alongside
