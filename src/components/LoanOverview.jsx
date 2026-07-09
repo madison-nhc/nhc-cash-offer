@@ -188,11 +188,18 @@ export default function LoanOverview({ propertyId, onOpenLoan, onOpenFull }) {
       {/* Snapshot — the numbers worth seeing without opening the full tracker. Monthly
           payment isn't repeated here since it's already on the loan card below. Equity
           uses the ARV set on the Analyzer tab until the live lookup above is built. */}
-      <div style={{ display:'grid', gridTemplateColumns: arv ? 'repeat(3, 1fr)' : 'repeat(2, 1fr)', gap:10 }}>
+      <div style={{ display:'grid', gridTemplateColumns:'repeat(2, 1fr)', gap:10 }}>
         <StatCard topColor="#D97825" label="Balance Remaining" value={fmt(totalBalance)} />
         <StatCard topColor="#3B6D11" label="Interest Paid to Date" value={fmt(totalInterest)} />
-        {arv > 0 && <StatCard topColor="#3B6D11" label="Est. Equity" value={fmt(Math.max((parseFloat(arv)||0) - totalBalance, 0))} sub="ARV − balance remaining" />}
       </div>
+
+      {arv > 0 && (
+        <div style={{ background:'#fff', borderRadius:8, padding:'12px 14px', border:'0.5px solid #D6D2CA', borderTop:'3px solid #3B6D11' }}>
+          <div style={{ fontSize:10, fontWeight:700, color:'#9ca3af', textTransform:'uppercase', letterSpacing:0.8, marginBottom:6 }}>Est. Equity</div>
+          <div style={{ fontSize:19, fontWeight:700, color:'#2C2C2C', fontFamily:'monospace', lineHeight:1 }}>{fmt(Math.max((parseFloat(arv)||0) - totalBalance, 0))}</div>
+          <div style={{ fontSize:11, color:'#6b7280', marginTop:6 }}>ARV − balance remaining</div>
+        </div>
+      )}
       {earliestDue && (
         <div style={{
           background:'#D9782512', border:'1px solid #D9782530', borderRadius:8,
