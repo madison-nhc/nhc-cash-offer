@@ -411,8 +411,11 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
   const typeColor  = TYPE_COLOR[type] || '#9ca3af'
   const stageColor = STAGE_COLOR[stage] || '#9ca3af'
 
+  const lastPropertyId = useRef(null)
   useEffect(() => {
     if (property) {
+      const isNewProperty = property.id !== lastPropertyId.current
+      lastPropertyId.current = property.id
       const t = property.type || 'Analyzing'
       const lt = property.listing_type || 'As-Is'
       const stages = stagesForType(t, lt)
@@ -423,8 +426,13 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
           : DEFAULT_REPAIRS.map((r,i)=>({...r,id:i}))
       )
       setRehabCost(null)
-      setTab(initialTab)
-      setEditingPhotosLink(false)
+      // Only jump back to the initial tab (and cancel any in-progress photo-link edit)
+      // when this is actually a different property — a same-property refresh (e.g. after
+      // saving a lease or loan payment) should leave the drawer right where the user was.
+      if (isNewProperty) {
+        setTab(initialTab)
+        setEditingPhotosLink(false)
+      }
     }
   }, [property]) // eslint-disable-line react-hooks/exhaustive-deps
 
