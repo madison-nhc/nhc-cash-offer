@@ -933,11 +933,22 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
       {/* ══════════════ REHAB TAB ══════════════ */}
       {tab==='rehab' && (
         <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
+          {/* Renovation deals set work stage in the drawer header / on the board;
+              other types (client Reno listings, post-fork history) set it here */}
+          {type!=='Renovation' && (
           <FieldRow>
             <Field label="Rehab Stage">
               <select
                 value={form.rehab_stage||'Not Started'}
-                onChange={e=>setVal('rehab_stage', e.target.value)}
+                onChange={e=>{
+                  const rs = e.target.value
+                  setForm(f=>({
+                    ...f, rehab_stage:rs,
+                    // Client Reno listings: deal stage follows the work
+                    ...(type==='Retail Listing' && f.listing_type==='Reno' && ['Reno In Progress','Reno Completed'].includes(f.stage)
+                      ? { stage: rs==='Complete' ? 'Reno Completed' : 'Reno In Progress' } : {}),
+                  }))
+                }}
                 style={{
                   ...inp, fontWeight:700, color:'#fff',
                   background: REHAB_COLOR[form.rehab_stage||'Not Started'],
@@ -948,6 +959,7 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
               </select>
             </Field>
           </FieldRow>
+          )}
           <FieldRow>
             <Field label="Rehab Start Date">
               <DatePicker style={inp} value={form.rehab_start_date||''} onChange={set('rehab_start_date')} />
