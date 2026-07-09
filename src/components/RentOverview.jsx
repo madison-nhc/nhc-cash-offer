@@ -38,17 +38,44 @@ function expectedMonths(lease) {
   return monthsBetween(lease.lease_start, cutoff)
 }
 
-// Rent collected to date for a lease, given its logged exceptions (Missed/Partial/Vacant)
+function ordinal(n) {
+  const s = ['th','st','nd','rd']
+  const v = n % 100
+  return n + (s[(v-20)%10] || s[v] || s[0])
+}
+
+function proratedFirstMonthAmount(lease) {
+  const rent = parseFloat(lease.rent_amount) || 0
+  if (!lease.lease_start) return rent
+  const start = new Date(lease.lease_start + 'T12:00:00')
+  const daysInMonth = new Date(start.getFullYear(), start.getMonth()+1, 0).getDate()
+  const daysRemaining = daysInMonth - start.getDate() + 1
+  return Math.round((rent * daysRemaining / daysInMonth) * 100) / 100
+}
+
+// Rent collected to date for a lease, given its logged exceptions (Missed/Partial/Vacant),
+// a prorated first month (if flagged), and whatever initial payment was actually logged.
 function collectedForLease(lease, exceptionsByLease) {
   const months = expectedMonths(lease)
   const rent = parseFloat(lease.rent_amount) || 0
-  const expected = months.length * rent
+  const firstMonthDue = lease.prorate_first_month ? proratedFirstMonthAmount(lease) : rent
   const exceptions = exceptionsByLease[lease.id] || []
-  const shortfall = exceptions.reduce((s,e) => {
-    const due = e.status === 'Partial' ? (parseFloat(e.amount_due)||rent) : rent
-    const paid = e.status === 'Partial' ? (parseFloat(e.amount_paid)||0) : 0
-    return s + Math.max(due - paid, 0)
-  }, 0)
+  const excByMonth = {}
+  exceptions.forEach(e => { excByMonth[e.period_month] = e })
+
+  let expected = 0, shortfall = 0
+  months.forEach((m, idx) => {
+    const due = idx===0 ? firstMonthDue : rent
+    expected += due
+    const e = excByMonth[m]
+    if (e) {
+      const excDue = e.status === 'Partial' ? (parseFloat(e.amount_due)||due) : due
+      const excPaid = e.status === 'Partial' ? (parseFloat(e.amount_paid)||0) : 0
+      shortfall += Math.max(excDue - excPaid, 0)
+    } else if (idx===0 && lease.initial_payment != null && lease.initial_payment !== '') {
+      shortfall += Math.max(due - (parseFloat(lease.initial_payment)||0), 0)
+    }
+  })
   return { expected, collected: Math.max(expected - shortfall, 0) }
 }
 
@@ -152,6 +179,7 @@ function UnitSlot({ unitLabel, current, past, exceptionsByLease, onOpenFull }) {
           <div>
             <div style={{ fontSize:9, color:'#9ca3af', textTransform:'uppercase', letterSpacing:0.6 }}>Monthly Rent</div>
             <div style={{ fontSize:14, fontWeight:700, color:'#2C2C2C', fontFamily:'monospace' }}>{fmt(current.rent_amount)}/mo</div>
+            {current.rent_due_day && <div style={{ fontSize:10, color:'#9ca3af', marginTop:2 }}>Due {ordinal(current.rent_due_day)}</div>}
           </div>
           <div>
             <div style={{ fontSize:9, color:'#9ca3af', textTransform:'uppercase', letterSpacing:0.6 }}>Total Rent Paid</div>
@@ -396,6 +424,7 @@ export default function RentOverview({ propertyId, onOpenFull, refreshSignal, on
     </div>
   )
 }
+
 
 
 

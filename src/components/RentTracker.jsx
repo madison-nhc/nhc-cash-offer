@@ -47,6 +47,23 @@ function expectedMonths(lease) {
   return monthsBetween(lease.lease_start, cutoff)
 }
 
+// If the first month is prorated, the amount owed for it is rent * (days remaining in that
+// calendar month from lease_start, inclusive) / (days in that month).
+function proratedFirstMonthAmount(lease) {
+  const rent = parseFloat(lease.rent_amount) || 0
+  if (!lease.lease_start) return rent
+  const start = new Date(lease.lease_start + 'T12:00:00')
+  const daysInMonth = new Date(start.getFullYear(), start.getMonth()+1, 0).getDate()
+  const daysRemaining = daysInMonth - start.getDate() + 1
+  return Math.round((rent * daysRemaining / daysInMonth) * 100) / 100
+}
+
+function ordinal(n) {
+  const s = ['th','st','nd','rd']
+  const v = n % 100
+  return n + (s[(v-20)%10] || s[v] || s[0])
+}
+
 const EXC_STATUS = ['Missed', 'Partial', 'Vacant']
 const EXC_COLOR  = { Missed:'#B91C1C', Partial:'#D97825', Vacant:'#9ca3af' }
 const PAID_COLOR = '#3B6D11'
@@ -55,7 +72,8 @@ const LEASE_STATUS = ['Active','Month-to-Month','Expired','Vacated']
 // ── Lease form ────────────────────────────────────────────────────────────────
 const EMPTY_LEASE = {
   unit_label:'', tenant_name:'', tenant_phone:'', tenant_email:'', rent_amount:'',
-  lease_start:'', lease_end:'', status:'Active', deposit_amount:'', notes:''
+  lease_start:'', lease_end:'', status:'Active', deposit_amount:'', notes:'',
+  rent_due_day:1, prorate_first_month:false, initial_payment:'',
 }
 
 function LeaseForm({ lease, onSave, onCancel, onDelete }) {
@@ -97,6 +115,36 @@ function LeaseForm({ lease, onSave, onCancel, onDelete }) {
           <DatePicker style={inp} value={form.lease_end} onChange={set('lease_end')} />
         </Field>
       </FieldRow>
+      <FieldRow>
+        <Field label="Rent Due Day of Month">
+          <select style={inp} value={form.rent_due_day||1} onChange={set('rent_due_day')}>
+            {Array.from({length:28}, (_,i)=>i+1).map(d=><option key={d} value={d}>{ordinal(d)}</option>)}
+          </select>
+        </Field>
+        <div />
+      </FieldRow>
+      <div style={{ background:'#FAFAF8', borderRadius:8, padding:'10px 14px', border:'0.5px solid #D6D2CA' }}>
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+          <div>
+            <div style={{ fontSize:12, fontWeight:700, color:'#2C2C2C' }}>Prorate First Month</div>
+            <div style={{ fontSize:11, color:'#9ca3af' }}>If the tenant moved in mid-month, only charge for the days remaining.</div>
+          </div>
+          <button type="button" onClick={()=>setForm(f=>({...f, prorate_first_month: !f.prorate_first_month}))} style={{
+            width:38, height:22, borderRadius:11, border:'none', cursor:'pointer', position:'relative',
+            background: form.prorate_first_month ? '#3B6D11' : '#D6D2CA', flexShrink:0, transition:'background 0.15s',
+          }}>
+            <div style={{ width:16, height:16, borderRadius:8, background:'#fff', position:'absolute', top:3, left: form.prorate_first_month ? 19 : 3, transition:'left 0.15s' }} />
+          </button>
+        </div>
+        {form.prorate_first_month && form.lease_start && form.rent_amount && (
+          <div style={{ fontSize:11, color:'#6b7280', marginTop:8 }}>
+            ≈ {fmt(proratedFirstMonthAmount(form))} for the first partial month (reference only — enter the actual amount collected below).
+          </div>
+        )}
+      </div>
+      <Field label="Initial Payment Collected ($)">
+        <input style={monoInp} type="number" value={form.initial_payment} onChange={set('initial_payment')} placeholder="What was actually collected at move-in" />
+      </Field>
       <Field label="Status">
         <select style={inp} value={form.status} onChange={set('status')}>
           {LEASE_STATUS.map(s=><option key={s}>{s}</option>)}
@@ -345,11 +393,20 @@ function LeaseCard({ lease, onEdit, allExpenses, onSaved, defaultExpanded=true }
   exceptions.forEach(e => { exceptionsByMonth[e.period_month] = e })
 
   const rent = parseFloat(lease.rent_amount) || 0
-  const expected = months.length * rent
-  const shortfall = exceptions.reduce((s,e) => {
-    const due = e.status === 'Partial' ? (parseFloat(e.amount_due)||rent) : rent
-    const paid = e.status === 'Partial' ? (parseFloat(e.amount_paid)||0) : 0
-    return s + Math.max(due - paid, 0)
+  const firstMonthDue = lease.prorate_first_month ? proratedFirstMonthAmount(lease) : rent
+  const expected = months.reduce((s, m, idx) => s + (idx===0 ? firstMonthDue : rent), 0)
+  const shortfall = months.reduce((s, m, idx) => {
+    const dueForMonth = idx===0 ? firstMonthDue : rent
+    const e = exceptionsByMonth[m]
+    if (e) {
+      const due = e.status === 'Partial' ? (parseFloat(e.amount_due)||dueForMonth) : dueForMonth
+      const paid = e.status === 'Partial' ? (parseFloat(e.amount_paid)||0) : 0
+      return s + Math.max(due - paid, 0)
+    }
+    if (idx===0 && lease.initial_payment != null && lease.initial_payment !== '') {
+      return s + Math.max(dueForMonth - (parseFloat(lease.initial_payment)||0), 0)
+    }
+    return s
   }, 0)
   const collected = Math.max(expected - shortfall, 0)
   const exceptionCount = exceptions.length
@@ -406,10 +463,13 @@ function LeaseCard({ lease, onEdit, allExpenses, onSaved, defaultExpanded=true }
                 padding:'2px 8px', fontSize:10, fontWeight:700 }}>{renewalLabel}</span>
             </div>
             <div style={{ fontSize:12, color:'#6b7280', marginTop:3 }}>
-              {fmt(lease.rent_amount)}/mo
+              {fmt(lease.rent_amount)}/mo{lease.rent_due_day ? ` · Due ${ordinal(lease.rent_due_day)}` : ''}
               {lease.lease_start ? ` · From ${new Date(lease.lease_start+'T12:00:00').toLocaleDateString('en-US',{month:'short',year:'numeric'})}` : ''}
               {lease.lease_end ? ` to ${new Date(lease.lease_end+'T12:00:00').toLocaleDateString('en-US',{month:'short',year:'numeric'})}` : ' · Month-to-month'}
             </div>
+            {lease.prorate_first_month && lease.initial_payment != null && (
+              <div style={{ fontSize:11, color:'#9ca3af', marginTop:2 }}>Initial payment collected: {fmt(lease.initial_payment)}</div>
+            )}
             {(lease.tenant_phone || lease.tenant_email) && (
               <div style={{ fontSize:11, color:'#9ca3af', marginTop:2 }}>
                 {[lease.tenant_phone, lease.tenant_email].filter(Boolean).join('  ·  ')}
@@ -482,7 +542,7 @@ function LeaseCard({ lease, onEdit, allExpenses, onSaved, defaultExpanded=true }
                 <ExceptionForm
                   month={pickedMonth}
                   existing={exceptionsByMonth[pickedMonth]}
-                  defaultDue={rent}
+                  defaultDue={pickedMonth === months[0] ? firstMonthDue : rent}
                   onSave={(payload)=>saveException(pickedMonth, payload)}
                   onCancel={()=>setPickedMonth(null)}
                   onDelete={deleteException}
@@ -643,6 +703,9 @@ export default function RentTracker({ propertyId, propertyAddress, open, onClose
       status:         form.status || 'Active',
       deposit_amount: parseFloat(form.deposit_amount) || null,
       notes:          form.notes || null,
+      rent_due_day:   parseInt(form.rent_due_day) || 1,
+      prorate_first_month: !!form.prorate_first_month,
+      initial_payment: form.initial_payment !== '' && form.initial_payment != null ? parseFloat(form.initial_payment) : null,
     }
 
     if (form.id) {
@@ -858,6 +921,7 @@ export default function RentTracker({ propertyId, propertyAddress, open, onClose
     </Modal>
   )
 }
+
 
 
 
