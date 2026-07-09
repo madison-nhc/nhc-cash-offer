@@ -574,7 +574,6 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
 
   const TABS = [
     { key:'analyzer',    label:'Analyzer' },
-    { key:'tour',        label:'Tour' },
     { key:'acquisition', label:'Acquisition' },
     ...(showLoanTab ? [{ key:'loan', label:'Loan' }] : []),
     { key:'rehab',       label:'Renovation' },
@@ -824,12 +823,9 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
             </button>
           )}
           <Field label="Notes"><textarea style={{ ...inp, minHeight:56, resize:'vertical' }} value={form.nhc_notes||''} onChange={set('nhc_notes')} /></Field>
-        </div>
-      )}
 
-      {/* ══════════════ TOUR TAB ══════════════ */}
-      {tab==='tour' && (
-        <PropertyTour propertyId={form.id} tourUrl={form.zillow_tour_url} onSaved={()=>setForm(f=>({...f}))} />
+          {form.id && <PropertyTour propertyId={form.id} tourUrl={form.zillow_tour_url} onSaved={()=>setForm(f=>({...f}))} />}
+        </div>
       )}
 
       {/* ══════════════ ACQUISITION TAB ══════════════ */}
