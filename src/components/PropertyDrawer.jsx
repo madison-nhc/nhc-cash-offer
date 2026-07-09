@@ -388,7 +388,7 @@ function Toggle({ on, onToggle, label, sub }) {
   )
 }
 
-export default function PropertyDrawer({ property, open, onClose, onSave, mailings=[], onViewOffer, inlineMode=false, initialTab='analyzer' }) {
+export default function PropertyDrawer({ property, open, onClose, onSave, mailings=[], onViewOffer, inlineMode=false, initialTab='analyzer', openRentTracker=false }) {
   const [form, setForm]           = useState({})
   const [repairs, setRepairs]     = useState([])
   const [tab, setTab]             = useState('analyzer')
@@ -432,6 +432,7 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
       if (isNewProperty) {
         setTab(initialTab)
         setEditingPhotosLink(false)
+        if (openRentTracker) setRentOpen(true)
       }
     }
   }, [property]) // eslint-disable-line react-hooks/exhaustive-deps

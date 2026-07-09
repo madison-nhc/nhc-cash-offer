@@ -37,6 +37,7 @@ export default function Holds() {
   const [loading, setLoading] = useState(true)
   const [drawer, setDrawer] = useState(null)
   const [drawerTab, setDrawerTab] = useState('analyzer')
+  const [autoOpenLease, setAutoOpenLease] = useState(false)
   const [proposal, setProposal] = useState(null)
   const [view, setView] = useState('board')
   const [burst, setBurst] = useState(null)
@@ -88,12 +89,12 @@ export default function Holds() {
     if (columnKey === 'Leased' || columnKey === 'Vacant') {
       // Leased: set up the lease. Vacant: log turn expenses. Both live on the Rent tab.
       const { data } = await supabase.from('cashoffer_properties').select('*').eq('id', id).single()
-      if (data) { setDrawerTab('rent'); setDrawer(data) }
+      if (data) { setDrawerTab('rent'); setAutoOpenLease(false); setDrawer(data) }
     }
     load()
   }
 
-  function openDrawer(p) { setDrawerTab('analyzer'); setDrawer(p) }
+  function openDrawer(p) { setDrawerTab('rent'); setAutoOpenLease(false); setDrawer(p) }
 
   async function handlePromote(id, zoneKey, coords) {
     if (zoneKey === 'Listed') {
@@ -124,7 +125,7 @@ export default function Holds() {
           {payment > 0 && <span style={{ ...cardChip('#D97825','#FBF0E4','#F2D9BE'), flexShrink:1, minWidth:0, overflow:'hidden', textOverflow:'ellipsis', textAlign:'center' }}>Loan {fmt(payment)}/mo</span>}
         </div>
         {lease ? (
-          <button style={cardBtn} onClick={e => { e.stopPropagation(); setDrawerTab('rent'); setDrawer(p) }}>View Lease</button>
+          <button style={cardBtn} onClick={e => { e.stopPropagation(); setDrawerTab('rent'); setAutoOpenLease(true); setDrawer(p) }}>View Lease</button>
         ) : null}
       </>
     )
@@ -253,7 +254,7 @@ export default function Holds() {
       </>
       )}
 
-      <PropertyDrawer property={drawer} open={!!drawer} onClose={() => setDrawer(null)} onSave={() => load()} mailings={mailings} onViewOffer={p => setProposal(p)} initialTab={drawerTab} />
+      <PropertyDrawer property={drawer} open={!!drawer} onClose={() => setDrawer(null)} onSave={() => load()} mailings={mailings} onViewOffer={p => setProposal(p)} initialTab={drawerTab} openRentTracker={autoOpenLease} />
       {proposal && <ProposalModal property={proposal} onClose={() => setProposal(null)} />}
     </PageWrap>
   )
