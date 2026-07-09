@@ -114,12 +114,15 @@ function ProfitBox({ label, value, sub, color }) {
 }
 
 // Simple cash waterfall: Sale Price − NHC Commission − Loan Payoff − Partner Payback = Profit
-function ProfitWaterfall({ salePrice, commission, loanPayoff, partnerPayback }) {
+function ProfitWaterfall({ salePrice, commission, loanPayoff, partnerPayback, capGainsPct, capGainsOverride, onCapGainsPctChange, onCapGainsOverrideChange }) {
   const sp = parseFloat(salePrice) || 0
   const c  = parseFloat(commission) || 0
   const lp = loanPayoff || 0
   const pb = partnerPayback || 0
   const profit = sp - c - lp - pb
+  const pct = capGainsPct===''||capGainsPct==null ? 20 : parseFloat(capGainsPct)||0
+  const capGains = capGainsOverride!==''&&capGainsOverride!=null ? parseFloat(capGainsOverride)||0 : Math.max(profit,0)*(pct/100)
+  const netAfterCapGains = profit - capGains
 
   const rows = [
     { label:'Sale Price', value:fmt(sp), sign:'' },
@@ -139,6 +142,27 @@ function ProfitWaterfall({ salePrice, commission, loanPayoff, partnerPayback }) 
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'10px 0', borderTop:'1.5px solid #B8892A' }}>
         <span style={{ fontSize:13, fontWeight:700, color:'#2C2C2C' }}>Profit</span>
         <span style={{ fontSize:17, fontWeight:700, fontFamily:"'DM Mono', monospace", color: profit>=0?'#3B6D11':'#B91C1C' }}>{profit>=0?'+':''}{fmt(profit)}</span>
+      </div>
+      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', gap:8, padding:'8px 0', borderTop:'0.5px solid #E8E4DB' }}>
+        <span style={{ fontSize:12, color:'#6b7280' }}>− Est. Capital Gains</span>
+        <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+          {onCapGainsPctChange && (
+            <input type="number" value={capGainsPct??''} onChange={e=>onCapGainsPctChange(e.target.value)} placeholder="20"
+              style={{ width:44, fontSize:11, textAlign:'right', border:'0.5px solid #D6D2CA', borderRadius:4, padding:'3px 4px', fontFamily:'inherit' }} />
+          )}
+          {onCapGainsPctChange && <span style={{ fontSize:11, color:'#9ca3af' }}>%</span>}
+          <span style={{ fontSize:13, fontFamily:"'DM Mono', monospace", fontWeight:600, color:'#B91C1C' }}>{fmt(capGains)}</span>
+        </div>
+      </div>
+      {onCapGainsOverrideChange && (
+        <div style={{ display:'flex', justifyContent:'flex-end', paddingBottom:8 }}>
+          <input type="number" value={capGainsOverride??''} onChange={e=>onCapGainsOverrideChange(e.target.value)} placeholder="Override $ (optional)"
+            style={{ width:150, fontSize:11, textAlign:'right', border:'0.5px solid #D6D2CA', borderRadius:4, padding:'4px 6px', fontFamily:'inherit', color:'#9ca3af' }} />
+        </div>
+      )}
+      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'10px 0', borderTop:'1.5px solid #B8892A' }}>
+        <span style={{ fontSize:13, fontWeight:700, color:'#2C2C2C' }}>Net After Cap Gains</span>
+        <span style={{ fontSize:17, fontWeight:700, fontFamily:"'DM Mono', monospace", color: netAfterCapGains>=0?'#3B6D11':'#B91C1C' }}>{netAfterCapGains>=0?'+':''}{fmt(netAfterCapGains)}</span>
       </div>
     </div>
   )
@@ -470,6 +494,7 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
       source:form.source||null,
       commission_pct:form.commission_pct||null, commission_earned:form.commission_earned||null,
       sale_commission_pct:form.sale_commission_pct||null, sale_commission_earned:form.sale_commission_earned||null,
+      capital_gains_pct:form.capital_gains_pct||null, capital_gains_override:form.capital_gains_override||null,
       commission_min:form.commission_min||5000,
       nhc_notes:form.nhc_notes||null,
       purchase_price:form.purchase_price||null, closing_costs:form.closing_costs||null,
@@ -554,8 +579,18 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
     { key:'disposition', label:'Disposition' },
   ]
 
-  // Disposition is always accessible now — no more gating on type/stage.
-  const disabledTabReasons = {}
+  // Tabs that are visible but not yet usable — key: reason shown on hover
+  const disabledTabReasons = {
+    disposition: type==='Renovation'
+      ? 'Available once the renovation is done and the deal becomes a Flip or Hold'
+      : (type==='Hold' && stage!=='Sold')
+      ? 'Available once this Hold is marked Sold'
+      : null,
+  }
+
+  useEffect(() => {
+    if (disabledTabReasons[tab]) setTab('analyzer')
+  }, [disabledTabReasons[tab]]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // P&L helpers
   const rc         = rehabCost!==null ? rehabCost : (parseFloat(form.rehab_cost)||0)
@@ -1140,6 +1175,9 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
               <ProfitWaterfall
                 salePrice={form.sale_price} commission={form.sale_commission_earned}
                 loanPayoff={loanPayoffTotal} partnerPayback={partnerPaybackTotal}
+                capGainsPct={form.capital_gains_pct} capGainsOverride={form.capital_gains_override}
+                onCapGainsPctChange={v=>setForm(f=>({...f,capital_gains_pct:v}))}
+                onCapGainsOverrideChange={v=>setForm(f=>({...f,capital_gains_override:v}))}
               />
             )}
             <Field label="BPV Notes"><textarea style={{ ...inp, minHeight:56, resize:'vertical' }} value={form.bpv_notes||''} onChange={set('bpv_notes')} /></Field>
@@ -1189,6 +1227,9 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
                     <ProfitWaterfall
                       salePrice={form.sale_price} commission={form.sale_commission_earned}
                       loanPayoff={loanPayoffTotal} partnerPayback={partnerPaybackTotal}
+                      capGainsPct={form.capital_gains_pct} capGainsOverride={form.capital_gains_override}
+                      onCapGainsPctChange={v=>setForm(f=>({...f,capital_gains_pct:v}))}
+                      onCapGainsOverrideChange={v=>setForm(f=>({...f,capital_gains_override:v}))}
                     />
                   </div>
                 )}
