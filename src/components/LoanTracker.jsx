@@ -480,6 +480,7 @@ export default function LoanTracker({ propertyId, propertyAddress, open, onClose
   const [loading, setLoading]     = useState(true)
   const [selection, setSelection] = useState(null)      // null | 'new' | {refinanceFor:id} | loan id (string)
   const [editForm, setEditForm]   = useState(EMPTY_LOAN) // controlled form state, always editable, lives here for the sticky footer
+  const [editFormSnapshot, setEditFormSnapshot] = useState(EMPTY_LOAN) // last-saved/loaded values, for the dirty check on backdrop-close
   const [closingId, setClosingId] = useState(null)
   const [payoffTotals, setPayoffTotals] = useState({ total:0, byPerson:{BPV:0,Bob:0,Eric:0}, count:0, totalInterest:0 })
   const [payoffDate, setPayoffDate] = useState(new Date().toISOString().slice(0,10))
@@ -508,8 +509,12 @@ export default function LoanTracker({ propertyId, propertyAddress, open, onClose
 
   function selectLoan(sel) {
     setSelection(sel)
-    if (sel === 'new' || sel?.refinanceFor) setEditForm(EMPTY_LOAN)
-    else setEditForm({ ...EMPTY_LOAN, ...sel })
+    const next = (sel === 'new' || sel?.refinanceFor) ? EMPTY_LOAN : { ...EMPTY_LOAN, ...sel }
+    setEditForm(next)
+    setEditFormSnapshot(next)
+  }
+  function loanFormDirty() {
+    return JSON.stringify(editForm) !== JSON.stringify(editFormSnapshot)
   }
 
   const isNew = selection === 'new' || !!selection?.refinanceFor
@@ -584,7 +589,7 @@ export default function LoanTracker({ propertyId, propertyAddress, open, onClose
   )
 
   return (
-    <Modal title={`Loan Tracker — ${propertyAddress?.split(',')[0] || ''}`} onClose={onClose} width={1240} footer={footer}>
+    <Modal title={`Loan Tracker — ${propertyAddress?.split(',')[0] || ''}`} onClose={onClose} isDirty={loanFormDirty} width={1240} footer={footer}>
       {loading ? (
         <div style={{ textAlign:'center', padding:32, color:'#B8892A', fontSize:24 }}>⟳</div>
       ) : (

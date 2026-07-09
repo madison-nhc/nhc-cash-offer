@@ -604,6 +604,7 @@ export default function RentTracker({ propertyId, propertyAddress, open, onClose
   const [expenses, setExpenses]           = useState([])
   const [deletedExpenseIds, setDeletedExpenseIds] = useState([])
   const [expensesSaving, setExpensesSaving] = useState(false)
+  const [expensesSnapshot, setExpensesSnapshot] = useState([])
   const [unitCountLocal, setUnitCountLocal] = useState(1)
   const [unitNamesLocal, setUnitNamesLocal] = useState('')
   const [selectedUnit, setSelectedUnit] = useState('All')
@@ -644,6 +645,7 @@ export default function RentTracker({ propertyId, propertyAddress, open, onClose
     ])
     setLeases(leasesRes.data || [])
     setExpenses(expensesRes.data || [])
+    setExpensesSnapshot(expensesRes.data || [])
     setDeletedExpenseIds([])
     setUnitCountLocal(propRes.data?.unit_count || 1)
     setUnitNamesLocal(propRes.data?.unit_names || '')
@@ -655,9 +657,10 @@ export default function RentTracker({ propertyId, propertyAddress, open, onClose
     const prefillLeaseId = selectedUnit !== 'All'
       ? (leases.find(l => (l.unit_label||'Main').trim() === selectedUnit && !l.actual_end_date)?.id || null)
       : null
+    const prefillUnitLabel = selectedUnit !== 'All' ? selectedUnit : null
     setExpenses(p => [...p, {
       id: `new-${Date.now()}-${Math.random().toString(36).slice(2)}`, _isNew: true,
-      property_id: propertyId, name: '', amount: 0, vendor: '', status: 'Scheduled', lease_id: prefillLeaseId,
+      property_id: propertyId, name: '', amount: 0, vendor: '', status: 'Scheduled', lease_id: prefillLeaseId, unit_label: prefillUnitLabel,
     }])
   }
   function updateExpense(id, field, value) {
@@ -678,6 +681,7 @@ export default function RentTracker({ propertyId, propertyAddress, open, onClose
       await Promise.all(existing.map(({ id, ...rest }) => supabase.from('cashoffer_turn_expenses').update(rest).eq('id', id)))
       const { data } = await supabase.from('cashoffer_turn_expenses').select('*').eq('property_id', propertyId).order('created_at', { ascending: true })
       setExpenses(data || [])
+      setExpensesSnapshot(data || [])
       setDeletedExpenseIds([])
       onRentChange && onRentChange()
     } catch (err) {
@@ -687,7 +691,10 @@ export default function RentTracker({ propertyId, propertyAddress, open, onClose
   }
   function handleCancelExpenses() {
     supabase.from('cashoffer_turn_expenses').select('*').eq('property_id', propertyId).order('created_at', { ascending: true })
-      .then(({ data }) => { setExpenses(data || []); setDeletedExpenseIds([]) })
+      .then(({ data }) => { setExpenses(data || []); setExpensesSnapshot(data || []); setDeletedExpenseIds([]) })
+  }
+  function expensesDirty() {
+    return deletedExpenseIds.length > 0 || JSON.stringify(expenses) !== JSON.stringify(expensesSnapshot)
   }
 
   async function saveLease(form) {
@@ -770,7 +777,7 @@ export default function RentTracker({ propertyId, propertyAddress, open, onClose
     if (s.current) leaseIdToUnit[s.current.id] = s.label
     s.past.forEach(p => { leaseIdToUnit[p.id] = s.label })
   })
-  const visibleExpenses = selectedUnit === 'All' ? expenses : expenses.filter(e => leaseIdToUnit[e.lease_id] === selectedUnit)
+  const visibleExpenses = selectedUnit === 'All' ? expenses : expenses.filter(e => (e.unit_label || leaseIdToUnit[e.lease_id]) === selectedUnit)
 
   if (!open) return null
 
@@ -778,6 +785,7 @@ export default function RentTracker({ propertyId, propertyAddress, open, onClose
     <Modal
       title={`Lease Tracker — ${propertyAddress?.split(',')[0] || ''}`}
       onClose={onClose}
+      isDirty={()=> !editing && expensesDirty()}
       width={1240}
       footer={!editing && !loading ? (
         <div style={{ display:'flex', justifyContent:'flex-end', alignItems:'center', gap:8 }}>
@@ -885,9 +893,14 @@ export default function RentTracker({ propertyId, propertyAddress, open, onClose
                   <div key={e.id} style={{ display:'grid', gridTemplateColumns:'1.6fr 1.2fr 0.9fr 0.9fr 0.9fr 0.9fr 1.1fr 0.9fr 28px', gap:12, padding:'8px 10px', alignItems:'center', background:i%2===0?'#fff':'#FAFAF8', borderTop:i>0?'0.5px solid #F0EDE6':'none' }}>
                     <input style={{ ...inp, fontSize:12, padding:'4px 6px', marginRight:6 }} value={e.name||''} onChange={ev=>updateExpense(e.id,'name',ev.target.value)} />
                     <input style={{ ...inp, fontSize:12, padding:'4px 6px', marginRight:6 }} value={e.vendor||''} onChange={ev=>updateExpense(e.id,'vendor',ev.target.value)} />
-                    <select value={e.lease_id||''} onChange={ev=>updateExpense(e.id,'lease_id',ev.target.value||null)} style={{ border:'0.5px solid #D6D2CA', borderRadius:4, padding:'4px 6px', fontSize:11, fontFamily:'inherit', background:'#fff', cursor:'pointer', marginRight:6 }}>
+                    <select value={e.unit_label||''} onChange={ev=>{
+                      const label = ev.target.value||null
+                      const matchingSlot = unitSlots.find(s=>s.label===label)
+                      updateExpense(e.id,'unit_label',label)
+                      updateExpense(e.id,'lease_id', matchingSlot?.current?.id || null)
+                    }} style={{ border:'0.5px solid #D6D2CA', borderRadius:4, padding:'4px 6px', fontSize:11, fontFamily:'inherit', background:'#fff', cursor:'pointer', marginRight:6 }}>
                       <option value="">—</option>
-                      {currentLeaseByUnit.map(l=><option key={l.id} value={l.id}>{l.unit_label||'Unit'}</option>)}
+                      {unitSlots.map(s=><option key={s.label} value={s.label}>{s.label}</option>)}
                     </select>
                     <select style={{ border:'0.5px solid #D6D2CA', borderRadius:4, padding:'4px 6px', fontSize:11, color:TURN_STATUS_COLORS[e.status], fontWeight:700, marginRight:6, background:'#fff' }} value={e.status||'Scheduled'} onChange={ev=>updateExpense(e.id,'status',ev.target.value)}>
                       {TURN_STATUS_OPTIONS.map(s=><option key={s} value={s}>{s}</option>)}

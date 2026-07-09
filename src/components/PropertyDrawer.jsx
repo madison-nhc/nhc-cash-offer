@@ -412,6 +412,7 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
   const stageColor = STAGE_COLOR[stage] || '#9ca3af'
 
   const lastPropertyId = useRef(null)
+  const snapshotRef = useRef({ form:{}, repairs:[] }) // last-loaded/saved values, for the dirty check on close
   useEffect(() => {
     if (property) {
       const isNewProperty = property.id !== lastPropertyId.current
@@ -419,12 +420,13 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
       const t = property.type || 'Analyzing'
       const lt = property.listing_type || 'As-Is'
       const stages = stagesForType(t, lt)
-      setForm({ ...property, type:t, listing_type:lt, stage: property.stage || stages[0] || null })
-      setRepairs(
-        property.repair_items?.length
-          ? property.repair_items.map((r,i)=>({...r,id:i}))
-          : DEFAULT_REPAIRS.map((r,i)=>({...r,id:i}))
-      )
+      const nextForm = { ...property, type:t, listing_type:lt, stage: property.stage || stages[0] || null }
+      const nextRepairs = property.repair_items?.length
+        ? property.repair_items.map((r,i)=>({...r,id:i}))
+        : DEFAULT_REPAIRS.map((r,i)=>({...r,id:i}))
+      setForm(nextForm)
+      setRepairs(nextRepairs)
+      snapshotRef.current = { form: nextForm, repairs: nextRepairs }
       setRehabCost(null)
       // Only jump back to the initial tab (and cancel any in-progress photo-link edit)
       // when this is actually a different property — a same-property refresh (e.g. after
@@ -546,8 +548,13 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
     if (ok) onClose()
     // if save failed, keep the drawer open so nothing is lost
   }
+  function isFormDirty() {
+    return JSON.stringify(form) !== JSON.stringify(snapshotRef.current.form) ||
+           JSON.stringify(repairs) !== JSON.stringify(snapshotRef.current.repairs)
+  }
   function guardedClose() {
     if (!form.address) { onClose(); return }
+    if (!isFormDirty()) { onClose(); return }
     if (confirm('Discard unsaved changes to this property?')) onClose()
   }
   async function del() {

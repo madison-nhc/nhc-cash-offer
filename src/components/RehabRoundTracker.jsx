@@ -165,6 +165,7 @@ export default function RehabRoundTracker({ property, repairItems = [], onChange
   const [deletedItemIds, setDeletedItemIds]       = useState([])
   const [deletedSupplyIds, setDeletedSupplyIds]   = useState([])
   const [deletedBillIds, setDeletedBillIds]       = useState([])
+  const [snapshot, setSnapshot] = useState({ items:[], supplies:[], bills:[], budget:'' })
   const vendorRefs = useRef({})
 
   const propertyId = property?.id
@@ -214,6 +215,7 @@ export default function RehabRoundTracker({ property, repairItems = [], onChange
     setDeletedItemIds([])
     setDeletedSupplyIds([])
     setDeletedBillIds([])
+    setSnapshot({ items: i.data || [], supplies: s.data || [], bills: b.data || [], budget: property?.rehab_cost || '' })
   }
 
   function notifyParent() {
@@ -342,6 +344,15 @@ export default function RehabRoundTracker({ property, repairItems = [], onChange
     setClosingCostsDatePaid(property?.closing_costs_date_paid || '')
     onClose()
   }
+  function rehabDirty() {
+    return (
+      deletedItemIds.length > 0 || deletedSupplyIds.length > 0 || deletedBillIds.length > 0 ||
+      String(budget||'') !== String(snapshot.budget||'') ||
+      JSON.stringify(items) !== JSON.stringify(snapshot.items) ||
+      JSON.stringify(supplies) !== JSON.stringify(snapshot.supplies) ||
+      JSON.stringify(bills) !== JSON.stringify(snapshot.bills)
+    )
+  }
 
   async function handleDeleteRenovation() {
     if (!confirm('Delete this entire renovation? This removes all services, supplies, and utility bills, and resets the renovation stage back to Not Started. This cannot be undone.')) return
@@ -374,6 +385,7 @@ export default function RehabRoundTracker({ property, repairItems = [], onChange
     <Modal
       title={`Renovation Dashboard — ${property?.address?.split(',')[0] || ''}`}
       onClose={onClose}
+      isDirty={rehabDirty}
       width={1240}
       footer={
         <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>

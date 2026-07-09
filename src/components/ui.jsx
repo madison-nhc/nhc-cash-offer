@@ -50,13 +50,22 @@ export function SectionBar({ children }) {
   )
 }
 
-export function Modal({ title, onClose, children, width = 560, footer }) {
+export function Modal({ title, onClose, children, width = 560, footer, isDirty }) {
+  // If the caller passes isDirty (a function returning true when there are unsaved
+  // local-draft changes), backdrop clicks and the × button only confirm when there's
+  // actually something to lose — a no-op edit session closes silently.
+  function guardedClose() {
+    if (isDirty && isDirty()) {
+      if (!confirm('Discard unsaved changes?')) return
+    }
+    onClose()
+  }
   return (
     <div style={{
       position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)',
       zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center',
       padding: 16
-    }} onClick={e => e.target === e.currentTarget && onClose()}>
+    }} onClick={e => e.target === e.currentTarget && guardedClose()}>
       <div data-clip-boundary style={{
         background: '#fff', borderRadius: 10, width: '100%', maxWidth: width,
         maxHeight: '90vh', display: 'flex', flexDirection: 'column', overflow: 'hidden',
@@ -69,7 +78,7 @@ export function Modal({ title, onClose, children, width = 560, footer }) {
           padding: '14px 20px', borderBottom: '1px solid #F0EDE6', flexShrink: 0
         }}>
           <span style={{ fontSize: 15, fontWeight: 700, color: '#2C2C2C' }}>{title}</span>
-          <button onClick={onClose} style={{
+          <button onClick={guardedClose} style={{
             background: 'none', border: 'none', fontSize: 20, cursor: 'pointer',
             color: '#6b7280', lineHeight: 1, padding: '0 4px'
           }}>×</button>
