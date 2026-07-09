@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase.js'
 import { useIsMobile } from '../hooks/useIsMobile.js'
-import { PageWrap, SectionBar, Card, Btn, EmptyState, LoadingSpinner, fmt, useSort, SortTh, Badge } from '../components/ui.jsx'
+import { PageWrap, SectionBar, Card, Btn, EmptyState, LoadingSpinner, fmt, useSort, SortTh } from '../components/ui.jsx'
 import PropertyDrawer from '../components/PropertyDrawer.jsx'
 import ProposalModal from '../components/ProposalModal.jsx'
 import PackageDeals from './PackageDeals.jsx'
@@ -20,12 +20,13 @@ function calcCashOffer(p) {
 }
 
 // ── Kanban board for working leads through analysis ──────────────────────────
+// Dead deals don't get a column — they're dropped on the DEAD tray zone and
+// live on the Dead Deals page from then on.
 const BOARD_COLUMNS = [
   { key:'New Lead',          color:'#9ca3af' },
   { key:'Needs Cash Offer',  color:'#D97825' },
   { key:'Offer Submitted',   color:'#B8892A' },
   { key:'Offer Accepted',    color:'#3B6D11' },
-  { key:'Rejected / Lost',   color:'#B91C1C' },
 ]
 
 function daysAgo(dateStr) {
@@ -39,6 +40,8 @@ const PROMO_ZONES = [
   { key:'Hold',           label:'HOLD',    emoji:'\u{1F3E0}', color:'#B8892A' },
   { key:'Retail Listing', label:'LIST IT', emoji:'\u{1FAA7}', color:'#3B6D11' },
   { key:'Wholesale',      label:'WHOLESALE', emoji:'\u{1F91D}', color:'#6b21a8' },
+  { divider:true },
+  { key:'Lost',           label:'DEAD',    emoji:'\u{1F480}', color:'#B91C1C' },
 ]
 
 function analyzerCardContent(p, onViewOffer) {
@@ -72,21 +75,24 @@ function analyzerCardContent(p, onViewOffer) {
 function AnalyzerBoard({ properties, onOpen, onMoved, onPromoted, onViewOffer }) {
   const [burst, setBurst] = useState(null)
 
-  const columnFor = p => {
-    if (p.type === 'Lost' || p.stage === 'Lost') return 'Rejected / Lost'
-    return (p.stage && p.stage !== 'Analyzing') ? p.stage : 'New Lead'
-  }
+  const columnFor = p => (p.stage && p.stage !== 'Analyzing') ? p.stage : 'New Lead'
 
   async function handleDrop(id, columnKey) {
-    const payload = columnKey === 'Rejected / Lost'
-      ? { type:'Analyzing', stage:'Lost', disposition:'lost' }
-      : { type:'Analyzing', stage:columnKey, disposition:null }
+    const payload = { type:'Analyzing', stage:columnKey, disposition:null }
     const { error } = await supabase.from('cashoffer_properties').update(payload).eq('id', id)
     if (error) alert(`Could not move deal: ${error.message}`)
     onMoved()
   }
 
   async function handlePromote(id, typeKey, coords) {
+    // Negative zone: mark dead → deal moves to the Dead Deals page. No confetti.
+    if (typeKey === 'Lost') {
+      const { error } = await supabase.from('cashoffer_properties')
+        .update({ type:'Analyzing', stage:'Lost', disposition:'lost' }).eq('id', id)
+      if (error) alert(`Could not move deal: ${error.message}`)
+      onMoved()
+      return
+    }
     const payload = PROMO_PAYLOADS[typeKey]
     if (!payload) return
     const { error } = await supabase.from('cashoffer_properties').update(payload).eq('id', id)
@@ -148,12 +154,13 @@ export default function Analyzer({ openPropertyId, openInPackage, onOpenedTarget
   async function load() {
     setLoading(true)
     const [{ data: p }, { data: m }] = await Promise.all([
-      // Analyzer is purely pre-purchase: Analyzing deals incl. stage='Lost'.
-      // (type='Lost' kept defensively for any legacy rows. Owned deals under
-      // contract to sell live on Listings; purchased deals live on Rehabs.)
+      // Analyzer is purely pre-purchase: active Analyzing deals only.
+      // Dead deals (stage='Lost') live exclusively on the Dead Deals page now.
+      // (Legacy type='Lost' rows — zero exist — would also be excluded here.)
       supabase.from('cashoffer_properties').select('*')
         .is('package_id', null)
-        .in('type', ['Analyzing','Lost'])
+        .eq('type', 'Analyzing')
+        .neq('stage', 'Lost')
         .order('updated_at', { ascending: false }),
       supabase.from('cashoffer_mailings').select('id,campaign_name,drop_date').order('drop_date', { ascending: false }),
     ])

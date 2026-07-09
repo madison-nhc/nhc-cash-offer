@@ -78,6 +78,8 @@ export function MoneyBurst({ x, y }) {
 // Optional promotion tray:
 //   promoZones: [{ key, label, emoji, color }] — while a card is being dragged,
 //     a tray of these targets slides up from the bottom of the screen.
+//     A `{ divider: true }` entry renders a vertical line — use it to separate
+//     positive moves (promotions, Sold) from negative ones (Dead, Cancelled).
 //   onPromote: async (itemId, zoneKey, {x,y}) => void — called on drop; x/y are
 //     the drop coordinates (for celebration effects).
 export default function KanbanBoard({ columns, items, columnFor, onOpen, onDrop, renderCard, promoZones, onPromote }) {
@@ -153,7 +155,10 @@ export default function KanbanBoard({ columns, items, columnFor, onOpen, onDrop,
           display:'flex', gap:12, zIndex:200, background:'#fff', padding:14,
           borderRadius:14, border:'0.5px solid #D6D2CA', boxShadow:'0 8px 32px rgba(0,0,0,0.18)',
         }}>
-          {promoZones.map(z => (
+          {promoZones.map((z, i) => (
+            z.divider ? (
+              <div key={`divider-${i}`} style={{ width:1.5, alignSelf:'stretch', background:'#E5E1DB', borderRadius:1, margin:'2px 2px' }} />
+            ) : (
             <div
               key={z.key}
               onDragOver={e => { e.preventDefault(); setOverZone(z.key) }}
@@ -174,6 +179,7 @@ export default function KanbanBoard({ columns, items, columnFor, onOpen, onDrop,
               <div style={{ fontSize:22, marginBottom:4 }}>{z.emoji}</div>
               <div style={{ fontSize:11, fontWeight:700, letterSpacing:0.3, color: overZone===z.key ? '#fff' : z.color }}>{z.label}</div>
             </div>
+            )
           ))}
         </div>
       )}

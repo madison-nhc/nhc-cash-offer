@@ -4,12 +4,39 @@ import { useIsMobile } from '../hooks/useIsMobile.js'
 import { PageWrap, SectionBar, Card, EmptyState, LoadingSpinner, fmt, fmtK, useSort, SortTh } from '../components/ui.jsx'
 import PropertyDrawer from '../components/PropertyDrawer.jsx'
 import ProposalModal from '../components/ProposalModal.jsx'
+import KanbanBoard, { cardPill, cardChip, MoneyBurst } from '../components/KanbanBoard.jsx'
 
 const REHAB_STAGE_COLOR = {
   'Not Started':'#9ca3af','Demo':'#D97825','Rough Work':'#B8892A',
   'Inspections':'#2D6FAF','Finishes':'#6b21a8','Punch List':'#3B6D11','Complete':'#3B6D11',
 }
 const REHAB_STAGES = ['Not Started','Demo','Rough Work','Inspections','Finishes','Punch List','Complete']
+
+// ── Board: deal stages that live on this page ─────────────────────────────────
+// Purchased/Rehab are Flip+Hold territory; the Reno columns are client Reno
+// listings only. validDropTarget keeps deals in their own lane.
+const BOARD_COLUMNS = [
+  { key:'Purchased',        color:'#D97825' },
+  { key:'Rehab',            color:'#6b21a8' },
+  { key:'Reno In Progress', color:'#B8892A' },
+  { key:'Reno Completed',   color:'#3B6D11' },
+]
+
+function validDropTarget(p, col) {
+  const isReno = p.type === 'Retail Listing' && p.listing_type === 'Reno'
+  if (col === 'Reno In Progress' || col === 'Reno Completed') return isReno
+  return p.type === 'Flip' || p.type === 'Hold'  // Purchased / Rehab
+}
+
+// Exit moves live in the drag tray — positives left, negatives after the line
+const PROMO_ZONES = [
+  { key:'Flip',       label:'FLIP',          emoji:'\u{1F528}', color:'#D97825' },
+  { key:'Hold',       label:'HOLD',          emoji:'\u{1F3E0}', color:'#B8892A' },
+  { key:'Listed',     label:'LIST FOR SALE', emoji:'\u{1FAA7}', color:'#2D6FAF' },
+  { key:'Rent Ready', label:'RENT READY',    emoji:'\u{1F511}', color:'#3B6D11' },
+  { divider:true },
+  { key:'Cancelled / Expired', label:'CANCEL / EXPIRE', emoji:'\u{1F6AB}', color:'#9ca3af' },
+]
 
 const DISP_LABEL = { listing:'Listing', wholesale:'Wholesale', flip:'Flip', hold:'Hold' }
 const DISP_COLOR = { listing:'#3B6D11', wholesale:'#6b21a8', flip:'#D97825', hold:'#B8892A' }
@@ -21,8 +48,11 @@ export default function Rehabs({ onOpenSupplies }) {
   const [mailings, setMailings] = useState([])
   const [loading, setLoading] = useState(true)
   const [drawer, setDrawer] = useState(null)
+  const [drawerTab, setDrawerTab] = useState('rehab')
   const [proposal, setProposal] = useState(null)
   const [stageFilter, setStageFilter] = useState('all')
+  const [view, setView] = useState('board')
+  const [burst, setBurst] = useState(null)
 
   useEffect(() => { load() }, [])
 
@@ -53,6 +83,123 @@ export default function Rehabs({ onOpenSupplies }) {
 
   const byRehabStage   = {}
   REHAB_STAGES.forEach(st => { byRehabStage[st] = properties.filter(p=>(p.rehab_stage||'Not Started')===st).length })
+
+  // ── Board handlers ──────────────────────────────────────────────────────────
+  const columnFor = p => BOARD_COLUMNS.some(c => c.key === p.stage) ? p.stage : 'Purchased'
+
+  function typeLabel(p) {
+    if (p.type === 'Flip') return { text:'Flip', color:'#D97825' }
+    if (p.type === 'Hold') return { text:'Hold', color:'#B8892A' }
+    if (p.type === 'Retail Listing') return { text:'Client · Reno', color:'#6b21a8' }
+    return { text: p.type || '—', color:'#9ca3af' }
+  }
+
+  async function handleBoardDrop(id, columnKey) {
+    const item = properties.find(p => p.id === id)
+    if (item && !validDropTarget(item, columnKey)) {
+      alert(`"${columnKey}" doesn't apply to ${typeLabel(item).text} deals.`)
+      return
+    }
+    const { error } = await supabase.from('cashoffer_properties').update({ stage: columnKey }).eq('id', id)
+    if (error) { alert(`Could not move deal: ${error.message}`) }
+    load()
+  }
+
+  function openDrawer(p) { setDrawerTab('rehab'); setDrawer(p) }
+
+  async function handlePromote(id, zoneKey, coords) {
+    const item = properties.find(p => p.id === id)
+    if (!item) return
+    const isReno = item.type === 'Retail Listing' && item.listing_type === 'Reno'
+
+    // Negative exit: client Reno listings only
+    if (zoneKey === 'Cancelled / Expired') {
+      if (!isReno) {
+        alert('Cancel / Expire applies to client Reno listings only. Owned deals stay in the portfolio.')
+        return
+      }
+      const { error } = await supabase.from('cashoffer_properties').update({ stage:'Cancelled / Expired' }).eq('id', id)
+      if (error) alert(`Could not move deal: ${error.message}`)
+      load()
+      return
+    }
+
+    // Rehab-done exits
+    if (zoneKey === 'Listed') {
+      const { error } = await supabase.from('cashoffer_properties').update({ stage:'Listed' }).eq('id', id)
+      if (error) { alert(`Could not move deal: ${error.message}`); load(); return }
+      setBurst({ ...coords, key: Date.now() })
+      setTimeout(() => setBurst(null), 1600)
+      load()
+      return
+    }
+    if (zoneKey === 'Rent Ready') {
+      if (item.type !== 'Hold') {
+        alert('Rent Ready is a Hold stage. Pivot the deal to Hold first if you\'re keeping it as a rental.')
+        return
+      }
+      const { error } = await supabase.from('cashoffer_properties').update({ stage:'Rent Ready' }).eq('id', id)
+      if (error) { alert(`Could not move deal: ${error.message}`); load(); return }
+      setBurst({ ...coords, key: Date.now() })
+      setTimeout(() => setBurst(null), 1600)
+      load()
+      return
+    }
+
+    // Flip ↔ Hold pivot — stage carries over (Purchased/Rehab valid in both sets)
+    if (zoneKey === 'Flip' || zoneKey === 'Hold') {
+      if (item.type === zoneKey) { alert(`Already a ${zoneKey} deal.`); return }
+      if (!['Purchased','Rehab'].includes(item.stage)) {
+        alert(`Only deals in Purchased or Rehab can pivot to ${zoneKey}.`)
+        return
+      }
+      const { error } = await supabase.from('cashoffer_properties')
+        .update({ type: zoneKey, disposition: zoneKey.toLowerCase() }).eq('id', id)
+      if (error) { alert(`Could not move deal: ${error.message}`); load(); return }
+      setBurst({ ...coords, key: Date.now() })
+      setTimeout(() => setBurst(null), 1600)
+      load()
+    }
+  }
+
+  function rehabCardContent(p) {
+    const badge = typeLabel(p)
+    const pct = pctDone(p.id)
+    const est = estCost(p.id)
+    const act = actCost(p.id)
+    const over = act > est && est > 0
+    const rehabStage = p.rehab_stage || 'Not Started'
+    const daysActive = p.rehab_start_date ? Math.floor((Date.now()-new Date(p.rehab_start_date))/86400000) : null
+    return (
+      <>
+        <div style={{ fontSize:13, fontWeight:700, color:'#2C2C2C', marginBottom:3 }}>{p.address?.split(',')[0] || 'New Property'}</div>
+        <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:8, marginBottom:8 }}>
+          <div style={{ minWidth:0 }}>
+            <div style={{ fontSize:11, color:'#6b7280' }}>{p.owner || 'BPV'}</div>
+          </div>
+          {(act > 0 || est > 0) ? (
+            <span style={cardChip(over ? '#B91C1C' : '#B8892A', over ? '#FBEAEA' : '#FBF6EA', over ? '#EFC5C5' : '#E8D9B5')}>
+              {fmt(act > 0 ? act : est)}
+            </span>
+          ) : null}
+        </div>
+        {est > 0 && (
+          <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:8 }}>
+            <div style={{ flex:1, height:5, background:'#E5E1DB', borderRadius:99, overflow:'hidden' }}>
+              <div style={{ height:'100%', width:`${pct}%`, background: pct>=100 ? '#3B6D11' : '#B8892A', borderRadius:99 }} />
+            </div>
+            <span style={{ fontSize:10, color:'#6b7280', fontWeight:600, whiteSpace:'nowrap' }}>{pct}%</span>
+          </div>
+        )}
+        <div style={{ display:'flex', flexWrap:'wrap', gap:4, alignItems:'center' }}>
+          <span style={cardPill(badge.color, '#F0EDE6')}>{badge.text}</span>
+          <span style={cardPill(REHAB_STAGE_COLOR[rehabStage] || '#9ca3af', '#F0EDE6')}>{rehabStage}</span>
+          {daysActive !== null && <span style={{ fontSize:10, color: daysActive > 60 ? '#B91C1C' : '#9ca3af', marginLeft:'auto' }}>{daysActive}d</span>}
+        </div>
+      </>
+    )
+  }
+
 
   const filtered = stageFilter==='all' ? properties
     : stageFilter==='in_progress' ? properties.filter(p=>{ const st=p.rehab_stage||'Not Started'; return st!=='Not Started' && st!=='Complete' })
@@ -106,20 +253,49 @@ export default function Rehabs({ onOpenSupplies }) {
         })}
       </div>
 
-      {/* Rehab stage filter pills */}
-      <div style={{ display:'flex', gap:4, marginBottom:14, flexWrap:'wrap' }}>
-        <button onClick={()=>setStageFilter('all')} style={{ padding:'5px 14px', border:'none', borderRadius:4, cursor:'pointer', background:stageFilter==='all'?'#2C2C2C':'#F0EDE6', color:stageFilter==='all'?'#fff':'#6b7280', fontSize:11, fontWeight:stageFilter==='all'?700:400, fontFamily:'inherit' }}>
-          All ({properties.length})
-        </button>
-        {REHAB_STAGES.map(st=>(
-          byRehabStage[st]>0 && (
-            <button key={st} onClick={()=>setStageFilter(st)} style={{ padding:'5px 14px', border:'none', borderRadius:4, cursor:'pointer', background:stageFilter===st?REHAB_STAGE_COLOR[st]:'#F0EDE6', color:stageFilter===st?'#fff':'#6b7280', fontSize:11, fontWeight:stageFilter===st?700:400, fontFamily:'inherit', whiteSpace:'nowrap' }}>
-              {st} ({byRehabStage[st]})
-            </button>
-          )
-        ))}
+      {/* Rehab stage filter pills + view toggle */}
+      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:12, marginBottom:14, flexWrap:'wrap' }}>
+        <div style={{ display:'flex', gap:4, flexWrap:'wrap' }}>
+          <button onClick={()=>setStageFilter('all')} style={{ padding:'5px 14px', border:'none', borderRadius:4, cursor:'pointer', background:stageFilter==='all'?'#2C2C2C':'#F0EDE6', color:stageFilter==='all'?'#fff':'#6b7280', fontSize:11, fontWeight:stageFilter==='all'?700:400, fontFamily:'inherit' }}>
+            All ({properties.length})
+          </button>
+          {REHAB_STAGES.map(st=>(
+            byRehabStage[st]>0 && (
+              <button key={st} onClick={()=>setStageFilter(st)} style={{ padding:'5px 14px', border:'none', borderRadius:4, cursor:'pointer', background:stageFilter===st?REHAB_STAGE_COLOR[st]:'#F0EDE6', color:stageFilter===st?'#fff':'#6b7280', fontSize:11, fontWeight:stageFilter===st?700:400, fontFamily:'inherit', whiteSpace:'nowrap' }}>
+                {st} ({byRehabStage[st]})
+              </button>
+            )
+          ))}
+        </div>
+        {!mobile && (
+          <div style={{ display:'flex', gap:2 }}>
+            {[['board','Board'],['table','Table']].map(([v,l]) => (
+              <button key={v} onClick={() => setView(v)} style={{ padding:'6px 14px', border:'none', borderRadius:6, cursor:'pointer', background: view === v ? '#2C2C2C' : '#F0EDE6', color: view === v ? '#fff' : '#6b7280', fontSize:12, fontWeight: view === v ? 700 : 400, fontFamily:'inherit' }}>{l}</button>
+            ))}
+          </div>
+        )}
       </div>
 
+      {view === 'board' && !mobile ? (
+        filtered.length === 0 ? (
+          <EmptyState icon="🔨" text="No active rehabs match this filter." />
+        ) : (
+          <>
+            <KanbanBoard
+              columns={BOARD_COLUMNS}
+              items={filtered}
+              columnFor={columnFor}
+              onOpen={openDrawer}
+              onDrop={handleBoardDrop}
+              renderCard={rehabCardContent}
+              promoZones={PROMO_ZONES}
+              onPromote={handlePromote}
+            />
+            {burst && <MoneyBurst key={burst.key} x={burst.x} y={burst.y} />}
+          </>
+        )
+      ) : (
+      <>
       <SectionBar>Rehab Projects ({filtered.length})</SectionBar>
 
       {filtered.length===0 ? (
@@ -150,7 +326,7 @@ export default function Rehabs({ onOpenSupplies }) {
                 const stageColor = REHAB_STAGE_COLOR[rehabStage]
                 const dispColor = DISP_COLOR[p.disposition]||'#9ca3af'
                 return (
-                  <tr key={p.id} onClick={()=>setDrawer(p)}
+                  <tr key={p.id} onClick={()=>openDrawer(p)}
                     style={{ background:i%2===0?'#fff':'#FAFAF8', borderTop:'0.5px solid #F0EDE6', cursor:'pointer' }}
                     onMouseEnter={e=>e.currentTarget.style.background='#fef9f0'}
                     onMouseLeave={e=>e.currentTarget.style.background=i%2===0?'#fff':'#FAFAF8'}>
@@ -197,8 +373,10 @@ export default function Rehabs({ onOpenSupplies }) {
           </table>
         </Card>
       )}
+      </>
+      )}
 
-      <PropertyDrawer property={drawer} open={!!drawer} onClose={()=>setDrawer(null)} onSave={()=>load()} mailings={mailings} initialTab="rehab" onViewOffer={p => setProposal(p)} />
+      <PropertyDrawer property={drawer} open={!!drawer} onClose={()=>setDrawer(null)} onSave={()=>load()} mailings={mailings} initialTab={drawerTab} onViewOffer={p => setProposal(p)} />
       {proposal && <ProposalModal property={proposal} onClose={() => setProposal(null)} />}
     </PageWrap>
   )

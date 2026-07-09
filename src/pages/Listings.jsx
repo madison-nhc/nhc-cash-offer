@@ -11,6 +11,9 @@ const PROMO_ZONES = [
   { key:'Hold',      label:'HOLD',       emoji:'\u{1F3E0}', color:'#B8892A' },
   { key:'Wholesale', label:'WHOLESALE',  emoji:'\u{1F91D}', color:'#6b21a8' },
   { key:'Analyzing', label:'RE-ANALYZE', emoji:'\u{1F50D}', color:'#6b7280' },
+  { key:'Sold',      label:'SOLD',       emoji:'\u{1F4B0}', color:'#3B6D11' },
+  { divider:true },
+  { key:'Cancelled / Expired', label:'CANCEL / EXPIRE', emoji:'\u{1F6AB}', color:'#9ca3af' },
 ]
 
 const BOARD_COLUMNS = [
@@ -18,17 +21,13 @@ const BOARD_COLUMNS = [
   { key:'Reno Completed',      color:'#B8892A' },  // Client Reno only
   { key:'Listed',              color:'#3B6D11' },
   { key:'Under Contract',      color:'#2D6FAF' },
-  { key:'Sold',                color:'#3B6D11', exit:true, label:'Mark Sold →',      hint:'Opens Disposition · deal moves to the Sold page' },
-  { key:'Cancelled / Expired', color:'#9ca3af', exit:true, label:'Cancel / Expire →', hint:'Client listings only · leaves this page' },
 ]
 
 // Which columns a given deal may be dropped into (stage sets differ per type)
 function validDropTarget(p, col) {
   if (col === 'Reno In Progress' || col === 'Reno Completed')
     return p.type === 'Retail Listing' && p.listing_type === 'Reno'
-  if (col === 'Cancelled / Expired')
-    return p.type === 'Retail Listing'
-  return true // Listed / Under Contract / Sold valid for all types shown here
+  return true // Listed / Under Contract valid for all types shown here
 }
 
 function ownerLabel(p) {
@@ -84,25 +83,45 @@ export default function Listings() {
     }
     const { error } = await supabase.from('cashoffer_properties').update({ stage: columnKey }).eq('id', id)
     if (error) { alert(`Could not move deal: ${error.message}`); load(); return }
-    if (columnKey === 'Sold') {
-      const { data } = await supabase.from('cashoffer_properties').select('*').eq('id', id).single()
-      if (data) { setDrawerTab('disposition'); setDrawer(data) }
-    }
     load()
   }
 
   function openDrawer(p) { setDrawerTab('analyzer'); setDrawer(p) }
 
-  async function handlePromote(id, typeKey, coords) {
+  async function handlePromote(id, zoneKey, coords) {
     const item = properties.find(p => p.id === id)
-    if (item && item.type === typeKey) { alert(`Already a ${typeKey} deal.`); return }
-    const payload = PROMO_PAYLOADS[typeKey]
+
+    // Terminal stage zones — these end the listing rather than changing type
+    if (zoneKey === 'Sold') {
+      const { error } = await supabase.from('cashoffer_properties').update({ stage:'Sold' }).eq('id', id)
+      if (error) { alert(`Could not move deal: ${error.message}`); load(); return }
+      setBurst({ ...coords, key: Date.now() })
+      setTimeout(() => setBurst(null), 1600)
+      const { data } = await supabase.from('cashoffer_properties').select('*').eq('id', id).single()
+      if (data) setTimeout(() => { setDrawerTab('disposition'); setDrawer(data) }, 900)
+      load()
+      return
+    }
+    if (zoneKey === 'Cancelled / Expired') {
+      if (item && item.type !== 'Retail Listing') {
+        alert('Cancel / Expire applies to client listings only. Owned deals stay in the portfolio — sell or re-analyze instead.')
+        return
+      }
+      const { error } = await supabase.from('cashoffer_properties').update({ stage:'Cancelled / Expired' }).eq('id', id)
+      if (error) { alert(`Could not move deal: ${error.message}`) }
+      load()
+      return
+    }
+
+    // Type promotion zones
+    if (item && item.type === zoneKey) { alert(`Already a ${zoneKey} deal.`); return }
+    const payload = PROMO_PAYLOADS[zoneKey]
     if (!payload) return
     const { error } = await supabase.from('cashoffer_properties').update(payload).eq('id', id)
     if (error) { alert(`Could not move deal: ${error.message}`); load(); return }
     setBurst({ ...coords, key: Date.now() })
     setTimeout(() => setBurst(null), 1600)
-    if (typeKey === 'Flip' || typeKey === 'Hold') {
+    if (zoneKey === 'Flip' || zoneKey === 'Hold') {
       const { data } = await supabase.from('cashoffer_properties').select('*').eq('id', id).single()
       if (data) setTimeout(() => { setDrawerTab('acquisition'); setDrawer(data) }, 900)
     }

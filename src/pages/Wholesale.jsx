@@ -10,13 +10,14 @@ const PROMO_ZONES = [
   { key:'Flip',      label:'FLIP',       emoji:'\u{1F528}', color:'#D97825' },
   { key:'Hold',      label:'HOLD',       emoji:'\u{1F3E0}', color:'#B8892A' },
   { key:'Analyzing', label:'RE-ANALYZE', emoji:'\u{1F50D}', color:'#6b7280' },
+  { divider:true },
+  { key:'Cancelled', label:'CANCEL',     emoji:'\u{1F6AB}', color:'#9ca3af' },
 ]
 
 const BOARD_COLUMNS = [
   { key:'Under Contract', color:'#2D6FAF' },
   { key:'Assigned',       color:'#6b21a8' },
   { key:'Closed',         color:'#3B6D11' },  // drop opens drawer on Disposition; closed deals stay visible here
-  { key:'Cancelled',      color:'#9ca3af', exit:true, label:'Cancel →', hint:'Contract fell through · leaves this page' },
 ]
 
 export default function Wholesale() {
@@ -58,16 +59,23 @@ export default function Wholesale() {
 
   function openDrawer(p) { setDrawerTab('analyzer'); setDrawer(p) }
 
-  async function handlePromote(id, typeKey, coords) {
+  async function handlePromote(id, zoneKey, coords) {
+    // Negative zone: contract fell through — no confetti, deal leaves this page
+    if (zoneKey === 'Cancelled') {
+      const { error } = await supabase.from('cashoffer_properties').update({ stage:'Cancelled' }).eq('id', id)
+      if (error) alert(`Could not move deal: ${error.message}`)
+      load()
+      return
+    }
     const item = properties.find(p => p.id === id)
-    if (item && item.type === typeKey) { alert(`Already a ${typeKey} deal.`); return }
-    const payload = PROMO_PAYLOADS[typeKey]
+    if (item && item.type === zoneKey) { alert(`Already a ${zoneKey} deal.`); return }
+    const payload = PROMO_PAYLOADS[zoneKey]
     if (!payload) return
     const { error } = await supabase.from('cashoffer_properties').update(payload).eq('id', id)
     if (error) { alert(`Could not move deal: ${error.message}`); load(); return }
     setBurst({ ...coords, key: Date.now() })
     setTimeout(() => setBurst(null), 1600)
-    if (typeKey === 'Flip' || typeKey === 'Hold') {
+    if (zoneKey === 'Flip' || zoneKey === 'Hold') {
       const { data } = await supabase.from('cashoffer_properties').select('*').eq('id', id).single()
       if (data) setTimeout(() => { setDrawerTab('acquisition'); setDrawer(data) }, 900)
     }

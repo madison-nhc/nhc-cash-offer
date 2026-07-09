@@ -4,14 +4,19 @@ import { useIsMobile } from '../hooks/useIsMobile.js'
 import { PageWrap, SectionBar, Card, Badge, EmptyState, LoadingSpinner, fmt, fmtK, useSort, SortTh } from '../components/ui.jsx'
 import PropertyDrawer from '../components/PropertyDrawer.jsx'
 import ProposalModal from '../components/ProposalModal.jsx'
-import KanbanBoard, { cardPill, cardChip, cardBtn } from '../components/KanbanBoard.jsx'
+import KanbanBoard, { cardPill, cardChip, cardBtn, MoneyBurst } from '../components/KanbanBoard.jsx'
 
 const BOARD_COLUMNS = [
   { key:'Purchased',  color:'#D97825' },
   { key:'Rehab',      color:'#6b21a8' },
   { key:'Rent Ready', color:'#B8892A' },
   { key:'Leased',     color:'#3B6D11' },  // drop opens drawer on Rent tab to set up the lease
-  { key:'Listed',     color:'#2D6FAF', exit:true, label:'List For Sale →', hint:'Exit path · appears on the Listings page (Owned)' },
+]
+
+// Exit moves live in the drag tray (appears while dragging a card)
+const PROMO_ZONES = [
+  { key:'Flip',   label:'FLIP',          emoji:'\u{1F528}', color:'#D97825' },
+  { key:'Listed', label:'LIST FOR SALE', emoji:'\u{1FAA7}', color:'#2D6FAF' },
 ]
 
 function MiniStat({ label, value, sub, color = '#2C2C2C' }) {
@@ -35,6 +40,7 @@ export default function Holds() {
   const [drawerTab, setDrawerTab] = useState('analyzer')
   const [proposal, setProposal] = useState(null)
   const [view, setView] = useState('board')
+  const [burst, setBurst] = useState(null)
 
   useEffect(() => { load() }, [])
 
@@ -89,6 +95,33 @@ export default function Holds() {
   }
 
   function openDrawer(p) { setDrawerTab('analyzer'); setDrawer(p) }
+
+  async function handlePromote(id, zoneKey, coords) {
+    const item = properties.find(p => p.id === id)
+
+    if (zoneKey === 'Listed') {
+      // Sale exit — property leaves this board and appears on Listings (Owned)
+      const { error } = await supabase.from('cashoffer_properties').update({ stage:'Listed' }).eq('id', id)
+      if (error) { alert(`Could not move deal: ${error.message}`); load(); return }
+      setBurst({ ...coords, key: Date.now() })
+      setTimeout(() => setBurst(null), 1600)
+      load()
+      return
+    }
+    if (zoneKey === 'Flip') {
+      // Pivot to Flip — only sensible pre-lease while stages still overlap
+      if (item && !['Purchased','Rehab'].includes(item.stage)) {
+        alert('A leased or rent-ready property can\'t pivot to Flip. Use List For Sale to exit instead.')
+        return
+      }
+      const { error } = await supabase.from('cashoffer_properties')
+        .update({ type:'Flip', disposition:'flip' }).eq('id', id)  // stage carries over — valid in both stage sets
+      if (error) { alert(`Could not move deal: ${error.message}`); load(); return }
+      setBurst({ ...coords, key: Date.now() })
+      setTimeout(() => setBurst(null), 1600)
+      load()
+    }
+  }
 
   function holdCardContent(p) {
     const rent = monthlyRent(p.id)
@@ -174,14 +207,19 @@ export default function Holds() {
         boardItems.length === 0 ? (
           <EmptyState icon="○" text="No hold properties in the working portfolio. Set deal type to Hold on a property in the Analyzer." />
         ) : (
-          <KanbanBoard
-            columns={BOARD_COLUMNS}
-            items={boardItems}
-            columnFor={columnFor}
-            onOpen={openDrawer}
-            onDrop={handleDrop}
-            renderCard={holdCardContent}
-          />
+          <>
+            <KanbanBoard
+              columns={BOARD_COLUMNS}
+              items={boardItems}
+              columnFor={columnFor}
+              onOpen={openDrawer}
+              onDrop={handleDrop}
+              renderCard={holdCardContent}
+              promoZones={PROMO_ZONES}
+              onPromote={handlePromote}
+            />
+            {burst && <MoneyBurst key={burst.key} x={burst.x} y={burst.y} />}
+          </>
         )
       ) : (
       <>
