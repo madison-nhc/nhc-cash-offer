@@ -166,18 +166,17 @@ export default function Rehabs({ onOpenSupplies }) {
     const daysActive = p.rehab_start_date ? Math.floor((Date.now()-new Date(p.rehab_start_date))/86400000) : null
     return (
       <>
-        <div style={{ fontSize:13, fontWeight:700, color:'#2C2C2C', marginBottom:3 }}>{p.address?.split(',')[0] || 'New Property'}</div>
-        <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:8, marginBottom:8 }}>
-          <div style={{ minWidth:0 }}>
-            <div style={{ fontSize:11, color:'#6b7280' }}>{p.owner || 'BPV'}</div>
-          </div>
-          {(spent > 0 || est > 0) ? (
-            <div style={{ display:'flex', gap:4, alignItems:'center', flexShrink:0 }}>
-              <span style={cardChip('#B8892A','#FBF6EA','#E8D9B5')}>Est {est > 0 ? fmt(est) : '\u2014'}</span>
-              <span style={cardChip(over ? '#B91C1C' : '#3B6D11', over ? '#FBEAEA' : '#EEF5E7', over ? '#EFC5C5' : '#CBDDB8')}>Spent {fmt(spent)}</span>
-            </div>
-          ) : null}
+        <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:8 }}>
+          <div style={{ fontSize:13, fontWeight:700, color:'#2C2C2C', minWidth:0 }}>{p.address?.split(',')[0] || 'New Property'}</div>
+          <div style={{ fontSize:11, color:'#6b7280', flexShrink:0 }}>{p.owner || 'BPV'}</div>
         </div>
+        <div style={{ fontSize:10, color:'#9ca3af', marginTop:1, marginBottom:8 }}>{p.address?.split(',').slice(1,3).join(',').trim() || ''}</div>
+        {(spent > 0 || est > 0) ? (
+          <div style={{ display:'flex', gap:4, alignItems:'center', justifyContent:'flex-end', marginBottom:8 }}>
+            <span style={cardChip('#B8892A','#FBF6EA','#E8D9B5')}>Est {est > 0 ? fmt(est) : '\u2014'}</span>
+            <span style={cardChip(over ? '#B91C1C' : '#3B6D11', over ? '#FBEAEA' : '#EEF5E7', over ? '#EFC5C5' : '#CBDDB8')}>Spent {fmt(spent)}</span>
+          </div>
+        ) : null}
         {est > 0 && (
           <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:8 }}>
             <div style={{ flex:1, height:5, background:'#E5E1DB', borderRadius:99, overflow:'hidden' }}>
