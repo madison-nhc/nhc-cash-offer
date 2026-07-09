@@ -11,8 +11,8 @@ const BOARD_COLUMNS = [
   { key:'Reno Completed',      color:'#B8892A' },  // Client Reno only
   { key:'Listed',              color:'#3B6D11' },
   { key:'Under Contract',      color:'#2D6FAF' },
-  { key:'Sold',                color:'#3B6D11' },  // terminal: drop opens drawer on Disposition
-  { key:'Cancelled / Expired', color:'#9ca3af' },  // Client listings only; drops off this page
+  { key:'Sold',                color:'#3B6D11', exit:true, label:'Mark Sold →',      hint:'Opens Disposition · deal moves to the Sold page' },
+  { key:'Cancelled / Expired', color:'#9ca3af', exit:true, label:'Cancel / Expire →', hint:'Client listings only · leaves this page' },
 ]
 
 // Which columns a given deal may be dropped into (stage sets differ per type)

@@ -4,6 +4,15 @@ import { useIsMobile } from '../hooks/useIsMobile.js'
 import { PageWrap, SectionBar, Card, Badge, EmptyState, LoadingSpinner, fmt, fmtK, useSort, SortTh } from '../components/ui.jsx'
 import PropertyDrawer from '../components/PropertyDrawer.jsx'
 import ProposalModal from '../components/ProposalModal.jsx'
+import KanbanBoard from '../components/KanbanBoard.jsx'
+
+const BOARD_COLUMNS = [
+  { key:'Purchased',  color:'#D97825' },
+  { key:'Rehab',      color:'#6b21a8' },
+  { key:'Rent Ready', color:'#B8892A' },
+  { key:'Leased',     color:'#3B6D11' },  // drop opens drawer on Rent tab to set up the lease
+  { key:'Listed',     color:'#2D6FAF', exit:true, label:'List For Sale →', hint:'Exit path · appears on the Listings page (Owned)' },
+]
 
 function MiniStat({ label, value, sub, color = '#2C2C2C' }) {
   return (
@@ -23,7 +32,9 @@ export default function Holds() {
   const [mailings, setMailings] = useState([])
   const [loading, setLoading] = useState(true)
   const [drawer, setDrawer] = useState(null)
+  const [drawerTab, setDrawerTab] = useState('analyzer')
   const [proposal, setProposal] = useState(null)
+  const [view, setView] = useState('board')
 
   useEffect(() => { load() }, [])
 
@@ -60,6 +71,43 @@ export default function Holds() {
   function loanPayment(propId) {
     const loan = loans.find(l => l.property_id === propId)
     return computePayment(loan)
+  }
+
+  const boardItems = properties.filter(p => p.stage !== 'Sold' && p.stage !== 'Listed')
+
+  const columnFor = p => BOARD_COLUMNS.some(c => c.key === p.stage) ? p.stage : 'Purchased'
+
+  async function handleDrop(id, columnKey) {
+    const { error } = await supabase.from('cashoffer_properties').update({ stage: columnKey }).eq('id', id)
+    if (error) { alert(`Could not move deal: ${error.message}`); load(); return }
+    if (columnKey === 'Leased') {
+      // Set up the lease while it's in front of you
+      const { data } = await supabase.from('cashoffer_properties').select('*').eq('id', id).single()
+      if (data) { setDrawerTab('rent'); setDrawer(data) }
+    }
+    load()
+  }
+
+  function openDrawer(p) { setDrawerTab('analyzer'); setDrawer(p) }
+
+  function holdCardContent(p) {
+    const rent = monthlyRent(p.id)
+    const payment = loanPayment(p.id)
+    const cashflow = rent - payment
+    return (
+      <>
+        <div style={{ fontSize:13, fontWeight:700, color:'#2C2C2C', marginBottom:4 }}>{p.address || 'New Property'}</div>
+        <div style={{ display:'flex', flexWrap:'wrap', gap:6, alignItems:'center' }}>
+          {rent > 0 && <span style={{ fontSize:11, fontFamily:'monospace', color:'#3B6D11', fontWeight:700 }}>{fmt(rent)}/mo</span>}
+          {payment > 0 && <span style={{ fontSize:11, fontFamily:'monospace', color:'#D97825' }}>−{fmt(payment)}/mo</span>}
+        </div>
+        {(rent > 0 || payment > 0) && (
+          <div style={{ fontSize:10, marginTop:6, color: cashflow >= 0 ? '#3B6D11' : '#B91C1C', fontWeight:600 }}>
+            {cashflow >= 0 ? '+' : ''}{fmt(cashflow)}/mo cash flow
+          </div>
+        )}
+      </>
+    )
   }
 
   const totalMonthlyRent    = properties.reduce((s, p) => s + monthlyRent(p.id), 0)
@@ -102,10 +150,35 @@ export default function Holds() {
 
 
 
+      {!mobile && (
+        <div style={{ display:'flex', justifyContent:'flex-end', marginBottom:14 }}>
+          <div style={{ display:'flex', gap:2 }}>
+            {[['board','Board'],['table','Table']].map(([v,l]) => (
+              <button key={v} onClick={() => setView(v)} style={{ padding:'6px 14px', border:'none', borderRadius:6, cursor:'pointer', background: view === v ? '#2C2C2C' : '#F0EDE6', color: view === v ? '#fff' : '#6b7280', fontSize:12, fontWeight: view === v ? 700 : 400, fontFamily:'inherit' }}>{l}</button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {view === 'board' && !mobile ? (
+        boardItems.length === 0 ? (
+          <EmptyState icon="○" text="No hold properties in the working portfolio. Set deal type to Hold on a property in the Analyzer." />
+        ) : (
+          <KanbanBoard
+            columns={BOARD_COLUMNS}
+            items={boardItems}
+            columnFor={columnFor}
+            onOpen={openDrawer}
+            onDrop={handleDrop}
+            renderCard={holdCardContent}
+          />
+        )
+      ) : (
+      <>
       <SectionBar>Hold Properties ({filtered.length})</SectionBar>
 
       {filtered.length === 0 ? (
-        <EmptyState icon="○" text="No hold properties yet. Set disposition to Hold on a property in the Analyzer." />
+        <EmptyState icon="○" text="No hold properties yet. Set deal type to Hold on a property in the Analyzer." />
       ) : (
         <Card style={{ padding:0 }}>
           <table style={{ width:'100%', borderCollapse:'collapse' }}>
@@ -126,7 +199,7 @@ export default function Holds() {
                 const payment   = loanPayment(p.id)
                 const cashflow  = rent - payment
                 return (
-                  <tr key={p.id} onClick={() => setDrawer(p)}
+                  <tr key={p.id} onClick={() => openDrawer(p)}
                     style={{ background:i%2===0?'#fff':'#FAFAF8', borderTop:'0.5px solid #F0EDE6', cursor:'pointer' }}
                     onMouseEnter={e=>e.currentTarget.style.background='#fef9f0'}
                     onMouseLeave={e=>e.currentTarget.style.background=i%2===0?'#fff':'#FAFAF8'}>
@@ -152,7 +225,10 @@ export default function Holds() {
         </Card>
       )}
 
-      <PropertyDrawer property={drawer} open={!!drawer} onClose={() => setDrawer(null)} onSave={() => load()} mailings={mailings} onViewOffer={p => setProposal(p)} />
+      </>
+      )}
+
+      <PropertyDrawer property={drawer} open={!!drawer} onClose={() => setDrawer(null)} onSave={() => load()} mailings={mailings} onViewOffer={p => setProposal(p)} initialTab={drawerTab} />
       {proposal && <ProposalModal property={proposal} onClose={() => setProposal(null)} />}
     </PageWrap>
   )

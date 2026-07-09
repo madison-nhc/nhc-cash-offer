@@ -9,8 +9,8 @@ import KanbanBoard from '../components/KanbanBoard.jsx'
 const BOARD_COLUMNS = [
   { key:'Under Contract', color:'#2D6FAF' },
   { key:'Assigned',       color:'#6b21a8' },
-  { key:'Closed',         color:'#3B6D11' },  // terminal: drop opens drawer on Disposition
-  { key:'Cancelled',      color:'#9ca3af' },  // terminal: drops off this page (still in search/history)
+  { key:'Closed',         color:'#3B6D11' },  // drop opens drawer on Disposition; closed deals stay visible here
+  { key:'Cancelled',      color:'#9ca3af', exit:true, label:'Cancel →', hint:'Contract fell through · leaves this page' },
 ]
 
 export default function Wholesale() {

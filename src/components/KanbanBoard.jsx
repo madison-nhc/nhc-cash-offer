@@ -4,8 +4,14 @@ import { useState } from 'react'
 // Extracted from the Analyzer board so every pipeline page can reuse it.
 //
 // Props:
-//   columns:    [{ key, color, locked? }] — locked columns are display-only:
-//               cards inside can't be dragged out and nothing can be dropped in.
+//   columns:    [{ key, color, locked?, exit?, label?, hint? }]
+//               locked: display-only — cards inside can't be dragged out and
+//                 nothing can be dropped in.
+//               exit: a drop zone, not a bucket — deals dropped here leave this
+//                 page (rendered dashed/ghosted with an action-style label).
+//               label: display name if different from key (key is what onDrop
+//                 receives, e.g. the stage value).
+//               hint: small text under an exit column's header.
 //   items:      array of records to distribute across columns
 //   columnFor:  (item) => column key string
 //   onOpen:     (item) => void — card click
@@ -36,14 +42,17 @@ export default function KanbanBoard({ columns, items, columnFor, onOpen, onDrop,
             onDragLeave={col.locked ? undefined : () => setDragOverCol(null)}
             onDrop={col.locked ? undefined : e => handleDrop(e, col.key)}
             style={{
-              flex:'0 0 260px', minWidth:260, background: dragOverCol===col.key ? '#fef9f0' : '#F0EDE6',
+              flex:'0 0 260px', minWidth:260,
+              background: dragOverCol===col.key ? '#fef9f0' : col.exit ? '#FAFAF8' : '#F0EDE6',
+              border: col.exit ? '1.5px dashed #D6D2CA' : 'none',
               borderRadius:8, padding:10, transition:'background 0.1s',
             }}
           >
-            <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:8, padding:'0 2px', borderTop:`3px solid ${col.color}`, paddingTop:8 }}>
-              <span style={{ fontSize:12, fontWeight:700, color:'#2C2C2C' }}>{col.key}</span>
-              <span style={{ fontSize:11, color:'#9ca3af', fontWeight:600 }}>{colItems.length}</span>
+            <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom: col.hint ? 2 : 8, padding:'0 2px', borderTop:`3px solid ${col.color}`, paddingTop:8 }}>
+              <span style={{ fontSize:12, fontWeight:700, color: col.exit ? '#6b7280' : '#2C2C2C' }}>{col.label || col.key}</span>
+              {!col.exit && <span style={{ fontSize:11, color:'#9ca3af', fontWeight:600 }}>{colItems.length}</span>}
             </div>
+            {col.hint && <div style={{ fontSize:10, color:'#9ca3af', marginBottom:8, padding:'0 2px' }}>{col.hint}</div>}
             <div style={{ minHeight:40 }}>
               {colItems.map(p => (
                 <div
@@ -60,7 +69,9 @@ export default function KanbanBoard({ columns, items, columnFor, onOpen, onDrop,
                 </div>
               ))}
               {colItems.length===0 && (
-                <div style={{ fontSize:11, color:'#9ca3af', textAlign:'center', padding:'12px 0' }}>No deals</div>
+                <div style={{ fontSize:11, color:'#9ca3af', textAlign:'center', padding:'12px 0' }}>
+                  {col.exit ? 'Drop here' : 'No deals'}
+                </div>
               )}
             </div>
           </div>

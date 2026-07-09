@@ -28,7 +28,7 @@ const TYPE_TO_DISP = { 'Analyzing':null, 'Flip':'flip', 'Hold':'hold', 'Retail L
 const STAGE_BY_TYPE = {
   'Analyzing':      ['New Lead','Needs Cash Offer','Offer Submitted','Offer Accepted','Lost'],
   'Flip':           ['Purchased','Rehab','Listed','Under Contract','Sold'],
-  'Hold':           ['Purchased','Rehab','Rent Ready','Leased','Sold'],
+  'Hold':           ['Purchased','Rehab','Rent Ready','Leased','Listed','Sold'],
   'Retail Listing': { 'As-Is':['Listed','Under Contract','Sold','Cancelled / Expired'], 'Reno':['Reno In Progress','Reno Completed','Listed','Under Contract','Sold','Cancelled / Expired'] },
   'Wholesale':      ['Under Contract','Assigned','Closed','Cancelled'],
 }
