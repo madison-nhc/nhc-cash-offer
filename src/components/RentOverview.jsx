@@ -300,27 +300,9 @@ export default function RentOverview({ propertyId, onOpenFull }) {
     exceptionsByLease[e.lease_id].push(e)
   })
 
-  if (leases.length === 0 && !unitCount) {
-    return (
-      <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
-        {loan && (
-          <div style={{ display:'grid', gridTemplateColumns:'repeat(2, 1fr)', gap:10 }}>
-            <SnapshotCard label="Loan Balance Remaining" value={fmt(computeRemainingBalance(loan))} color="#D97825" />
-            <SnapshotCard label="Monthly Loan Payment" value={fmt(computeMonthlyPayment(loan))} color="#D97825" />
-          </div>
-        )}
-        <div style={{ background:'#F0EDE6', borderRadius:8, padding:20, textAlign:'center' }}>
-          <div style={{ fontSize:13, color:'#6b7280', marginBottom:12 }}>No leases for this property yet.</div>
-          <button onClick={onOpenFull} style={{
-            background:'#3B6D11', color:'#fff', border:'none', borderRadius:8, padding:'10px 18px',
-            fontSize:13, fontWeight:700, cursor:'pointer', fontFamily:'inherit',
-          }}>
-            + Add Lease
-          </button>
-        </div>
-      </div>
-    )
-  }
+  // Note: no special-case empty state here anymore — the unit-slot padding below
+  // always renders at least one slot, and a vacant slot's hollow box is how a
+  // lease gets added (routes to the full Lease Tracker via onOpenFull).
 
   // Group leases by unit label — current lease is the one still open (no actual_end_date).
   // If every lease for a unit has ended, that unit is vacant right now: show the hollow
@@ -346,7 +328,7 @@ export default function RentOverview({ propertyId, onOpenFull }) {
     return { label, current, past }
   })
   // Pad out to unit_count from the Analyzer/Acquisition details, if that's more units than we have leases for
-  const slotCount = Math.max(unitCount || 0, slots.length)
+  const slotCount = Math.max(unitCount || 1, slots.length)
   const customNames = (unitNames || '').split(',').map(s=>s.trim()).filter(Boolean)
   const usedLabelsLower = new Set(slots.map(s => s.label.toLowerCase()))
   const availableCustomNames = customNames.filter(n => !usedLabelsLower.has(n.toLowerCase()))
@@ -396,5 +378,6 @@ export default function RentOverview({ propertyId, onOpenFull }) {
     </div>
   )
 }
+
 
 

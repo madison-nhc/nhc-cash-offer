@@ -546,6 +546,7 @@ export default function RentTracker({ propertyId, propertyAddress, unitCount, un
   const [expensesSaving, setExpensesSaving] = useState(false)
   const [unitCountLocal, setUnitCountLocal] = useState(unitCount || 1)
   const [unitNamesLocal, setUnitNamesLocal] = useState(unitNames || '')
+  const [selectedUnit, setSelectedUnit] = useState('All')
   const closingDate = null
 
   useEffect(() => { setUnitCountLocal(unitCount || 1) }, [unitCount])
@@ -574,14 +575,17 @@ export default function RentTracker({ propertyId, propertyAddress, unitCount, un
       setUnitNamesLocal(joined)
       await supabase.from('cashoffer_properties').update({ unit_names: joined }).eq('id', propertyId)
     }
-    load()
+    load(true)
     onRentChange && onRentChange()
   }
 
   useEffect(() => { if (open && propertyId) load() }, [open, propertyId])
 
-  async function load() {
-    setLoading(true)
+  // silent=true skips the loading-spinner swap — used for small updates (renaming a unit,
+  // changing unit count) where briefly unmounting the whole content caused a click event
+  // to land on the modal backdrop mid-render and accidentally close the tracker.
+  async function load(silent=false) {
+    if (!silent) setLoading(true)
     const [leasesRes, expensesRes] = await Promise.all([
       supabase.from('cashoffer_leases').select('*').eq('property_id', propertyId).order('lease_start', { ascending: false }),
       supabase.from('cashoffer_turn_expenses').select('*').eq('property_id', propertyId).order('created_at', { ascending: true }),
@@ -594,9 +598,12 @@ export default function RentTracker({ propertyId, propertyAddress, unitCount, un
 
   // Turn expenses — local drafts, committed only on Save
   function addExpense() {
+    const prefillLeaseId = selectedUnit !== 'All'
+      ? (leases.find(l => (l.unit_label||'Main').trim() === selectedUnit && !l.actual_end_date)?.id || null)
+      : null
     setExpenses(p => [...p, {
       id: `new-${Date.now()}-${Math.random().toString(36).slice(2)}`, _isNew: true,
-      property_id: propertyId, name: '', amount: 0, vendor: '', status: 'Scheduled', lease_id: null,
+      property_id: propertyId, name: '', amount: 0, vendor: '', status: 'Scheduled', lease_id: prefillLeaseId,
     }])
   }
   function updateExpense(id, field, value) {
@@ -699,10 +706,29 @@ export default function RentTracker({ propertyId, propertyAddress, unitCount, un
   // to a specific past tenancy doesn't make sense, so only currently-open leases are offered.
   const currentLeaseByUnit = unitSlots.filter(s => s.current).map(s => s.current)
 
+  // All lease ids (current + past) belonging to each unit, so the Maintenance table can be
+  // scoped to whichever unit is selected up top.
+  const leaseIdToUnit = {}
+  unitSlots.forEach(s => {
+    if (s.current) leaseIdToUnit[s.current.id] = s.label
+    s.past.forEach(p => { leaseIdToUnit[p.id] = s.label })
+  })
+  const visibleExpenses = selectedUnit === 'All' ? expenses : expenses.filter(e => leaseIdToUnit[e.lease_id] === selectedUnit)
+
   if (!open) return null
 
   return (
-    <Modal title={`Lease Tracker — ${propertyAddress?.split(',')[0] || ''}`} onClose={onClose} width={1240}>
+    <Modal
+      title={`Lease Tracker — ${propertyAddress?.split(',')[0] || ''}`}
+      onClose={onClose}
+      width={1240}
+      footer={!editing && !loading ? (
+        <div style={{ display:'flex', justifyContent:'flex-end', alignItems:'center', gap:8 }}>
+          <Btn variant="outline" onClick={handleCancelExpenses}>Cancel</Btn>
+          <Btn onClick={handleSaveExpenses} disabled={expensesSaving}>{expensesSaving ? 'Saving…' : 'Save'}</Btn>
+        </div>
+      ) : null}
+    >
       {loading ? (
         <div style={{ textAlign:'center', padding:32, color:'#B8892A', fontSize:24 }}>⟳</div>
       ) : editing ? (
@@ -734,8 +760,17 @@ export default function RentTracker({ propertyId, propertyAddress, unitCount, un
             </div>
           )}
 
-          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:16 }}>
-            <div style={{ fontSize:13, fontWeight:700, color:'#2C2C2C' }}>Leases</div>
+          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:12, flexWrap:'wrap', gap:10 }}>
+            <div style={{ display:'flex', alignItems:'center', gap:6, flexWrap:'wrap' }}>
+              {['All', ...unitSlots.map(s=>s.label)].map(label=>(
+                <button key={label} onClick={()=>setSelectedUnit(label)} style={{
+                  border:`1.5px solid ${selectedUnit===label ? '#B8892A' : '#D6D2CA'}`,
+                  background: selectedUnit===label ? '#B8892A18' : '#fff',
+                  color: selectedUnit===label ? '#B8892A' : '#6b7280',
+                  borderRadius:6, padding:'5px 12px', fontSize:12, fontWeight:700, cursor:'pointer', fontFamily:'inherit',
+                }}>{label}</button>
+              ))}
+            </div>
             <div style={{ display:'flex', alignItems:'center', gap:8 }}>
               <span style={{ fontSize:11, fontWeight:700, color:'#9ca3af', textTransform:'uppercase', letterSpacing:0.7 }}>Units</span>
               <button onClick={()=>changeUnitCount(-1)} disabled={unitCountLocal<=1} style={{ width:26, height:26, borderRadius:6, border:'1px solid #D6D2CA', background:'#fff', color:'#6b7280', fontSize:14, fontWeight:700, cursor: unitCountLocal<=1 ? 'not-allowed' : 'pointer', fontFamily:'inherit', opacity: unitCountLocal<=1 ? 0.4 : 1 }}>−</button>
@@ -744,13 +779,7 @@ export default function RentTracker({ propertyId, propertyAddress, unitCount, un
             </div>
           </div>
 
-          {leases.length === 0 && !unitCountLocal ? (
-            <div style={{ background:'#F0EDE6', borderRadius:8, padding:'24px', textAlign:'center', marginBottom:16 }}>
-              <div style={{ fontSize:13, color:'#6b7280', marginBottom:10 }}>No leases for this property yet.</div>
-              <Btn onClick={()=>setEditing('new')}>+ Add Lease</Btn>
-            </div>
-          ) : (
-            unitSlots.map(slot => (
+          {unitSlots.filter(slot => selectedUnit==='All' || slot.label===selectedUnit).map(slot => (
               <div key={slot.label} style={{ marginBottom:20 }}>
                 <EditableUnitHeader slot={slot} onRename={(newLabel)=>renameUnit(slot.label, newLabel, slot.isReal, slot.emptySlotIndex)} />
 
@@ -792,30 +821,18 @@ export default function RentTracker({ propertyId, propertyAddress, unitCount, un
                   </div>
                 )}
               </div>
-            ))
-          )}
-
-          {leases.length > 0 && (
-            <div style={{ paddingTop:12, borderTop:'1px solid #F0EDE6' }}>
-              <Btn variant="outline" onClick={()=>setEditing('new')} style={{ fontSize:12 }}>
-                + Add Another Lease
-              </Btn>
-              <span style={{ fontSize:11, color:'#9ca3af', marginLeft:10 }}>
-                Add a new unit or a new tenant for an existing unit.
-              </span>
-            </div>
-          )}
+          ))}
 
           {/* Maintenance */}
           <div style={{ marginTop:24, paddingTop:16, borderTop:'1px solid #F0EDE6' }}>
-            <div style={{ fontSize:13, fontWeight:700, color:'#2C2C2C', marginBottom:4 }}>Maintenance</div>
+            <div style={{ fontSize:13, fontWeight:700, color:'#2C2C2C', marginBottom:4 }}>Maintenance{selectedUnit!=='All' ? ` — ${selectedUnit}` : ''}</div>
             <div style={{ fontSize:11, color:'#9ca3af', marginBottom:8 }}>Ongoing upkeep and turnover costs — cleaning, repairs, touch-up paint, etc. Tag a unit to show it in that lease's history.</div>
-            {expenses.length > 0 && (
+            {visibleExpenses.length > 0 && (
               <div style={{ border:'0.5px solid #D6D2CA', borderRadius:8, overflow:'hidden', marginBottom:8 }}>
                 <div style={{ display:'grid', gridTemplateColumns:'1.6fr 1.2fr 0.9fr 0.9fr 0.9fr 0.9fr 1.1fr 0.9fr 28px', gap:12, background:'#F0EDE6', padding:'8px 10px' }}>
                   {['Name','Vendor','Unit','Status','Amount','Paid By','Date Paid','Interest',''].map(h=><div key={h} style={{ fontSize:10, fontWeight:600, color:'#6b7280', textTransform:'uppercase' }}>{h}</div>)}
                 </div>
-                {expenses.map((e,i) => (
+                {visibleExpenses.map((e,i) => (
                   <div key={e.id} style={{ display:'grid', gridTemplateColumns:'1.6fr 1.2fr 0.9fr 0.9fr 0.9fr 0.9fr 1.1fr 0.9fr 28px', gap:12, padding:'8px 10px', alignItems:'center', background:i%2===0?'#fff':'#FAFAF8', borderTop:i>0?'0.5px solid #F0EDE6':'none' }}>
                     <input style={{ ...inp, fontSize:12, padding:'4px 6px', marginRight:6 }} value={e.name||''} onChange={ev=>updateExpense(e.id,'name',ev.target.value)} />
                     <input style={{ ...inp, fontSize:12, padding:'4px 6px', marginRight:6 }} value={e.vendor||''} onChange={ev=>updateExpense(e.id,'vendor',ev.target.value)} />
@@ -849,16 +866,13 @@ export default function RentTracker({ propertyId, propertyAddress, unitCount, un
               </div>
             )}
             <button onClick={addExpense} style={{ background:'transparent', border:'1px dashed #D6D2CA', borderRadius:6, padding:'7px', color:'#9ca3af', fontSize:12, cursor:'pointer', fontFamily:'inherit', width:'100%', marginBottom:12 }}>+ Add Maintenance Item</button>
-            <div style={{ display:'flex', justifyContent:'flex-end', gap:8 }}>
-              <Btn variant="outline" onClick={handleCancelExpenses}>Cancel</Btn>
-              <Btn onClick={handleSaveExpenses} disabled={expensesSaving}>{expensesSaving ? 'Saving…' : 'Save'}</Btn>
-            </div>
           </div>
         </>
       )}
     </Modal>
   )
 }
+
 
 
 
