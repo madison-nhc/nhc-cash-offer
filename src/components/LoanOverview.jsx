@@ -176,31 +176,22 @@ export default function LoanOverview({ propertyId, onOpenLoan, onOpenFull }) {
 
   return (
     <div style={{ display:'flex', flexDirection:'column', gap:16 }}>
+      {/* Live ARV lookup — placeholder for a future auto-pull-by-address feature */}
+      <div style={{
+        background:'#F5F4F0', borderRadius:8, padding:'14px 16px', border:'1px dashed #D6D2CA',
+        display:'flex', alignItems:'center', justifyContent:'center', gap:8,
+      }}>
+        <span style={{ fontSize:16 }}>🔒</span>
+        <div style={{ fontSize:12, color:'#9ca3af', fontWeight:600 }}>Live ARV lookup by address — feature coming soon</div>
+      </div>
+
       {/* Snapshot — the numbers worth seeing without opening the full tracker. Monthly
-          payment isn't repeated here since it's already on the loan card below. */}
+          payment isn't repeated here since it's already on the loan card below. Equity
+          uses the ARV set on the Analyzer tab until the live lookup above is built. */}
       <div style={{ display:'grid', gridTemplateColumns: arv ? 'repeat(3, 1fr)' : 'repeat(2, 1fr)', gap:10 }}>
         <StatCard topColor="#D97825" label="Balance Remaining" value={fmt(totalBalance)} />
         <StatCard topColor="#3B6D11" label="Interest Paid to Date" value={fmt(totalInterest)} />
-        {arv > 0 && <StatCard topColor="#3B6D11" label="Equity" value={fmt(Math.max((parseFloat(arv)||0) - totalBalance, 0))} sub="ARV − balance remaining" />}
-      </div>
-
-      {/* ARV Tracker */}
-      <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
-        <div style={{ fontSize:11, fontWeight:700, color:'#9ca3af', textTransform:'uppercase', letterSpacing:0.8 }}>ARV Tracker</div>
-        <div style={{ background:'#fff', borderRadius:8, padding:'12px 14px', border:'0.5px solid #D6D2CA', borderTop:'3px solid #D97825', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-          <div>
-            <div style={{ fontSize:9, color:'#9ca3af', textTransform:'uppercase', letterSpacing:0.7 }}>Current ARV</div>
-            <div style={{ fontSize:18, fontWeight:700, color:'#2C2C2C', fontFamily:'monospace' }}>{arv ? fmt(arv) : '—'}</div>
-          </div>
-          <div style={{ fontSize:10, color:'#9ca3af', textAlign:'right' }}>Set on the Analyzer tab</div>
-        </div>
-        <div style={{
-          background:'#F5F4F0', borderRadius:8, padding:'14px 16px', border:'1px dashed #D6D2CA',
-          display:'flex', alignItems:'center', justifyContent:'center', gap:8,
-        }}>
-          <span style={{ fontSize:16 }}>🔒</span>
-          <div style={{ fontSize:12, color:'#9ca3af', fontWeight:600 }}>Live ARV lookup by address — feature coming soon</div>
-        </div>
+        {arv > 0 && <StatCard topColor="#3B6D11" label="Est. Equity" value={fmt(Math.max((parseFloat(arv)||0) - totalBalance, 0))} sub="ARV − balance remaining" />}
       </div>
       {earliestDue && (
         <div style={{
