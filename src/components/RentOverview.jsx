@@ -80,7 +80,7 @@ function TurnExpenseCards({ propertyId }) {
 
   return (
     <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
-      <StatCard topColor="#D97825" label="Turn Expenses" value={fmt(total)} sub={`${done} of ${expenses.length} completed`} />
+      <StatCard topColor="#D97825" label="Maintenance" value={fmt(total)} sub={`${done} of ${expenses.length} completed`} />
       <div style={{ background:'#fff', borderRadius:8, padding:'12px 14px', border:'0.5px solid #D6D2CA', borderTop:'3px solid #6b21a8' }}>
         <div style={{ fontSize:10, fontWeight:700, color:'#9ca3af', textTransform:'uppercase', letterSpacing:0.8, marginBottom:8 }}>Who's In</div>
         <div style={{ display:'flex', justifyContent:'space-between' }}>

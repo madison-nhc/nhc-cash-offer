@@ -189,12 +189,104 @@ function MonthStrip({ months, exceptionsByMonth, onPick }) {
   )
 }
 
+const TERMINATION_REASONS = ['Lease Expired', 'Terminated Early', 'Tenant Vacated', 'Non-Renewal', 'Other']
+const DEPOSIT_OPTIONS = ['Returned', 'Kept', 'Partial']
+
+// ── End / extend lease form ──────────────────────────────────────────────────
+function LeaseEndForm({ lease, onSave, onCancel }) {
+  const [mode, setMode] = useState('end') // 'end' | 'extend'
+  const [actualEndDate, setActualEndDate] = useState(new Date().toISOString().slice(0,10))
+  const [reason, setReason] = useState('Lease Expired')
+  const [depositDisposition, setDepositDisposition] = useState('Returned')
+  const [depositReturned, setDepositReturned] = useState(lease.deposit_amount || '')
+  const [depositNotes, setDepositNotes] = useState('')
+
+  function submit() {
+    if (mode === 'extend') {
+      onSave({ status:'Month-to-Month', lease_end:null })
+      return
+    }
+    onSave({
+      status: reason==='Lease Expired' ? 'Expired' : 'Vacated',
+      actual_end_date: actualEndDate,
+      termination_reason: reason,
+      deposit_disposition: depositDisposition,
+      deposit_returned_amount: depositDisposition==='Returned' ? (parseFloat(lease.deposit_amount)||0)
+                              : depositDisposition==='Kept' ? 0
+                              : (parseFloat(depositReturned)||0),
+      deposit_notes: depositNotes || null,
+    })
+  }
+
+  return (
+    <div style={{ background:'#FAFAF8', border:'0.5px solid #D6D2CA', borderRadius:8, padding:14, marginTop:8 }}>
+      <div style={{ display:'flex', gap:8, marginBottom:12 }}>
+        {[['extend','Extend Month-to-Month'],['end','End Lease']].map(([m,label])=>(
+          <button key={m} onClick={()=>setMode(m)} style={{
+            flex:1, border:`1.5px solid ${mode===m?'#B8892A':'#D6D2CA'}`,
+            background: mode===m ? '#B8892A18' : '#fff',
+            color: mode===m ? '#B8892A' : '#6b7280',
+            borderRadius:6, padding:'7px 10px', fontSize:12, fontWeight:700, cursor:'pointer', fontFamily:'inherit',
+          }}>{label}</button>
+        ))}
+      </div>
+
+      {mode === 'extend' ? (
+        <div style={{ fontSize:12, color:'#6b7280' }}>
+          Converts this lease to month-to-month — clears the lease end date and keeps rent and tenant as-is.
+        </div>
+      ) : (
+        <>
+          <FieldRow>
+            <Field label="Actual End Date">
+              <DatePicker style={inp} value={actualEndDate} onChange={setActualEndDate} />
+            </Field>
+            <Field label="Reason">
+              <select style={inp} value={reason} onChange={e=>setReason(e.target.value)}>
+                {TERMINATION_REASONS.map(r=><option key={r}>{r}</option>)}
+              </select>
+            </Field>
+          </FieldRow>
+
+          <div style={{ fontSize:11, fontWeight:700, color:'#9ca3af', textTransform:'uppercase', letterSpacing:0.7, marginTop:10, marginBottom:6 }}>
+            Security Deposit ({fmt(lease.deposit_amount || 0)})
+          </div>
+          <div style={{ display:'flex', gap:8, marginBottom:8 }}>
+            {DEPOSIT_OPTIONS.map(d=>(
+              <button key={d} onClick={()=>setDepositDisposition(d)} style={{
+                flex:1, border:`1px solid ${depositDisposition===d?'#B8892A':'#D6D2CA'}`,
+                background: depositDisposition===d ? '#B8892A18' : '#fff',
+                color: depositDisposition===d ? '#B8892A' : '#6b7280',
+                borderRadius:6, padding:'5px 8px', fontSize:11, fontWeight:700, cursor:'pointer', fontFamily:'inherit',
+              }}>{d}</button>
+            ))}
+          </div>
+          {depositDisposition === 'Partial' && (
+            <Field label="Amount Returned ($)">
+              <input style={monoInp} type="number" value={depositReturned} onChange={e=>setDepositReturned(e.target.value)} />
+            </Field>
+          )}
+          <Field label="Notes (e.g. damages, unpaid rent withheld)">
+            <textarea style={{ ...inp, minHeight:44, resize:'vertical' }} value={depositNotes} onChange={e=>setDepositNotes(e.target.value)} />
+          </Field>
+        </>
+      )}
+
+      <div style={{ display:'flex', justifyContent:'flex-end', gap:8, marginTop:12 }}>
+        <Btn variant="outline" onClick={onCancel} style={{ fontSize:11 }}>Cancel</Btn>
+        <Btn onClick={submit} style={{ fontSize:11 }}>{mode==='extend' ? 'Extend Lease' : 'End Lease'}</Btn>
+      </div>
+    </div>
+  )
+}
+
 // ── Lease card ──────────────────────────────────────────────────────────────────
-function LeaseCard({ lease, onEdit, allExpenses, onExpensesChange }) {
+function LeaseCard({ lease, onEdit, allExpenses, onSaved }) {
   const [exceptions, setExceptions] = useState([])
   const [loading, setLoading]       = useState(true)
   const [expanded, setExpanded]     = useState(true)
   const [pickedMonth, setPickedMonth] = useState(null)
+  const [endingLease, setEndingLease] = useState(false)
 
   useEffect(() => { loadExceptions() }, [lease.id])
 
@@ -286,14 +378,38 @@ function LeaseCard({ lease, onEdit, allExpenses, onExpensesChange }) {
             {lease.deposit_amount ? (
               <div style={{ fontSize:11, color:'#9ca3af', marginTop:2 }}>Deposit: {fmt(lease.deposit_amount)}</div>
             ) : null}
+            {lease.actual_end_date && (
+              <div style={{ fontSize:11, color:'#6b7280', marginTop:4, background:'#F0EDE6', display:'inline-block', padding:'3px 8px', borderRadius:4 }}>
+                Ended {new Date(lease.actual_end_date+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}
+                {lease.termination_reason ? ` · ${lease.termination_reason}` : ''}
+                {lease.deposit_disposition ? ` · Deposit ${lease.deposit_disposition}${lease.deposit_disposition==='Partial' ? ` (${fmt(lease.deposit_returned_amount)} returned)` : ''}` : ''}
+              </div>
+            )}
           </div>
           <div style={{ display:'flex', gap:6 }}>
             <button onClick={()=>onEdit(lease)} style={{ background:'none', border:'1px solid #D6D2CA', borderRadius:4, padding:'4px 10px', fontSize:11, cursor:'pointer', color:'#6b7280', fontFamily:'inherit' }}>Edit</button>
+            {!lease.actual_end_date && (
+              <button onClick={()=>setEndingLease(v=>!v)} style={{ background:'none', border:'1px solid #D6D2CA', borderRadius:4, padding:'4px 10px', fontSize:11, cursor:'pointer', color:'#6b7280', fontFamily:'inherit' }}>
+                End / Extend
+              </button>
+            )}
             <button onClick={()=>setExpanded(e=>!e)} style={{ background:'none', border:'1px solid #D6D2CA', borderRadius:4, padding:'4px 10px', fontSize:11, cursor:'pointer', color:'#6b7280', fontFamily:'inherit' }}>
               {expanded ? '▲ Hide' : '▼ Details'}
             </button>
           </div>
         </div>
+
+        {endingLease && (
+          <LeaseEndForm
+            lease={lease}
+            onCancel={()=>setEndingLease(false)}
+            onSave={async (payload) => {
+              await supabase.from('cashoffer_leases').update(payload).eq('id', lease.id)
+              setEndingLease(false)
+              onSaved && onSaved()
+            }}
+          />
+        )}
 
         {/* Summary stats */}
         <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:8 }}>
@@ -358,9 +474,9 @@ function LeaseCard({ lease, onEdit, allExpenses, onExpensesChange }) {
 
               {/* Turn history */}
               <div style={{ marginTop:14 }}>
-                <div style={{ fontSize:10, fontWeight:700, color:'#9ca3af', textTransform:'uppercase', letterSpacing:0.7, marginBottom:6 }}>Turn History</div>
+                <div style={{ fontSize:10, fontWeight:700, color:'#9ca3af', textTransform:'uppercase', letterSpacing:0.7, marginBottom:6 }}>Maintenance History</div>
                 {turnHistory.length === 0 ? (
-                  <div style={{ fontSize:11, color:'#9ca3af' }}>No turn expenses tagged to this unit yet.</div>
+                  <div style={{ fontSize:11, color:'#9ca3af' }}>No maintenance logged for this unit yet.</div>
                 ) : (
                   turnHistory.map(e=>(
                     <div key={e.id} style={{ display:'flex', alignItems:'center', gap:10, padding:'5px 10px', fontSize:11, color:'#6b7280' }}>
@@ -432,7 +548,7 @@ export default function RentTracker({ propertyId, propertyAddress, open, onClose
       setDeletedExpenseIds([])
       onRentChange && onRentChange()
     } catch (err) {
-      alert('Something went wrong saving turn expenses: ' + err.message)
+      alert('Something went wrong saving maintenance items: ' + err.message)
     }
     setExpensesSaving(false)
   }
@@ -482,7 +598,7 @@ export default function RentTracker({ propertyId, propertyAddress, open, onClose
   if (!open) return null
 
   return (
-    <Modal title={`Lease Tracker — ${propertyAddress?.split(',')[0] || ''}`} onClose={onClose} width={740}>
+    <Modal title={`Lease Tracker — ${propertyAddress?.split(',')[0] || ''}`} onClose={onClose} width={1240}>
       {loading ? (
         <div style={{ textAlign:'center', padding:32, color:'#B8892A', fontSize:24 }}>⟳</div>
       ) : editing ? (
@@ -526,7 +642,7 @@ export default function RentTracker({ propertyId, propertyAddress, open, onClose
                 lease={l}
                 onEdit={setEditing}
                 allExpenses={expenses}
-                onExpensesChange={()=>onRentChange&&onRentChange()}
+                onSaved={()=>{ load(); onRentChange && onRentChange() }}
               />
             ))
           )}
@@ -542,10 +658,10 @@ export default function RentTracker({ propertyId, propertyAddress, open, onClose
             </div>
           )}
 
-          {/* Turn Expenses */}
+          {/* Maintenance */}
           <div style={{ marginTop:24, paddingTop:16, borderTop:'1px solid #F0EDE6' }}>
-            <div style={{ fontSize:13, fontWeight:700, color:'#2C2C2C', marginBottom:4 }}>Turn Expenses</div>
-            <div style={{ fontSize:11, color:'#9ca3af', marginBottom:8 }}>Turnover/make-ready costs between tenants — cleaning, repairs, touch-up paint, etc. Tag a unit to show it in that lease's Turn History.</div>
+            <div style={{ fontSize:13, fontWeight:700, color:'#2C2C2C', marginBottom:4 }}>Maintenance</div>
+            <div style={{ fontSize:11, color:'#9ca3af', marginBottom:8 }}>Ongoing upkeep and turnover costs — cleaning, repairs, touch-up paint, etc. Tag a unit to show it in that lease's history.</div>
             {expenses.length > 0 && (
               <div style={{ border:'0.5px solid #D6D2CA', borderRadius:8, overflow:'hidden', marginBottom:8 }}>
                 <div style={{ display:'grid', gridTemplateColumns:'1.6fr 1.2fr 0.9fr 0.9fr 0.9fr 0.9fr 1.1fr 0.9fr 28px', gap:12, background:'#F0EDE6', padding:'8px 10px' }}>
@@ -584,7 +700,7 @@ export default function RentTracker({ propertyId, propertyAddress, open, onClose
                 ))}
               </div>
             )}
-            <button onClick={addExpense} style={{ background:'transparent', border:'1px dashed #D6D2CA', borderRadius:6, padding:'7px', color:'#9ca3af', fontSize:12, cursor:'pointer', fontFamily:'inherit', width:'100%', marginBottom:12 }}>+ Add Expense</button>
+            <button onClick={addExpense} style={{ background:'transparent', border:'1px dashed #D6D2CA', borderRadius:6, padding:'7px', color:'#9ca3af', fontSize:12, cursor:'pointer', fontFamily:'inherit', width:'100%', marginBottom:12 }}>+ Add Maintenance Item</button>
             <div style={{ display:'flex', justifyContent:'flex-end', gap:8 }}>
               <Btn variant="outline" onClick={handleCancelExpenses}>Cancel</Btn>
               <Btn onClick={handleSaveExpenses} disabled={expensesSaving}>{expensesSaving ? 'Saving…' : 'Save'}</Btn>
