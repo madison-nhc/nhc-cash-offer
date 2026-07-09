@@ -9,6 +9,7 @@ import LoanTracker from './LoanTracker.jsx'
 import RentTracker from './RentTracker.jsx'
 import LoanOverview from './LoanOverview.jsx'
 import RentOverview from './RentOverview.jsx'
+import PropertyTour from './PropertyTour.jsx'
 import PartnerLedgerModal from './PartnerLedgerModal.jsx'
 
 // ── Type options (primary) ────────────────────────────────────────────────────
@@ -573,6 +574,7 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
 
   const TABS = [
     { key:'analyzer',    label:'Analyzer' },
+    { key:'tour',        label:'Tour' },
     { key:'acquisition', label:'Acquisition' },
     ...(showLoanTab ? [{ key:'loan', label:'Loan' }] : []),
     { key:'rehab',       label:'Renovation' },
@@ -823,6 +825,11 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
           )}
           <Field label="Notes"><textarea style={{ ...inp, minHeight:56, resize:'vertical' }} value={form.nhc_notes||''} onChange={set('nhc_notes')} /></Field>
         </div>
+      )}
+
+      {/* ══════════════ TOUR TAB ══════════════ */}
+      {tab==='tour' && (
+        <PropertyTour propertyId={form.id} tourUrl={form.zillow_tour_url} onSaved={()=>setForm(f=>({...f}))} />
       )}
 
       {/* ══════════════ ACQUISITION TAB ══════════════ */}
