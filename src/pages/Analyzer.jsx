@@ -34,6 +34,43 @@ function daysAgo(dateStr) {
   return Math.max(0, Math.floor(diff / 86400000))
 }
 
+const PROMO_ZONES = [
+  { key:'Flip',           label:'FLIP',    emoji:'\u{1F528}', color:'#D97825' },
+  { key:'Hold',           label:'HOLD',    emoji:'\u{1F3E0}', color:'#B8892A' },
+  { key:'Retail Listing', label:'LIST IT', emoji:'\u{1FAA7}', color:'#3B6D11' },
+  { key:'Wholesale',      label:'WHOLESALE', emoji:'\u{1F91D}', color:'#6b21a8' },
+]
+
+const MONEY = ['\u{1F4B8}','\u{1F4B5}','\u{1F4B0}']
+
+function MoneyBurst({ x, y }) {
+  const pieces = Array.from({ length: 22 }, (_, i) => ({
+    id: i,
+    emoji: MONEY[i % MONEY.length],
+    dx: (Math.random() - 0.5) * 480,
+    dy: -80 - Math.random() * 360,
+    rot: (Math.random() - 0.5) * 540,
+    delay: Math.random() * 0.15,
+    size: 16 + Math.random() * 16,
+  }))
+  return (
+    <div style={{ position:'fixed', left:0, top:0, width:'100vw', height:'100vh', pointerEvents:'none', zIndex:300 }}>
+      <style>{`@keyframes moneyFly {
+        0%   { transform: translate(0,0) rotate(0deg); opacity:1 }
+        70%  { opacity:1 }
+        100% { transform: translate(var(--dx), var(--dy)) rotate(var(--rot)); opacity:0 }
+      }`}</style>
+      {pieces.map(p => (
+        <span key={p.id} style={{
+          position:'absolute', left:x, top:y, fontSize:p.size,
+          '--dx':`${p.dx}px`, '--dy':`${p.dy}px`, '--rot':`${p.rot}deg`,
+          animation:`moneyFly 1.3s cubic-bezier(0.2,0.6,0.4,1) ${p.delay}s forwards`,
+        }}>{p.emoji}</span>
+      ))}
+    </div>
+  )
+}
+
 const pillStyle = (color, bg) => ({
   fontSize:9, fontWeight:700, letterSpacing:0.5, textTransform:'uppercase',
   color, background:bg, borderRadius:4, padding:'2px 6px',
@@ -64,7 +101,9 @@ function analyzerCardContent(p) {
   )
 }
 
-function AnalyzerBoard({ properties, onOpen, onMoved }) {
+function AnalyzerBoard({ properties, onOpen, onMoved, onPromoted }) {
+  const [burst, setBurst] = useState(null)
+
   const columnFor = p => {
     if (p.type === 'Lost' || p.stage === 'Lost') return 'Rejected / Lost'
     return (p.stage && p.stage !== 'Analyzing') ? p.stage : 'New Lead'
@@ -79,15 +118,36 @@ function AnalyzerBoard({ properties, onOpen, onMoved }) {
     onMoved()
   }
 
+  async function handlePromote(id, typeKey, coords) {
+    const payload = {
+      'Flip':           { type:'Flip',           stage:'Purchased',      disposition:'flip' },
+      'Hold':           { type:'Hold',           stage:'Purchased',      disposition:'hold' },
+      'Retail Listing': { type:'Retail Listing', stage:'Listed',         disposition:'listing' },
+      'Wholesale':      { type:'Wholesale',      stage:'Under Contract', disposition:'wholesale' },
+    }[typeKey]
+    if (!payload) return
+    const { error } = await supabase.from('cashoffer_properties').update(payload).eq('id', id)
+    if (error) { alert(`Could not promote deal: ${error.message}`); onMoved(); return }
+    setBurst({ ...coords, key: Date.now() })
+    setTimeout(() => setBurst(null), 1600)
+    onPromoted?.(id, typeKey)
+    onMoved()
+  }
+
   return (
-    <KanbanBoard
-      columns={BOARD_COLUMNS}
-      items={properties}
-      columnFor={columnFor}
-      onOpen={onOpen}
-      onDrop={handleDrop}
-      renderCard={analyzerCardContent}
-    />
+    <>
+      <KanbanBoard
+        columns={BOARD_COLUMNS}
+        items={properties}
+        columnFor={columnFor}
+        onOpen={onOpen}
+        onDrop={handleDrop}
+        renderCard={analyzerCardContent}
+        promoZones={PROMO_ZONES}
+        onPromote={handlePromote}
+      />
+      {burst && <MoneyBurst key={burst.key} x={burst.x} y={burst.y} />}
+    </>
   )
 }
 
@@ -98,6 +158,7 @@ export default function Analyzer({ openPropertyId, openInPackage, onOpenedTarget
   const [mailings, setMailings] = useState([])
   const [loading, setLoading] = useState(true)
   const [drawer, setDrawer] = useState(null)
+  const [drawerTab, setDrawerTab] = useState('analyzer')
   const [proposal, setProposal] = useState(null)
   const [search, setSearch] = useState('')
   const [packageTargetId, setPackageTargetId] = useState(null)
@@ -196,7 +257,13 @@ export default function Analyzer({ openPropertyId, openInPackage, onOpenedTarget
             filtered.length === 0 ? (
               <EmptyState icon="○" text="No properties being analyzed. Use the + Add Property button in the nav to add one." />
             ) : (
-              <AnalyzerBoard properties={filtered} onOpen={setDrawer} onMoved={load} />
+              <AnalyzerBoard properties={filtered} onOpen={p => { setDrawerTab('analyzer'); setDrawer(p) }} onMoved={load}
+                onPromoted={async (id, typeKey) => {
+                  // Celebration first, paperwork second — open on the tab the new type needs
+                  const tab = typeKey === 'Wholesale' ? 'disposition' : typeKey === 'Retail Listing' ? 'analyzer' : 'acquisition'
+                  const { data } = await supabase.from('cashoffer_properties').select('*').eq('id', id).single()
+                  if (data) setTimeout(() => { setDrawerTab(tab); setDrawer(data) }, 900)
+                }} />
             )
           ) : (
           <>
@@ -209,7 +276,7 @@ export default function Analyzer({ openPropertyId, openInPackage, onOpenedTarget
               {filtered.map(p => {
                 const cashOffer = calcCashOffer(p)
                 return (
-                  <MobileCard key={p.id} onClick={() => setDrawer(p)} accent="#B8892A">
+                  <MobileCard key={p.id} onClick={() => { setDrawerTab('analyzer'); setDrawer(p) }} accent="#B8892A">
                     <CardRow>
                       <span style={{ fontSize:14, fontWeight:700, color:'#2C2C2C', flex:1, marginRight:8 }}>{p.address}</span>
                       <span style={{ fontSize:10, color:'#B8892A', fontWeight:600 }}>Analyzing</span>
@@ -241,7 +308,7 @@ export default function Analyzer({ openPropertyId, openInPackage, onOpenedTarget
                     const cashOffer = calcCashOffer(p)
                     const rehabTotal = (p.repair_items || []).reduce((s, r) => s + (parseFloat(r.cost) || 0), 0)
                     return (
-                      <tr key={p.id} onClick={() => setDrawer(p)}
+                      <tr key={p.id} onClick={() => { setDrawerTab('analyzer'); setDrawer(p) }}
                         style={{ background: i % 2 === 0 ? '#fff' : '#FAFAF8', borderTop:'0.5px solid #F0EDE6', cursor:'pointer' }}
                         onMouseEnter={e => e.currentTarget.style.background = '#fef9f0'}
                         onMouseLeave={e => e.currentTarget.style.background = i % 2 === 0 ? '#fff' : '#FAFAF8'}>
@@ -283,7 +350,7 @@ export default function Analyzer({ openPropertyId, openInPackage, onOpenedTarget
         </>
       )}
 
-      <PropertyDrawer property={drawer} open={!!drawer} onClose={() => setDrawer(null)} onSave={() => load()} mailings={mailings} onViewOffer={p => setProposal(p)} />
+      <PropertyDrawer property={drawer} open={!!drawer} onClose={() => setDrawer(null)} onSave={() => load()} mailings={mailings} onViewOffer={p => setProposal(p)} initialTab={drawerTab} />
       {proposal && <ProposalModal property={proposal} onClose={() => setProposal(null)} />}
     </PageWrap>
   )

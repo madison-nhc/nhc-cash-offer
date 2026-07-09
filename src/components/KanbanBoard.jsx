@@ -19,8 +19,15 @@ import { useState } from 'react'
 //               job (build the payload, write it, surface errors, reload)
 //   renderCard: (item) => JSX — inner card content; the draggable shell,
 //               border, and click handling live here
-export default function KanbanBoard({ columns, items, columnFor, onOpen, onDrop, renderCard }) {
+// Optional promotion tray:
+//   promoZones: [{ key, label, emoji, color }] — while a card is being dragged,
+//     a tray of these targets slides up from the bottom of the screen.
+//   onPromote: async (itemId, zoneKey, {x,y}) => void — called on drop; x/y are
+//     the drop coordinates (for celebration effects).
+export default function KanbanBoard({ columns, items, columnFor, onOpen, onDrop, renderCard, promoZones, onPromote }) {
   const [dragOverCol, setDragOverCol] = useState(null)
+  const [dragging, setDragging] = useState(false)
+  const [overZone, setOverZone] = useState(null)
 
   async function handleDrop(e, columnKey) {
     e.preventDefault()
@@ -58,7 +65,8 @@ export default function KanbanBoard({ columns, items, columnFor, onOpen, onDrop,
                 <div
                   key={p.id}
                   draggable={!col.locked}
-                  onDragStart={col.locked ? undefined : e => e.dataTransfer.setData('text/plain', p.id)}
+                  onDragStart={col.locked ? undefined : e => { e.dataTransfer.setData('text/plain', p.id); setDragging(true) }}
+                  onDragEnd={() => { setDragging(false); setOverZone(null) }}
                   onClick={() => onOpen(p)}
                   style={{
                     background:'#fff', border:'0.5px solid #D6D2CA', borderRadius:8, padding:'10px 12px',
@@ -77,6 +85,37 @@ export default function KanbanBoard({ columns, items, columnFor, onOpen, onDrop,
           </div>
         )
       })}
+
+      {promoZones && dragging && (
+        <div style={{
+          position:'fixed', bottom:24, left:'50%', transform:'translateX(-50%)',
+          display:'flex', gap:12, zIndex:200, background:'#fff', padding:14,
+          borderRadius:14, border:'0.5px solid #D6D2CA', boxShadow:'0 8px 32px rgba(0,0,0,0.18)',
+        }}>
+          {promoZones.map(z => (
+            <div
+              key={z.key}
+              onDragOver={e => { e.preventDefault(); setOverZone(z.key) }}
+              onDragLeave={() => setOverZone(null)}
+              onDrop={async e => {
+                e.preventDefault()
+                setDragging(false); setOverZone(null)
+                const id = e.dataTransfer.getData('text/plain')
+                if (id) await onPromote(id, z.key, { x:e.clientX, y:e.clientY })
+              }}
+              style={{
+                width:120, padding:'14px 8px', textAlign:'center', borderRadius:10, cursor:'copy',
+                border:`2px dashed ${z.color}`, transition:'all 0.12s',
+                background: overZone===z.key ? z.color : 'transparent',
+                transform: overZone===z.key ? 'scale(1.06)' : 'scale(1)',
+              }}
+            >
+              <div style={{ fontSize:22, marginBottom:4 }}>{z.emoji}</div>
+              <div style={{ fontSize:11, fontWeight:700, letterSpacing:0.3, color: overZone===z.key ? '#fff' : z.color }}>{z.label}</div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
