@@ -571,7 +571,7 @@ export default function LoanTracker({ propertyId, propertyAddress, open, onClose
       ) : <span />}
       <div style={{ display:'flex', alignItems:'center', gap:8 }}>
         {existingLoan?.is_active && (
-          <Btn variant="outline" onClick={()=>setClosingId(closingId===existingLoan.id?null:existingLoan.id)}>
+          <Btn variant={closingId===existingLoan.id ? 'outline' : 'green'} onClick={()=>setClosingId(closingId===existingLoan.id?null:existingLoan.id)}>
             {closingId===existingLoan.id ? 'Cancel Close' : 'Close Loan'}
           </Btn>
         )}
