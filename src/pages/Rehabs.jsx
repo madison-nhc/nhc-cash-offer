@@ -172,7 +172,7 @@ export default function Rehabs({ onOpenSupplies }) {
         </div>
         <div style={{ fontSize:10, color:'#9ca3af', marginTop:1, marginBottom:8 }}>{p.address?.split(',').slice(1,3).join(',').trim() || ''}</div>
         {(spent > 0 || est > 0) ? (
-          <div style={{ display:'flex', gap:4, alignItems:'center', justifyContent:'flex-end', marginBottom:8 }}>
+          <div style={{ display:'flex', gap:4, alignItems:'center', justifyContent:'center', marginBottom:8 }}>
             <span style={cardChip('#B8892A','#FBF6EA','#E8D9B5')}>Est {est > 0 ? fmt(est) : '\u2014'}</span>
             <span style={cardChip(over ? '#B91C1C' : '#3B6D11', over ? '#FBEAEA' : '#EEF5E7', over ? '#EFC5C5' : '#CBDDB8')}>Spent {fmt(spent)}</span>
           </div>

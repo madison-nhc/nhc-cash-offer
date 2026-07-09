@@ -120,7 +120,7 @@ export default function Holds() {
         {lease?.tenant_name && <div style={{ fontSize:11.5, color:'#3B6D11', fontWeight:600, marginBottom:8 }}>{lease.tenant_name}</div>}
         <div style={{ display:'flex', flexWrap:'wrap', gap:6, alignItems:'center', justifyContent:'center' }}>
           {rent > 0 && <span style={cardChip('#3B6D11','#EEF5E7','#CBDDB8')}>Rent {fmt(rent)}/mo</span>}
-          {payment > 0 && <span style={cardPill('#D97825','#FBF0E4')}>Loan {fmt(payment)}/mo</span>}
+          {payment > 0 && <span style={cardChip('#D97825','#FBF0E4','#F2D9BE')}>Loan {fmt(payment)}/mo</span>}
         </div>
         {lease ? (
           <button style={cardBtn} onClick={e => { e.stopPropagation(); setDrawerTab('rent'); setDrawer(p) }}>View Lease</button>
