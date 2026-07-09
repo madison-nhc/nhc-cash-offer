@@ -281,10 +281,10 @@ function LeaseEndForm({ lease, onSave, onCancel }) {
 }
 
 // ── Lease card ──────────────────────────────────────────────────────────────────
-function LeaseCard({ lease, onEdit, allExpenses, onSaved }) {
+function LeaseCard({ lease, onEdit, allExpenses, onSaved, defaultExpanded=true }) {
   const [exceptions, setExceptions] = useState([])
   const [loading, setLoading]       = useState(true)
-  const [expanded, setExpanded]     = useState(true)
+  const [expanded, setExpanded]     = useState(defaultExpanded)
   const [pickedMonth, setPickedMonth] = useState(null)
   const [endingLease, setEndingLease] = useState(false)
 
@@ -497,7 +497,7 @@ function LeaseCard({ lease, onEdit, allExpenses, onSaved }) {
 }
 
 // ── Main RentTracker modal ────────────────────────────────────────────────────
-export default function RentTracker({ propertyId, propertyAddress, open, onClose, onRentChange }) {
+export default function RentTracker({ propertyId, propertyAddress, unitCount, open, onClose, onRentChange }) {
   const [leases, setLeases]   = useState([])
   const [loading, setLoading] = useState(true)
   const [editing, setEditing] = useState(null)  // null | 'new' | lease obj
@@ -595,6 +595,35 @@ export default function RentTracker({ propertyId, propertyAddress, open, onClose
   const activeLeases    = leases.filter(l=>l.status==='Active'||l.status==='Month-to-Month')
   const totalMonthlyRent= activeLeases.reduce((s,l)=>s+(parseFloat(l.rent_amount)||0),0)
 
+  // Group leases by unit label — current lease is the one still open (no actual_end_date).
+  // If every lease for a unit has ended, that unit is vacant: hollow "Add Lease" slot,
+  // with its full history still reachable as collapsed Past Lease cards underneath.
+  function unitSortKey(label) {
+    const m = label.match(/(\d+)/)
+    return m ? parseInt(m[1]) : 0
+  }
+  const groups = {}
+  leases.forEach(l => {
+    const key = (l.unit_label || 'Main').trim() || 'Main'
+    if (!groups[key]) groups[key] = []
+    groups[key].push(l)
+  })
+  const unitLabels = Object.keys(groups).sort((a,b) => unitSortKey(a) - unitSortKey(b) || a.localeCompare(b))
+  const unitSlots = unitLabels.map(label => {
+    const rows = groups[label]
+    const openLease = rows.find(r => !r.actual_end_date)
+    const current = openLease || null
+    const past = openLease ? rows.filter(r => r.id !== current.id) : rows
+    return { label, current, past }
+  })
+  const slotCount = Math.max(unitCount || 0, unitSlots.length)
+  for (let i = unitSlots.length; i < slotCount; i++) {
+    unitSlots.push({ label:`Unit ${i+1}`, current:null, past:[] })
+  }
+  // Current lease per unit, for the Maintenance table's Unit dropdown — tagging maintenance
+  // to a specific past tenancy doesn't make sense, so only currently-open leases are offered.
+  const currentLeaseByUnit = unitSlots.filter(s => s.current).map(s => s.current)
+
   if (!open) return null
 
   return (
@@ -604,7 +633,7 @@ export default function RentTracker({ propertyId, propertyAddress, open, onClose
       ) : editing ? (
         <>
           <div style={{ fontSize:13, fontWeight:700, color:'#2C2C2C', marginBottom:16 }}>
-            {editing === 'new' ? 'Add Lease' : 'Edit Lease'}
+            {!editing?.id ? 'Add Lease' : 'Edit Lease'}
           </div>
           <LeaseForm
             lease={editing === 'new' ? null : editing}
@@ -620,7 +649,7 @@ export default function RentTracker({ propertyId, propertyAddress, open, onClose
               {[
                 { label:'Active Leases',    value:activeLeases.length,                              color:'#3B6D11' },
                 { label:'Monthly Rent',     value:totalMonthlyRent>0?fmtK(totalMonthlyRent):'—',    color:'#B8892A' },
-                { label:'Total Units',      value:leases.length,                                    color:'#2C2C2C' },
+                { label:'Total Units',      value:unitSlots.length,                                 color:'#2C2C2C' },
               ].map(({label,value,color})=>(
                 <div key={label} style={{ background:'#FAFAF8', borderRadius:8, padding:'10px 14px', border:'0.5px solid #D6D2CA', textAlign:'center' }}>
                   <div style={{ fontSize:9, color:'#9ca3af', textTransform:'uppercase', letterSpacing:0.7, marginBottom:3 }}>{label}</div>
@@ -630,27 +659,61 @@ export default function RentTracker({ propertyId, propertyAddress, open, onClose
             </div>
           )}
 
-          {leases.length === 0 ? (
+          {leases.length === 0 && !unitCount ? (
             <div style={{ background:'#F0EDE6', borderRadius:8, padding:'24px', textAlign:'center', marginBottom:16 }}>
               <div style={{ fontSize:13, color:'#6b7280', marginBottom:10 }}>No leases for this property yet.</div>
               <Btn onClick={()=>setEditing('new')}>+ Add Lease</Btn>
             </div>
           ) : (
-            leases.map(l=>(
-              <LeaseCard
-                key={l.id}
-                lease={l}
-                onEdit={setEditing}
-                allExpenses={expenses}
-                onSaved={()=>{ load(); onRentChange && onRentChange() }}
-              />
+            unitSlots.map(slot => (
+              <div key={slot.label} style={{ marginBottom:20 }}>
+                <div style={{ fontSize:13, fontWeight:700, color:'#2C2C2C', marginBottom:8 }}>{slot.label}</div>
+
+                {slot.current ? (
+                  <LeaseCard
+                    lease={slot.current}
+                    onEdit={setEditing}
+                    allExpenses={expenses}
+                    onSaved={()=>{ load(); onRentChange && onRentChange() }}
+                    defaultExpanded={true}
+                  />
+                ) : (
+                  <div style={{
+                    background:'transparent', borderRadius:8, padding:'18px 14px', marginBottom: slot.past.length>0 ? 8 : 0,
+                    border:'2px dashed #D6D2CA', display:'flex', alignItems:'center', justifyContent:'center', gap:12,
+                  }}>
+                    <div style={{ fontSize:12, color:'#9ca3af', fontWeight:600 }}>{slot.label} — vacant</div>
+                    <button onClick={()=>setEditing({ unit_label: slot.label })} style={{ background:'none', border:'1px solid #3B6D11', borderRadius:6, padding:'5px 12px', fontSize:11, fontWeight:700, cursor:'pointer', color:'#3B6D11', fontFamily:'inherit' }}>
+                      + Add Lease — {slot.label}
+                    </button>
+                  </div>
+                )}
+
+                {slot.past.length > 0 && (
+                  <div style={{ marginTop:8, display:'flex', flexDirection:'column', gap:8 }}>
+                    <div style={{ fontSize:10, fontWeight:700, color:'#9ca3af', textTransform:'uppercase', letterSpacing:0.7 }}>
+                      Past Leases ({slot.past.length})
+                    </div>
+                    {slot.past.map(p => (
+                      <LeaseCard
+                        key={p.id}
+                        lease={p}
+                        onEdit={setEditing}
+                        allExpenses={expenses}
+                        onSaved={()=>{ load(); onRentChange && onRentChange() }}
+                        defaultExpanded={false}
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
             ))
           )}
 
           {leases.length > 0 && (
             <div style={{ paddingTop:12, borderTop:'1px solid #F0EDE6' }}>
               <Btn variant="outline" onClick={()=>setEditing('new')} style={{ fontSize:12 }}>
-                + Add {leases.length > 0 ? 'Another Lease' : 'Lease'}
+                + Add Another Lease
               </Btn>
               <span style={{ fontSize:11, color:'#9ca3af', marginLeft:10 }}>
                 Add a new unit or a new tenant for an existing unit.
@@ -673,7 +736,7 @@ export default function RentTracker({ propertyId, propertyAddress, open, onClose
                     <input style={{ ...inp, fontSize:12, padding:'4px 6px', marginRight:6 }} value={e.vendor||''} onChange={ev=>updateExpense(e.id,'vendor',ev.target.value)} />
                     <select value={e.lease_id||''} onChange={ev=>updateExpense(e.id,'lease_id',ev.target.value||null)} style={{ border:'0.5px solid #D6D2CA', borderRadius:4, padding:'4px 6px', fontSize:11, fontFamily:'inherit', background:'#fff', cursor:'pointer', marginRight:6 }}>
                       <option value="">—</option>
-                      {leases.map(l=><option key={l.id} value={l.id}>{l.unit_label||'Unit'}</option>)}
+                      {currentLeaseByUnit.map(l=><option key={l.id} value={l.id}>{l.unit_label||'Unit'}</option>)}
                     </select>
                     <select style={{ border:'0.5px solid #D6D2CA', borderRadius:4, padding:'4px 6px', fontSize:11, color:TURN_STATUS_COLORS[e.status], fontWeight:700, marginRight:6, background:'#fff' }} value={e.status||'Scheduled'} onChange={ev=>updateExpense(e.id,'status',ev.target.value)}>
                       {TURN_STATUS_OPTIONS.map(s=><option key={s} value={s}>{s}</option>)}
@@ -711,4 +774,5 @@ export default function RentTracker({ propertyId, propertyAddress, open, onClose
     </Modal>
   )
 }
+
 

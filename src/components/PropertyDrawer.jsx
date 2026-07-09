@@ -1257,6 +1257,7 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
       <RentTracker
         propertyId={form.id}
         propertyAddress={form.address}
+        unitCount={form.unit_count}
         open={rentOpen}
         onClose={()=>setRentOpen(false)}
         onRentChange={()=>onSave()}
