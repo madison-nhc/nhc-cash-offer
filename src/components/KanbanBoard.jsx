@@ -20,8 +20,7 @@ export const cardBtn = {
 
 // One payload map for every promotion/relegation tray
 export const PROMO_PAYLOADS = {
-  'Flip':           { type:'Flip',           stage:'Purchased',      disposition:'flip' },
-  'Hold':           { type:'Hold',           stage:'Purchased',      disposition:'hold' },
+  'Renovation':     { type:'Renovation',     stage:'Purchased',      disposition:'renovation' },
   'Retail Listing': { type:'Retail Listing', stage:'Listed',         disposition:'listing' },
   'Wholesale':      { type:'Wholesale',      stage:'Under Contract', disposition:'wholesale' },
   'Analyzing':      { type:'Analyzing',      stage:'New Lead',       disposition:null },

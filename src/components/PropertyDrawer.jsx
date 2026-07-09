@@ -14,6 +14,7 @@ import PartnerLedgerModal from './PartnerLedgerModal.jsx'
 // ── Type options (primary) ────────────────────────────────────────────────────
 const TYPE_OPTIONS = [
   { value:'Analyzing',       color:'#B8892A' },
+  { value:'Renovation',      color:'#6b21a8' },
   { value:'Flip',            color:'#D97825' },
   { value:'Hold',            color:'#B8892A' },
   { value:'Retail Listing',  color:'#3B6D11' },
@@ -22,20 +23,22 @@ const TYPE_OPTIONS = [
 const TYPE_COLOR = Object.fromEntries(TYPE_OPTIONS.map(t=>[t.value,t.color]))
 
 // Legacy disposition <-> new type mapping (disposition kept in sync for Sold/Rehabs/PackageDeals pages)
-const TYPE_TO_DISP = { 'Analyzing':null, 'Flip':'flip', 'Hold':'hold', 'Retail Listing':'listing', 'Wholesale':'wholesale' }
+const TYPE_TO_DISP = { 'Analyzing':null, 'Renovation':'renovation', 'Flip':'flip', 'Hold':'hold', 'Retail Listing':'listing', 'Wholesale':'wholesale' }
 
-// Stages scoped per type — As-Is Retail Listing skips the two Reno stages
+// Stages scoped per type — As-Is Retail Listing skips the two Reno stages.
+// Renovation is the owned pre-fork phase; Flip/Hold are its results.
 const STAGE_BY_TYPE = {
   'Analyzing':      ['New Lead','Needs Cash Offer','Offer Submitted','Offer Accepted','Lost'],
-  'Flip':           ['Purchased','Rehab','Listed','Under Contract','Sold'],
-  'Hold':           ['Purchased','Rehab','Rent Ready','Leased','Listed','Sold'],
+  'Renovation':     ['Purchased','Renovation'],
+  'Flip':           ['Listed','Under Contract','Sold'],
+  'Hold':           ['Rent Ready','Rental Listed','Leased','Listed','Sold'],
   'Retail Listing': { 'As-Is':['Listed','Under Contract','Sold','Cancelled / Expired'], 'Reno':['Reno In Progress','Reno Completed','Listed','Under Contract','Sold','Cancelled / Expired'] },
   'Wholesale':      ['Under Contract','Assigned','Closed','Cancelled'],
 }
 const STAGE_COLOR = {
   'New Lead':'#9ca3af', 'Needs Cash Offer':'#D97825', 'Offer Submitted':'#B8892A', 'Offer Accepted':'#3B6D11',
-  Purchased:'#D97825', Rehab:'#6b21a8', Listed:'#3B6D11', 'Under Contract':'#2D6FAF', Sold:'#3B6D11',
-  'Rent Ready':'#B8892A', Leased:'#3B6D11', 'Reno In Progress':'#D97825', 'Reno Completed':'#B8892A',
+  Purchased:'#D97825', Renovation:'#6b21a8', Rehab:'#6b21a8', Listed:'#3B6D11', 'Under Contract':'#2D6FAF', Sold:'#3B6D11',
+  'Rent Ready':'#B8892A', 'Rental Listed':'#2D6FAF', Leased:'#3B6D11', 'Reno In Progress':'#D97825', 'Reno Completed':'#B8892A',
   Assigned:'#6b21a8', Closed:'#3B6D11',
   Lost:'#9ca3af', 'Cancelled / Expired':'#9ca3af', Cancelled:'#9ca3af',
 }
@@ -507,7 +510,7 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
       // Stage 1 fields
       acquisition_type:form.acquisition_type||'Purchased',
       owner:form.owner||'BPV', managed_by_bpv:form.managed_by_bpv||false,
-      rehab_active:stage==='Rehab', // keep in sync
+      rehab_active:stage==='Renovation', // keep in sync
       rehab_stage:form.rehab_stage||'Not Started',
       rehab_start_date:form.rehab_start_date||null,
       rehab_complete_date:form.rehab_complete_date||null,
@@ -542,7 +545,7 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
     onSave(); onClose()
   }
 
-  const showLoanTab = type==='Flip' || type==='Hold' || form.acquisition_type==='Pre-Owned'
+  const showLoanTab = type==='Renovation' || type==='Flip' || type==='Hold' || form.acquisition_type==='Pre-Owned'
   const showRentTab = type==='Hold'
 
   useEffect(() => {
@@ -561,7 +564,9 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
 
   // Tabs that are visible but not yet usable — key: reason shown on hover
   const disabledTabReasons = {
-    disposition: (type==='Hold' && stage!=='Sold')
+    disposition: type==='Renovation'
+      ? 'Available once the renovation is done and the deal becomes a Flip or Hold'
+      : (type==='Hold' && stage!=='Sold')
       ? 'Available once this Hold is marked Sold'
       : null,
   }
@@ -862,7 +867,7 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
                 </Field>
               </FieldRow>
 
-              {(type==='Flip' || type==='Hold') && (<>
+              {(type==='Renovation' || type==='Flip' || type==='Hold') && (<>
                 <div className="drawer-section">NHC Commission</div>
                 <div style={{ fontSize:11, color:'#9ca3af', marginTop:-8, marginBottom:2 }}>
                   Paid by BPV to the NHC team as part of this purchase.

@@ -91,7 +91,7 @@ const MARKETING_TABS = [
 ]
 const PIPELINE_TABS = [
   { id:'analyzer',   label:'Analyzer',        short:'Analyze',   path:'/analyzer' },
-  { id:'rehabs',     label:'Rehabs',           short:'Rehabs',    path:'/rehabs' },
+  { id:'rehabs',     label:'Renovations',      short:'Renos',     path:'/rehabs' },
   { id:'holds',      label:'Holds',            short:'Holds',     path:'/holds' },
   { id:'listings',   label:'Listings',         short:'Listings',  path:'/listings' },
   { id:'wholesale',  label:'Wholesale',        short:'Wholesale', path:'/wholesale' },

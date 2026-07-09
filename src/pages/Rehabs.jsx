@@ -12,34 +12,24 @@ const REHAB_STAGE_COLOR = {
 }
 const REHAB_STAGES = ['Not Started','Demo','Rough Work','Inspections','Finishes','Punch List','Complete']
 
-// ── Board: deal stages that live on this page ─────────────────────────────────
-// Purchased/Rehab are Flip+Hold territory; the Reno columns are client Reno
-// listings only. validDropTarget keeps deals in their own lane.
-const BOARD_COLUMNS = [
-  { key:'Purchased',        color:'#D97825' },
-  { key:'Rehab',            color:'#6b21a8' },
-  { key:'Reno In Progress', color:'#B8892A' },
-  { key:'Reno Completed',   color:'#3B6D11' },
-]
+// ── Board: columns are the renovation work stages (rehab_stage) ───────────────
+// Dragging a card updates rehab_stage; the deal stage syncs alongside
+// (Renovation once work starts; Reno Completed for client Reno listings).
+const BOARD_COLUMNS = REHAB_STAGES.map(st => ({ key: st, color: REHAB_STAGE_COLOR[st] }))
 
-function validDropTarget(p, col) {
-  const isReno = p.type === 'Retail Listing' && p.listing_type === 'Reno'
-  if (col === 'Reno In Progress' || col === 'Reno Completed') return isReno
-  return p.type === 'Flip' || p.type === 'Hold'  // Purchased / Rehab
-}
-
-// Exit moves live in the drag tray — positives left, negatives after the line
+// The fork happens here: renovation done → the deal becomes a Flip (List For
+// Sale) or a Hold (Rent Ready). Positives left, negatives after the line.
 const PROMO_ZONES = [
-  { key:'Flip',       label:'FLIP',          emoji:'\u{1F528}', color:'#D97825' },
-  { key:'Hold',       label:'HOLD',          emoji:'\u{1F3E0}', color:'#B8892A' },
-  { key:'Listed',     label:'LIST FOR SALE', emoji:'\u{1FAA7}', color:'#2D6FAF' },
-  { key:'Rent Ready', label:'RENT READY',    emoji:'\u{1F511}', color:'#3B6D11' },
+  { key:'Analyzing',  label:'RE-ANALYZE',      emoji:'\u{1F50D}', color:'#6b7280' },
+  { divider:true },
+  { key:'Listed',     label:'LIST FOR SALE',   emoji:'\u{1FAA7}', color:'#2D6FAF' },
+  { key:'Rent Ready', label:'RENT READY',      emoji:'\u{1F511}', color:'#3B6D11' },
   { divider:true },
   { key:'Cancelled / Expired', label:'CANCEL / EXPIRE', emoji:'\u{1F6AB}', color:'#9ca3af' },
 ]
 
-const DISP_LABEL = { listing:'Listing', wholesale:'Wholesale', flip:'Flip', hold:'Hold' }
-const DISP_COLOR = { listing:'#3B6D11', wholesale:'#6b21a8', flip:'#D97825', hold:'#B8892A' }
+const DISP_LABEL = { renovation:'Renovation', listing:'Listing', wholesale:'Wholesale', flip:'Flip', hold:'Hold' }
+const DISP_COLOR = { renovation:'#6b21a8', listing:'#3B6D11', wholesale:'#6b21a8', flip:'#D97825', hold:'#B8892A' }
 
 export default function Rehabs({ onOpenSupplies }) {
   const mobile = useIsMobile()
@@ -59,7 +49,7 @@ export default function Rehabs({ onOpenSupplies }) {
   async function load() {
     setLoading(true)
     const [{ data: p }, { data: ri }, { data: m }] = await Promise.all([
-      supabase.from('cashoffer_properties').select('*').in('stage', ['Purchased','Rehab','Reno In Progress','Reno Completed']).order('rehab_start_date', { ascending: false }),
+      supabase.from('cashoffer_properties').select('*').in('stage', ['Purchased','Renovation','Reno In Progress','Reno Completed']).order('rehab_start_date', { ascending: false }),
       supabase.from('cashoffer_rehab_items').select('property_id,estimated_cost,actual_cost,status'),
       supabase.from('cashoffer_mailings').select('id,campaign_name,drop_date'),
     ])
@@ -85,22 +75,28 @@ export default function Rehabs({ onOpenSupplies }) {
   REHAB_STAGES.forEach(st => { byRehabStage[st] = properties.filter(p=>(p.rehab_stage||'Not Started')===st).length })
 
   // ── Board handlers ──────────────────────────────────────────────────────────
-  const columnFor = p => BOARD_COLUMNS.some(c => c.key === p.stage) ? p.stage : 'Purchased'
+  // Columns are the renovation work stages (rehab_stage); deal stage rides along.
+  const columnFor = p => REHAB_STAGES.includes(p.rehab_stage) ? p.rehab_stage : 'Not Started'
 
   function typeLabel(p) {
-    if (p.type === 'Flip') return { text:'Flip', color:'#D97825' }
-    if (p.type === 'Hold') return { text:'Hold', color:'#B8892A' }
-    if (p.type === 'Retail Listing') return { text:'Client · Reno', color:'#6b21a8' }
-    return { text: p.type || '—', color:'#9ca3af' }
+    if (p.type === 'Renovation') return { text:'Renovation', color:'#6b21a8' }
+    if (p.type === 'Retail Listing') return { text:'Client \u00b7 Reno', color:'#6b21a8' }
+    return { text: p.type || '\u2014', color:'#9ca3af' }
   }
 
   async function handleBoardDrop(id, columnKey) {
     const item = properties.find(p => p.id === id)
-    if (item && !validDropTarget(item, columnKey)) {
-      alert(`"${columnKey}" doesn't apply to ${typeLabel(item).text} deals.`)
-      return
+    if (!item) return
+    const isReno = item.type === 'Retail Listing' && item.listing_type === 'Reno'
+    const payload = { rehab_stage: columnKey }
+    if (isReno) {
+      payload.stage = columnKey === 'Complete' ? 'Reno Completed' : 'Reno In Progress'
+    } else if (item.type === 'Renovation') {
+      // Work started -> deal stage becomes Renovation; back to Not Started -> Purchased
+      payload.stage = columnKey === 'Not Started' ? 'Purchased' : 'Renovation'
+      payload.rehab_active = columnKey !== 'Not Started' && columnKey !== 'Complete'
     }
-    const { error } = await supabase.from('cashoffer_properties').update({ stage: columnKey }).eq('id', id)
+    const { error } = await supabase.from('cashoffer_properties').update(payload).eq('id', id)
     if (error) { alert(`Could not move deal: ${error.message}`) }
     load()
   }
@@ -112,10 +108,20 @@ export default function Rehabs({ onOpenSupplies }) {
     if (!item) return
     const isReno = item.type === 'Retail Listing' && item.listing_type === 'Reno'
 
+    // Back to the Analyzer — owned deals only (a client Reno was never ours to analyze)
+    if (zoneKey === 'Analyzing') {
+      if (isReno) { alert('Client Reno listings can\'t be re-analyzed — use Cancel / Expire instead.'); return }
+      const { error } = await supabase.from('cashoffer_properties')
+        .update({ type:'Analyzing', stage:'New Lead', disposition:null, rehab_active:false }).eq('id', id)
+      if (error) alert(`Could not move deal: ${error.message}`)
+      load()
+      return
+    }
+
     // Negative exit: client Reno listings only
     if (zoneKey === 'Cancelled / Expired') {
       if (!isReno) {
-        alert('Cancel / Expire applies to client Reno listings only. Owned deals stay in the portfolio.')
+        alert('Cancel / Expire applies to client Reno listings only. Owned deals go back through Re-Analyze.')
         return
       }
       const { error } = await supabase.from('cashoffer_properties').update({ stage:'Cancelled / Expired' }).eq('id', id)
@@ -124,9 +130,12 @@ export default function Rehabs({ onOpenSupplies }) {
       return
     }
 
-    // Rehab-done exits
+    // The fork: renovation done -> Flip (List For Sale) or Hold (Rent Ready)
     if (zoneKey === 'Listed') {
-      const { error } = await supabase.from('cashoffer_properties').update({ stage:'Listed' }).eq('id', id)
+      const payload = isReno
+        ? { stage:'Listed' }  // client listing goes to market, type unchanged
+        : { type:'Flip', stage:'Listed', disposition:'flip', rehab_active:false }
+      const { error } = await supabase.from('cashoffer_properties').update(payload).eq('id', id)
       if (error) { alert(`Could not move deal: ${error.message}`); load(); return }
       setBurst({ ...coords, key: Date.now() })
       setTimeout(() => setBurst(null), 1600)
@@ -134,27 +143,9 @@ export default function Rehabs({ onOpenSupplies }) {
       return
     }
     if (zoneKey === 'Rent Ready') {
-      if (item.type !== 'Hold') {
-        alert('Rent Ready is a Hold stage. Pivot the deal to Hold first if you\'re keeping it as a rental.')
-        return
-      }
-      const { error } = await supabase.from('cashoffer_properties').update({ stage:'Rent Ready' }).eq('id', id)
-      if (error) { alert(`Could not move deal: ${error.message}`); load(); return }
-      setBurst({ ...coords, key: Date.now() })
-      setTimeout(() => setBurst(null), 1600)
-      load()
-      return
-    }
-
-    // Flip ↔ Hold pivot — stage carries over (Purchased/Rehab valid in both sets)
-    if (zoneKey === 'Flip' || zoneKey === 'Hold') {
-      if (item.type === zoneKey) { alert(`Already a ${zoneKey} deal.`); return }
-      if (!['Purchased','Rehab'].includes(item.stage)) {
-        alert(`Only deals in Purchased or Rehab can pivot to ${zoneKey}.`)
-        return
-      }
+      if (isReno) { alert('Rent Ready is for owned renovations — client Reno listings go to market instead.'); return }
       const { error } = await supabase.from('cashoffer_properties')
-        .update({ type: zoneKey, disposition: zoneKey.toLowerCase() }).eq('id', id)
+        .update({ type:'Hold', stage:'Rent Ready', disposition:'hold', rehab_active:false }).eq('id', id)
       if (error) { alert(`Could not move deal: ${error.message}`); load(); return }
       setBurst({ ...coords, key: Date.now() })
       setTimeout(() => setBurst(null), 1600)
@@ -192,8 +183,8 @@ export default function Rehabs({ onOpenSupplies }) {
           </div>
         )}
         <div style={{ display:'flex', flexWrap:'wrap', gap:4, alignItems:'center' }}>
-          <span style={cardPill(badge.color, '#F0EDE6')}>{badge.text}</span>
-          <span style={cardPill(REHAB_STAGE_COLOR[rehabStage] || '#9ca3af', '#F0EDE6')}>{rehabStage}</span>
+          {p.type === 'Retail Listing' && <span style={cardPill(badge.color, '#F0EDE6')}>{badge.text}</span>}
+          {p.stage === 'Purchased' && <span style={cardPill('#D97825', '#FBF0E4')}>Purchased</span>}
           {daysActive !== null && <span style={{ fontSize:10, color: daysActive > 60 ? '#B91C1C' : '#9ca3af', marginLeft:'auto' }}>{daysActive}d</span>}
         </div>
       </>
@@ -218,8 +209,8 @@ export default function Rehabs({ onOpenSupplies }) {
     <PageWrap pad={!mobile}>
       <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:20 }}>
         <div>
-          <h1 style={{ fontSize:20, fontWeight:700, color:'#2C2C2C' }}>Rehabs</h1>
-          <p style={{ fontSize:12, color:'#6b7280', marginTop:2 }}>Active rehab projects · all entities</p>
+          <h1 style={{ fontSize:20, fontWeight:700, color:'#2C2C2C' }}>Renovations</h1>
+          <p style={{ fontSize:12, color:'#6b7280', marginTop:2 }}>Owned renovations · client Reno listings</p>
         </div>
         {onOpenSupplies && (
           <button onClick={onOpenSupplies} style={{
@@ -278,7 +269,7 @@ export default function Rehabs({ onOpenSupplies }) {
 
       {view === 'board' && !mobile ? (
         filtered.length === 0 ? (
-          <EmptyState icon="🔨" text="No active rehabs match this filter." />
+          <EmptyState icon="🔨" text="No active renovations match this filter." />
         ) : (
           <>
             <KanbanBoard
@@ -296,10 +287,10 @@ export default function Rehabs({ onOpenSupplies }) {
         )
       ) : (
       <>
-      <SectionBar>Rehab Projects ({filtered.length})</SectionBar>
+      <SectionBar>Renovation Projects ({filtered.length})</SectionBar>
 
       {filtered.length===0 ? (
-        <EmptyState icon="🔨" text="No active rehabs. Set a property's stage to Rehabbing to add it here." />
+        <EmptyState icon="🔨" text="No active renovations. Drop an Analyzer deal on the PURCHASED zone to start one." />
       ) : (
         <Card style={{ padding:0 }}>
           <table style={{ width:'100%', borderCollapse:'collapse' }}>
@@ -308,7 +299,7 @@ export default function Rehabs({ onOpenSupplies }) {
                 <SortTh sortKeyName="address"     {...{sortKey,sortDir,toggleSort}}>Address</SortTh>
                 <SortTh sortKeyName="owner"       {...{sortKey,sortDir,toggleSort}}>Owner</SortTh>
                 <SortTh sortKeyName="disposition" {...{sortKey,sortDir,toggleSort}}>Type</SortTh>
-                <SortTh sortKeyName="stage"       {...{sortKey,sortDir,toggleSort}}>Rehab Stage</SortTh>
+                <SortTh sortKeyName="stage"       {...{sortKey,sortDir,toggleSort}}>Reno Stage</SortTh>
                 <SortTh sortKeyName="rehab_start_date" {...{sortKey,sortDir,toggleSort}}>Start Date</SortTh>
                 <SortTh sortKeyName="pct"         {...{sortKey,sortDir,toggleSort}}>Progress</SortTh>
                 <SortTh sortKeyName="est_cost"    {...{sortKey,sortDir,toggleSort}}>Budget</SortTh>

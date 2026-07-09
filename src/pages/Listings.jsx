@@ -9,9 +9,8 @@ import KanbanBoard, { cardPill, cardChip, MoneyBurst, PROMO_PAYLOADS } from '../
 const PROMO_ZONES = [
   { key:'Analyzing', label:'RE-ANALYZE', emoji:'\u{1F50D}', color:'#6b7280' },
   { divider:true },
-  { key:'Flip',      label:'FLIP',       emoji:'\u{1F528}', color:'#D97825' },
-  { key:'Hold',      label:'HOLD',       emoji:'\u{1F3E0}', color:'#B8892A' },
-  { key:'Wholesale', label:'WHOLESALE',  emoji:'\u{1F91D}', color:'#6b21a8' },
+  { key:'Renovation', label:'RENOVATE',  emoji:'\u{1F3D7}\u{FE0F}', color:'#6b21a8' },
+  { key:'Wholesale',  label:'WHOLESALE', emoji:'\u{1F91D}', color:'#6b21a8' },
   { key:'Sold',      label:'SOLD',       emoji:'\u{1F4B0}', color:'#3B6D11' },
   { divider:true },
   { key:'Cancelled / Expired', label:'CANCEL / EXPIRE', emoji:'\u{1F6AB}', color:'#9ca3af' },
@@ -122,9 +121,9 @@ export default function Listings() {
     if (error) { alert(`Could not move deal: ${error.message}`); load(); return }
     setBurst({ ...coords, key: Date.now() })
     setTimeout(() => setBurst(null), 1600)
-    if (zoneKey === 'Flip' || zoneKey === 'Hold') {
+    if (zoneKey === 'Renovation') {
       const { data } = await supabase.from('cashoffer_properties').select('*').eq('id', id).single()
-      if (data) setTimeout(() => { setDrawerTab('acquisition'); setDrawer(data) }, 900)
+      if (data) setTimeout(() => { setDrawerTab('rehab'); setDrawer(data) }, 900)
     }
     load()
   }

@@ -36,12 +36,11 @@ function daysAgo(dateStr) {
 }
 
 const PROMO_ZONES = [
-  { key:'Flip',           label:'FLIP',    emoji:'\u{1F528}', color:'#D97825' },
-  { key:'Hold',           label:'HOLD',    emoji:'\u{1F3E0}', color:'#B8892A' },
-  { key:'Retail Listing', label:'LIST IT', emoji:'\u{1FAA7}', color:'#3B6D11' },
+  { key:'Renovation',     label:'PURCHASED', emoji:'\u{1F3D7}\u{FE0F}', color:'#6b21a8' },
+  { key:'Retail Listing', label:'LIST IT',   emoji:'\u{1FAA7}', color:'#3B6D11' },
   { key:'Wholesale',      label:'WHOLESALE', emoji:'\u{1F91D}', color:'#6b21a8' },
   { divider:true },
-  { key:'Lost',           label:'DEAD',    emoji:'\u{1F480}', color:'#B91C1C' },
+  { key:'Lost',           label:'DEAD',      emoji:'\u{1F480}', color:'#B91C1C' },
 ]
 
 function analyzerCardContent(p, onViewOffer) {

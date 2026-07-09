@@ -7,15 +7,13 @@ import ProposalModal from '../components/ProposalModal.jsx'
 import KanbanBoard, { cardPill, cardChip, cardBtn, MoneyBurst } from '../components/KanbanBoard.jsx'
 
 const BOARD_COLUMNS = [
-  { key:'Purchased',  color:'#D97825' },
-  { key:'Rehab',      color:'#6b21a8' },
-  { key:'Rent Ready', color:'#B8892A' },
-  { key:'Leased',     color:'#3B6D11' },  // drop opens drawer on Rent tab to set up the lease
+  { key:'Rent Ready',    color:'#B8892A' },
+  { key:'Rental Listed', color:'#2D6FAF' },
+  { key:'Leased',        color:'#3B6D11' },  // drop opens drawer on Rent tab to set up the lease
 ]
 
 // Exit moves live in the drag tray (appears while dragging a card)
 const PROMO_ZONES = [
-  { key:'Flip',   label:'FLIP',          emoji:'\u{1F528}', color:'#D97825' },
   { key:'Listed', label:'LIST FOR SALE', emoji:'\u{1FAA7}', color:'#2D6FAF' },
 ]
 
@@ -81,7 +79,7 @@ export default function Holds() {
 
   const boardItems = properties.filter(p => p.stage !== 'Sold' && p.stage !== 'Listed')
 
-  const columnFor = p => BOARD_COLUMNS.some(c => c.key === p.stage) ? p.stage : 'Purchased'
+  const columnFor = p => BOARD_COLUMNS.some(c => c.key === p.stage) ? p.stage : 'Rent Ready'
 
   async function handleDrop(id, columnKey) {
     const { error } = await supabase.from('cashoffer_properties').update({ stage: columnKey }).eq('id', id)
@@ -97,25 +95,9 @@ export default function Holds() {
   function openDrawer(p) { setDrawerTab('analyzer'); setDrawer(p) }
 
   async function handlePromote(id, zoneKey, coords) {
-    const item = properties.find(p => p.id === id)
-
     if (zoneKey === 'Listed') {
       // Sale exit — property leaves this board and appears on Listings (Owned)
       const { error } = await supabase.from('cashoffer_properties').update({ stage:'Listed' }).eq('id', id)
-      if (error) { alert(`Could not move deal: ${error.message}`); load(); return }
-      setBurst({ ...coords, key: Date.now() })
-      setTimeout(() => setBurst(null), 1600)
-      load()
-      return
-    }
-    if (zoneKey === 'Flip') {
-      // Pivot to Flip — only sensible pre-lease while stages still overlap
-      if (item && !['Purchased','Rehab'].includes(item.stage)) {
-        alert('A leased or rent-ready property can\'t pivot to Flip. Use List For Sale to exit instead.')
-        return
-      }
-      const { error } = await supabase.from('cashoffer_properties')
-        .update({ type:'Flip', disposition:'flip' }).eq('id', id)  // stage carries over — valid in both stage sets
       if (error) { alert(`Could not move deal: ${error.message}`); load(); return }
       setBurst({ ...coords, key: Date.now() })
       setTimeout(() => setBurst(null), 1600)
