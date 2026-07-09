@@ -25,10 +25,6 @@ const BOARD_COLUMNS = [
   { key:'Needs Cash Offer',  color:'#D97825' },
   { key:'Offer Submitted',   color:'#B8892A' },
   { key:'Offer Accepted',    color:'#3B6D11' },
-  // Display-only: deals already under contract (any type). Not a drag target --
-  // dropping here would require a type-specific payload, and dragging OUT would
-  // demote a Flip/Hold back to Analyzing. These move stages via the drawer.
-  { key:'Under Contract',    color:'#2D6FAF', locked:true },
   { key:'Rejected / Lost',   color:'#B91C1C' },
 ]
 
@@ -38,20 +34,31 @@ function daysAgo(dateStr) {
   return Math.max(0, Math.floor(diff / 86400000))
 }
 
+const pillStyle = (color, bg) => ({
+  fontSize:9, fontWeight:700, letterSpacing:0.5, textTransform:'uppercase',
+  color, background:bg, borderRadius:4, padding:'2px 6px',
+})
+
 function analyzerCardContent(p) {
   const cashOffer = calcCashOffer(p)
   const days = daysAgo(p.updated_at)
   return (
     <>
-      <div style={{ fontSize:13, fontWeight:700, color:'#2C2C2C', marginBottom:4 }}>{p.address || 'New Property'}</div>
-      {p.seller_name && <div style={{ fontSize:11, color:'#6b7280', marginBottom:4 }}>{p.seller_name}</div>}
-      <div style={{ display:'flex', flexWrap:'wrap', gap:6, alignItems:'center' }}>
-        {p.arv && <span style={{ fontSize:11, fontFamily:'monospace', color:'#6b7280' }}>ARV {fmt(p.arv)}</span>}
-        {cashOffer && <span style={{ fontSize:11, fontFamily:'monospace', color:'#3B6D11', fontWeight:700 }}>{fmt(cashOffer)}</span>}
+      <div style={{ fontSize:13, fontWeight:700, color:'#2C2C2C', marginBottom:3 }}>{p.address || 'New Property'}</div>
+      <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:8, marginBottom:8 }}>
+        <div style={{ minWidth:0 }}>
+          {p.seller_name && <div style={{ fontSize:11.5, color:'#B8892A', fontWeight:600, marginBottom:1 }}>{p.seller_name}</div>}
+          {p.owner && <div style={{ fontSize:11, color:'#6b7280' }}>{p.owner}</div>}
+        </div>
+        {cashOffer ? (
+          <span style={{ fontSize:11, fontFamily:'monospace', fontWeight:700, color:'#B8892A', background:'#FBF6EA', border:'0.5px solid #E8D9B5', borderRadius:10, padding:'2px 8px', whiteSpace:'nowrap', flexShrink:0 }}>{fmt(cashOffer)}</span>
+        ) : null}
       </div>
-      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginTop:6 }}>
-        {p.source ? <Badge>{p.source}</Badge> : <span />}
-        {days !== null && <span style={{ fontSize:10, color:'#9ca3af' }}>{days===0 ? 'today' : `${days}d`}</span>}
+      <div style={{ display:'flex', flexWrap:'wrap', gap:4, alignItems:'center' }}>
+        {p.source && <span style={pillStyle('#D97825','#FBF0E4')}>{p.source}</span>}
+        {p.acquisition_type === 'Pre-Owned' && <span style={pillStyle('#6b21a8','#F3EBFA')}>Pre-Owned</span>}
+        {p.arv && <span style={pillStyle('#6b7280','#F0EDE6')}>ARV {fmt(p.arv)}</span>}
+        {days !== null && <span style={{ fontSize:10, color:'#9ca3af', marginLeft:'auto' }}>{days===0 ? 'today' : `${days}d`}</span>}
       </div>
     </>
   )
@@ -60,7 +67,6 @@ function analyzerCardContent(p) {
 function AnalyzerBoard({ properties, onOpen, onMoved }) {
   const columnFor = p => {
     if (p.type === 'Lost' || p.stage === 'Lost') return 'Rejected / Lost'
-    if (p.stage === 'Under Contract') return 'Under Contract'
     return (p.stage && p.stage !== 'Analyzing') ? p.stage : 'New Lead'
   }
 
@@ -118,11 +124,12 @@ export default function Analyzer({ openPropertyId, openInPackage, onOpenedTarget
   async function load() {
     setLoading(true)
     const [{ data: p }, { data: m }] = await Promise.all([
-      // Analyzer shows Analyzing (incl. stage='Lost') plus any type currently Under Contract.
-      // type='Lost' kept in the filter defensively for any legacy rows.
+      // Analyzer is purely pre-purchase: Analyzing deals incl. stage='Lost'.
+      // (type='Lost' kept defensively for any legacy rows. Owned deals under
+      // contract to sell live on Listings; purchased deals live on Rehabs.)
       supabase.from('cashoffer_properties').select('*')
         .is('package_id', null)
-        .or('type.in.(Analyzing,Lost),stage.eq.Under Contract')
+        .in('type', ['Analyzing','Lost'])
         .order('updated_at', { ascending: false }),
       supabase.from('cashoffer_mailings').select('id,campaign_name,drop_date').order('drop_date', { ascending: false }),
     ])
