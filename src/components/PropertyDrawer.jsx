@@ -510,7 +510,9 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
       // Stage 1 fields
       acquisition_type:form.acquisition_type||'Purchased',
       owner:form.owner||'BPV', managed_by_bpv:form.managed_by_bpv||false,
-      rehab_active:stage==='Renovation', // keep in sync
+      rehab_active: type==='Renovation'
+        ? !['Not Started','Complete'].includes(form.rehab_stage||'Not Started')
+        : stage==='Renovation', // keep in sync
       rehab_stage:form.rehab_stage||'Not Started',
       rehab_start_date:form.rehab_start_date||null,
       rehab_complete_date:form.rehab_complete_date||null,
@@ -1307,8 +1309,28 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
             </div>
           )}
 
-          {/* Scoped stage dropdown — hidden for Analyzing/Lost which have no stages */}
-          {scopedStages.length>0 && (
+          {/* Scoped stage dropdown — hidden for Analyzing/Lost which have no stages.
+              Renovation deals show the WORK stages (rehab_stage); the coarse deal
+              stage (Purchased/Renovation) is derived underneath, same as the board. */}
+          {type==='Renovation' ? (
+            <div style={{ display:'flex', flexDirection:'column', gap:2 }}>
+              <span style={{ fontSize:9, fontWeight:700, color:'#9ca3af', textTransform:'uppercase', letterSpacing:0.6 }}>Renovation Stage</span>
+              <select
+                value={form.rehab_stage||'Not Started'}
+                onChange={e=>{
+                  const rs = e.target.value
+                  setForm(f=>({ ...f, rehab_stage:rs, stage: rs==='Not Started' ? 'Purchased' : 'Renovation' }))
+                }}
+                onClick={e=>e.stopPropagation()}
+                style={{
+                  border:`1.5px solid ${REHAB_COLOR[form.rehab_stage||'Not Started']}`, borderRadius:6, padding:'3px 8px',
+                  fontSize:11, fontWeight:700, fontFamily:'inherit',
+                  color:REHAB_COLOR[form.rehab_stage||'Not Started'], background:(REHAB_COLOR[form.rehab_stage||'Not Started'])+'12', cursor:'pointer', outline:'none',
+                }}>
+                {REHAB_STAGES.map(s=><option key={s} value={s}>{s}</option>)}
+              </select>
+            </div>
+          ) : scopedStages.length>0 && (
             <div style={{ display:'flex', flexDirection:'column', gap:2 }}>
               <span style={{ fontSize:9, fontWeight:700, color:'#9ca3af', textTransform:'uppercase', letterSpacing:0.6 }}>Deal Stage</span>
               <select
