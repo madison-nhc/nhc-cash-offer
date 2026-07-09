@@ -482,7 +482,7 @@ export default function RentTracker({ propertyId, propertyAddress, open, onClose
   if (!open) return null
 
   return (
-    <Modal title={`Rent & Leases — ${propertyAddress?.split(',')[0] || ''}`} onClose={onClose} width={740}>
+    <Modal title={`Lease Tracker — ${propertyAddress?.split(',')[0] || ''}`} onClose={onClose} width={740}>
       {loading ? (
         <div style={{ textAlign:'center', padding:32, color:'#B8892A', fontSize:24 }}>⟳</div>
       ) : editing ? (
@@ -595,3 +595,4 @@ export default function RentTracker({ propertyId, propertyAddress, open, onClose
     </Modal>
   )
 }
+
