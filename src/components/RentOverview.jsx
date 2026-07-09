@@ -61,7 +61,45 @@ function renewalInfo(lease) {
   return { label:`Renews in ${days}d`, color:'#3B6D11' }
 }
 
-function StatCard({ topColor, label, value, sub }) {
+function monthsElapsedSince(dateStr) {
+  const start = new Date(dateStr + 'T12:00:00')
+  const now = new Date()
+  return (now.getFullYear()-start.getFullYear())*12 + (now.getMonth()-start.getMonth())
+}
+
+// Mirrors the amortization engine used on the Holds board / LoanTracker
+function computeMonthlyPayment(loan) {
+  if (!loan) return 0
+  if (loan.monthly_payment) return parseFloat(loan.monthly_payment)
+  const P = parseFloat(loan.loan_amount) || 0
+  const r = (parseFloat(loan.interest_rate) || 0) / 100 / 12
+  const n = parseInt(loan.loan_term_months) || 0
+  if (!P || !n) return 0
+  if (r === 0) return P / n
+  return P * (r * Math.pow(1+r,n)) / (Math.pow(1+r,n)-1)
+}
+
+function computeRemainingBalance(loan) {
+  if (!loan) return 0
+  const P = parseFloat(loan.loan_amount) || 0
+  const r = (parseFloat(loan.interest_rate) || 0) / 100 / 12
+  const n = parseInt(loan.loan_term_months) || 0
+  if (!P || !n) return P
+  const paymentsMade = Math.min(n, Math.max(0, monthsElapsedSince(loan.loan_start_date)))
+  const pmt = computeMonthlyPayment(loan)
+  if (r === 0) return Math.max(P - pmt*paymentsMade, 0)
+  const balance = P*Math.pow(1+r,paymentsMade) - pmt*((Math.pow(1+r,paymentsMade)-1)/r)
+  return Math.max(balance, 0)
+}
+
+function SnapshotCard({ label, value, color }) {
+  return (
+    <div style={{ background:'#fff', borderRadius:8, padding:'12px 14px', border:'0.5px solid #D6D2CA', borderTop:`3px solid ${color}`, textAlign:'center' }}>
+      <div style={{ fontSize:9, color:'#9ca3af', textTransform:'uppercase', letterSpacing:0.7, marginBottom:4 }}>{label}</div>
+      <div style={{ fontSize:18, fontWeight:700, color, fontFamily:'monospace' }}>{value}</div>
+    </div>
+  )
+}
   return (
     <div style={{ background:'#fff', borderRadius:8, padding:'12px 14px', border:'0.5px solid #D6D2CA', borderTop:`3px solid ${topColor}` }}>
       <div style={{ fontSize:10, fontWeight:700, color:'#9ca3af', textTransform:'uppercase', letterSpacing:0.8, marginBottom:6 }}>{label}</div>
@@ -71,18 +109,27 @@ function StatCard({ topColor, label, value, sub }) {
   )
 }
 
-// One row per unit — current lease (or an empty "+ Add Lease" slot) plus an
-// expandable Past Leases history for that same unit.
+// One row per unit — current lease (or a hollow "+ Add Lease" slot if vacant) plus an
+// expandable Past Leases history for that same unit, which stays visible even when
+// the unit is fully vacant right now (no lease with actual_end_date still open).
 function UnitSlot({ unitLabel, current, past, exceptionsByLease, onOpenFull }) {
   const [showPast, setShowPast] = useState(false)
 
   if (!current) {
     return (
-      <div style={{ background:'#F0EDE6', borderRadius:8, padding:'14px', border:'0.5px dashed #D6D2CA', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
-        <div style={{ fontSize:12, color:'#6b7280' }}>{unitLabel} — vacant, no lease yet</div>
-        <button onClick={onOpenFull} style={{ background:'none', border:'1px solid #D6D2CA', borderRadius:6, padding:'5px 12px', fontSize:11, fontWeight:700, cursor:'pointer', color:'#3B6D11', fontFamily:'inherit' }}>
-          + Add Lease
-        </button>
+      <div>
+        <div style={{
+          background:'transparent', borderRadius:8, padding:'18px 14px',
+          border:'2px dashed #D6D2CA', display:'flex', alignItems:'center', justifyContent:'center', gap:12,
+        }}>
+          <div style={{ fontSize:12, color:'#9ca3af', fontWeight:600 }}>{unitLabel} — vacant</div>
+          <button onClick={onOpenFull} style={{ background:'none', border:'1px solid #3B6D11', borderRadius:6, padding:'5px 12px', fontSize:11, fontWeight:700, cursor:'pointer', color:'#3B6D11', fontFamily:'inherit' }}>
+            + Add Lease — {unitLabel}
+          </button>
+        </div>
+        {past.length > 0 && (
+          <PastLeasesPanel past={past} exceptionsByLease={exceptionsByLease} showPast={showPast} setShowPast={setShowPast} />
+        )}
       </div>
     )
   }
@@ -118,34 +165,40 @@ function UnitSlot({ unitLabel, current, past, exceptionsByLease, onOpenFull }) {
       </div>
 
       {past.length > 0 && (
-        <div style={{ borderTop:'0.5px solid #F0EDE6' }}>
-          <button onClick={()=>setShowPast(v=>!v)} style={{
-            width:'100%', background:'#FAFAF8', border:'none', padding:'7px 14px', textAlign:'left',
-            fontSize:11, fontWeight:700, color:'#9ca3af', cursor:'pointer', fontFamily:'inherit',
-            display:'flex', justifyContent:'space-between', alignItems:'center',
-          }}>
-            <span>Past Leases ({past.length})</span>
-            <span>{showPast ? '▲' : '▼'}</span>
-          </button>
-          {showPast && (
-            <div style={{ padding:'4px 14px 10px' }}>
-              {past.map(p => {
-                const { collected: pastCollected } = collectedForLease(p, exceptionsByLease)
-                return (
-                  <div key={p.id} style={{ display:'flex', alignItems:'center', gap:10, padding:'6px 0', borderTop:'0.5px solid #F0EDE6', fontSize:11 }}>
-                    <span style={{ fontWeight:600, color:'#2C2C2C', minWidth:120 }}>{p.tenant_name || 'Unnamed Tenant'}</span>
-                    <span style={{ color:'#9ca3af' }}>
-                      {p.lease_start ? new Date(p.lease_start+'T12:00:00').toLocaleDateString('en-US',{month:'short',year:'numeric'}) : '—'}
-                      {' → '}
-                      {p.actual_end_date ? new Date(p.actual_end_date+'T12:00:00').toLocaleDateString('en-US',{month:'short',year:'numeric'}) : '—'}
-                    </span>
-                    <span style={{ marginLeft:'auto', fontFamily:'monospace', color:'#3B6D11' }}>{fmt(pastCollected)} paid</span>
-                    {p.termination_reason && <span style={{ color:'#9ca3af' }}>· {p.termination_reason}</span>}
-                  </div>
-                )
-              })}
-            </div>
-          )}
+        <PastLeasesPanel past={past} exceptionsByLease={exceptionsByLease} showPast={showPast} setShowPast={setShowPast} bordered />
+      )}
+    </div>
+  )
+}
+
+function PastLeasesPanel({ past, exceptionsByLease, showPast, setShowPast, bordered }) {
+  return (
+    <div style={bordered ? { borderTop:'0.5px solid #F0EDE6' } : { marginTop:6, background:'#fff', borderRadius:8, border:'0.5px solid #D6D2CA', overflow:'hidden' }}>
+      <button onClick={()=>setShowPast(v=>!v)} style={{
+        width:'100%', background:'#FAFAF8', border:'none', padding:'7px 14px', textAlign:'left',
+        fontSize:11, fontWeight:700, color:'#9ca3af', cursor:'pointer', fontFamily:'inherit',
+        display:'flex', justifyContent:'space-between', alignItems:'center',
+      }}>
+        <span>Past Leases ({past.length})</span>
+        <span>{showPast ? '▲' : '▼'}</span>
+      </button>
+      {showPast && (
+        <div style={{ padding:'4px 14px 10px' }}>
+          {past.map(p => {
+            const { collected: pastCollected } = collectedForLease(p, exceptionsByLease)
+            return (
+              <div key={p.id} style={{ display:'flex', alignItems:'center', gap:10, padding:'6px 0', borderTop:'0.5px solid #F0EDE6', fontSize:11, flexWrap:'wrap' }}>
+                <span style={{ fontWeight:600, color:'#2C2C2C', minWidth:120 }}>{p.tenant_name || 'Unnamed Tenant'}</span>
+                <span style={{ color:'#9ca3af' }}>
+                  {p.lease_start ? new Date(p.lease_start+'T12:00:00').toLocaleDateString('en-US',{month:'short',year:'numeric'}) : '—'}
+                  {' → '}
+                  {p.actual_end_date ? new Date(p.actual_end_date+'T12:00:00').toLocaleDateString('en-US',{month:'short',year:'numeric'}) : '—'}
+                </span>
+                <span style={{ marginLeft:'auto', fontFamily:'monospace', color:'#3B6D11' }}>{fmt(pastCollected)} paid</span>
+                {p.termination_reason && <span style={{ color:'#9ca3af' }}>· {p.termination_reason}</span>}
+              </div>
+            )
+          })}
         </div>
       )}
     </div>
@@ -206,20 +259,23 @@ export default function RentOverview({ propertyId, onOpenFull }) {
   const [maintenanceTotal, setMaintenanceTotal] = useState(0)
   const [maintenanceCount, setMaintenanceCount] = useState({ done:0, total:0 })
   const [unitCount, setUnitCount] = useState(null)
+  const [loan, setLoan] = useState(null)
   const [loading, setLoading]     = useState(true)
 
   useEffect(() => { if (propertyId) load() }, [propertyId])
 
   async function load() {
     setLoading(true)
-    const [{ data: l }, { data: prop }, { data: exp }] = await Promise.all([
+    const [{ data: l }, { data: prop }, { data: exp }, { data: loans }] = await Promise.all([
       supabase.from('cashoffer_leases').select('*').eq('property_id', propertyId).order('lease_start', { ascending: false }),
       supabase.from('cashoffer_properties').select('unit_count').eq('id', propertyId).single(),
       supabase.from('cashoffer_turn_expenses').select('amount, status').eq('property_id', propertyId),
+      supabase.from('cashoffer_loans').select('*').eq('property_id', propertyId).eq('is_active', true).limit(1),
     ])
     const leaseRows = l || []
     setLeases(leaseRows)
     setUnitCount(prop?.unit_count || null)
+    setLoan(loans?.[0] || null)
     setMaintenanceTotal((exp||[]).reduce((s,e)=>s+(parseFloat(e.amount)||0),0))
     setMaintenanceCount({ done:(exp||[]).filter(e=>e.status==='Completed').length, total:(exp||[]).length })
 
@@ -241,9 +297,15 @@ export default function RentOverview({ propertyId, onOpenFull }) {
     exceptionsByLease[e.lease_id].push(e)
   })
 
-  if (leases.length === 0) {
+  if (leases.length === 0 && !unitCount) {
     return (
       <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+        {loan && (
+          <div style={{ display:'grid', gridTemplateColumns:'repeat(2, 1fr)', gap:10 }}>
+            <SnapshotCard label="Loan Balance Remaining" value={fmt(computeRemainingBalance(loan))} color="#D97825" />
+            <SnapshotCard label="Monthly Loan Payment" value={fmt(computeMonthlyPayment(loan))} color="#D97825" />
+          </div>
+        )}
         <div style={{ background:'#F0EDE6', borderRadius:8, padding:20, textAlign:'center' }}>
           <div style={{ fontSize:13, color:'#6b7280', marginBottom:12 }}>No leases for this property yet.</div>
           <button onClick={onOpenFull} style={{
@@ -257,20 +319,27 @@ export default function RentOverview({ propertyId, onOpenFull }) {
     )
   }
 
-  // Group leases by unit label — current lease is the one still open (no actual_end_date),
-  // falling back to the most recent by start date; everything else is history for that unit.
+  // Group leases by unit label — current lease is the one still open (no actual_end_date).
+  // If every lease for a unit has ended, that unit is vacant right now: show the hollow
+  // "Add Lease" slot, with its full lease history still reachable via Past Leases.
   const groups = {}
   leases.forEach(l => {
     const key = (l.unit_label || 'Main').trim() || 'Main'
     if (!groups[key]) groups[key] = []
     groups[key].push(l)
   })
-  const unitLabels = Object.keys(groups).sort()
+  // Natural sort so "Unit 2" sorts after "Unit 1" (not alphabetically); labels without
+  // a number (e.g. a legacy "Main") sort first.
+  function unitSortKey(label) {
+    const m = label.match(/(\d+)/)
+    return m ? parseInt(m[1]) : 0
+  }
+  const unitLabels = Object.keys(groups).sort((a,b) => unitSortKey(a) - unitSortKey(b) || a.localeCompare(b))
   const slots = unitLabels.map(label => {
     const rows = groups[label]
     const openLease = rows.find(r => !r.actual_end_date)
-    const current = openLease || rows[0]
-    const past = rows.filter(r => r.id !== current.id)
+    const current = openLease || null
+    const past = openLease ? rows.filter(r => r.id !== current.id) : rows
     return { label, current, past }
   })
   // Pad out to unit_count from the Analyzer/Acquisition details, if that's more units than we have leases for
@@ -283,15 +352,17 @@ export default function RentOverview({ propertyId, onOpenFull }) {
 
   return (
     <div style={{ display:'flex', flexDirection:'column', gap:16 }}>
+      {/* Property Snapshot — rent + loan at a glance */}
+      <div style={{ display:'grid', gridTemplateColumns: loan ? 'repeat(3, 1fr)' : '1fr', gap:10 }}>
+        <SnapshotCard label="Total Rent Paid" value={fmt(totalRentEarned)} color="#3B6D11" />
+        {loan && <SnapshotCard label="Loan Balance Remaining" value={fmt(computeRemainingBalance(loan))} color="#D97825" />}
+        {loan && <SnapshotCard label="Monthly Loan Payment" value={fmt(computeMonthlyPayment(loan))} color="#D97825" />}
+      </div>
+
       {/* Leases */}
       <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
-        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
-          <div style={{ fontSize:11, fontWeight:700, color:'#9ca3af', textTransform:'uppercase', letterSpacing:0.8 }}>
-            {slots.length > 1 ? `${slots.length} Units` : 'Lease'}
-          </div>
-          <div style={{ fontSize:11, color:'#9ca3af' }}>
-            Total Rent Earned: <span style={{ fontWeight:700, color:'#3B6D11', fontFamily:'monospace' }}>{fmt(totalRentEarned)}</span>
-          </div>
+        <div style={{ fontSize:11, fontWeight:700, color:'#9ca3af', textTransform:'uppercase', letterSpacing:0.8 }}>
+          {slots.length > 1 ? `${slots.length} Units` : 'Lease'}
         </div>
         {slots.map(s => (
           <UnitSlot key={s.label} unitLabel={s.label} current={s.current} past={s.past} exceptionsByLease={exceptionsByLease} onOpenFull={onOpenFull} />
