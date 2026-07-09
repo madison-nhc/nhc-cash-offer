@@ -179,7 +179,7 @@ export default function KanbanBoard({ columns, items, columnFor, onOpen, onDrop,
                 if (id) await onPromote(id, z.key, { x:e.clientX, y:e.clientY })
               }}
               style={{
-                width:120, padding:'14px 8px', textAlign:'center', borderRadius:10, cursor:'copy',
+                minWidth:120, maxWidth:150, padding:'14px 10px', textAlign:'center', borderRadius:10, cursor:'copy',
                 border:`2px dashed ${z.color}`, transition:'all 0.12s',
                 background: overZone===z.key ? z.color : 'transparent',
                 transform: overZone===z.key ? 'scale(1.06)' : 'scale(1)',
