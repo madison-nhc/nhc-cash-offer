@@ -931,11 +931,16 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
       )}
 
       {/* ══════════════ REHAB TAB ══════════════ */}
-      {tab==='rehab' && (
+      {tab==='rehab' && (() => {
+        // Active renovation work only happens as type='Renovation' (stage set in the drawer
+        // header) or a client-funded Reno listing (stage set here, since that's not a full
+        // Renovation-type deal). Everything else (Flip/Hold/Wholesale/As-Is Listing) has
+        // already forked past renovation — show history only, no editable stage/date controls.
+        const isClientReno = type==='Retail Listing' && form.listing_type==='Reno'
+        const activeRenovation = type==='Renovation' || isClientReno
+        return (
         <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
-          {/* Renovation deals set work stage in the drawer header / on the board;
-              other types (client Reno listings, post-fork history) set it here */}
-          {type!=='Renovation' && (
+          {isClientReno && (
           <FieldRow>
             <Field label="Renovation Stage">
               <select
@@ -945,7 +950,7 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
                   setForm(f=>({
                     ...f, rehab_stage:rs,
                     // Client Reno listings: deal stage follows the work
-                    ...(type==='Retail Listing' && f.listing_type==='Reno' && ['Reno In Progress','Reno Completed'].includes(f.stage)
+                    ...(['Reno In Progress','Reno Completed'].includes(f.stage)
                       ? { stage: rs==='Complete' ? 'Reno Completed' : 'Reno In Progress' } : {}),
                   }))
                 }}
@@ -960,36 +965,54 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
             </Field>
           </FieldRow>
           )}
-          <FieldRow>
-            <Field label="Renovation Start Date">
-              <DatePicker style={inp} value={form.rehab_start_date||''} onChange={set('rehab_start_date')} />
-            </Field>
-            <Field label="Renovation Complete Date">
-              <DatePicker style={inp} value={form.rehab_complete_date||''} onChange={set('rehab_complete_date')} />
-            </Field>
-          </FieldRow>
-          {form.rehab_start_date && (() => {
+
+          {activeRenovation ? (<>
+            <FieldRow>
+              <Field label="Renovation Start Date">
+                <DatePicker style={inp} value={form.rehab_start_date||''} onChange={set('rehab_start_date')} />
+              </Field>
+              <Field label="Renovation Complete Date">
+                <DatePicker style={inp} value={form.rehab_complete_date||''} onChange={set('rehab_complete_date')} />
+              </Field>
+            </FieldRow>
+            {form.rehab_start_date && (() => {
+              const end = form.rehab_complete_date || new Date().toISOString().slice(0,10)
+              const days = daysBetween(form.rehab_start_date, end)
+              if (days === null) return null
+              return (
+                <div style={{ fontSize:11, color:'#9ca3af', marginTop:-8 }}>
+                  {form.rehab_complete_date
+                    ? `Renovation took ${days} day${days===1?'':'s'} (${form.rehab_start_date} → ${form.rehab_complete_date})`
+                    : `${days} day${days===1?'':'s'} in progress so far`}
+                </div>
+              )
+            })()}
+          </>) : (form.rehab_start_date || form.rehab_complete_date) && (() => {
+            // Read-only history line for deals that already completed renovation before forking
             const end = form.rehab_complete_date || new Date().toISOString().slice(0,10)
-            const days = daysBetween(form.rehab_start_date, end)
-            if (days === null) return null
+            const days = form.rehab_start_date ? daysBetween(form.rehab_start_date, end) : null
             return (
-              <div style={{ fontSize:11, color:'#9ca3af', marginTop:-8 }}>
+              <div style={{ background:'#F0EDE6', borderRadius:8, padding:'10px 14px', fontSize:12, color:'#6b7280' }}>
                 {form.rehab_complete_date
-                  ? `Renovation took ${days} day${days===1?'':'s'} (${form.rehab_start_date} → ${form.rehab_complete_date})`
-                  : `${days} day${days===1?'':'s'} in progress so far`}
+                  ? `Renovated ${form.rehab_start_date} → ${form.rehab_complete_date}${days!==null ? ` (${days} day${days===1?'':'s'})` : ''}`
+                  : form.rehab_start_date
+                    ? `Renovation started ${form.rehab_start_date}, no completion date logged`
+                    : `Renovation completed ${form.rehab_complete_date}`}
               </div>
             )
           })()}
 
           {form.id ? (<>
             <RehabStatCards propertyId={form.id} onOpenFull={()=>setRehabOpen(true)} closingDate={form.disposition_date || form.sale_date || null} />
+            <Btn variant="outline" onClick={()=>setLedgerOpen(true)} style={{ fontSize:12 }}>View Partner Payback</Btn>
           </>) : (
             <div style={{ background:'#F0EDE6', borderRadius:8, padding:'14px', textAlign:'center', fontSize:12, color:'#9ca3af' }}>
               Save the property first to track rehab line items.
             </div>
           )}
         </div>
-      )}
+        )
+      })()}
 
       {/* ══════════════ LOAN TAB ══════════════ */}
       {tab==='loan' && (
@@ -1007,9 +1030,10 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
       {/* ══════════════ RENT TAB ══════════════ */}
       {tab==='rent' && (
         <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
-          {form.id ? (
+          {form.id ? (<>
             <RentOverview propertyId={form.id} onOpenFull={()=>setRentOpen(true)} />
-          ) : (
+            <Btn variant="outline" onClick={()=>setLedgerOpen(true)} style={{ fontSize:12 }}>View Partner Payback</Btn>
+          </>) : (
             <div style={{ background:'#F0EDE6', borderRadius:8, padding:'14px', textAlign:'center', fontSize:12, color:'#9ca3af' }}>
               Save the property first to add lease details.
             </div>
@@ -1364,6 +1388,7 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
     </Drawer>
   )
 }
+
 
 
 

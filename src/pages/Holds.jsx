@@ -119,9 +119,9 @@ export default function Holds() {
         </div>
         <div style={{ fontSize:10, color:'#9ca3af', marginTop:1, marginBottom:3 }}>{p.address?.split(',').slice(1,3).join(',').trim() || ''}</div>
         {lease?.tenant_name && <div style={{ fontSize:11.5, color:'#3B6D11', fontWeight:600, marginBottom:8 }}>{lease.tenant_name}</div>}
-        <div style={{ display:'flex', flexWrap:'wrap', gap:6, alignItems:'center', justifyContent:'center' }}>
-          {rent > 0 && <span style={cardChip('#3B6D11','#EEF5E7','#CBDDB8')}>Rent {fmt(rent)}/mo</span>}
-          {payment > 0 && <span style={cardChip('#D97825','#FBF0E4','#F2D9BE')}>Loan {fmt(payment)}/mo</span>}
+        <div style={{ display:'grid', gridTemplateColumns: rent>0 && payment>0 ? '1fr 1fr' : '1fr', gap:6 }}>
+          {rent > 0 && <span style={{ ...cardChip('#3B6D11','#EEF5E7','#CBDDB8'), flexShrink:1, minWidth:0, overflow:'hidden', textOverflow:'ellipsis', textAlign:'center' }}>Rent {fmt(rent)}/mo</span>}
+          {payment > 0 && <span style={{ ...cardChip('#D97825','#FBF0E4','#F2D9BE'), flexShrink:1, minWidth:0, overflow:'hidden', textOverflow:'ellipsis', textAlign:'center' }}>Loan {fmt(payment)}/mo</span>}
         </div>
         {lease ? (
           <button style={cardBtn} onClick={e => { e.stopPropagation(); setDrawerTab('rent'); setDrawer(p) }}>View Lease</button>
@@ -258,6 +258,7 @@ export default function Holds() {
     </PageWrap>
   )
 }
+
 
 
 
