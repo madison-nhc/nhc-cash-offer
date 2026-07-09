@@ -177,13 +177,15 @@ export default function Rehabs({ onOpenSupplies }) {
             <span style={cardChip(over ? '#B91C1C' : '#3B6D11', over ? '#FBEAEA' : '#EEF5E7', over ? '#EFC5C5' : '#CBDDB8')}>Spent {fmt(spent)}</span>
           </div>
         ) : null}
-        {est > 0 && (
+        {est > 0 ? (
           <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:8 }}>
             <div style={{ flex:1, height:5, background:'#E5E1DB', borderRadius:99, overflow:'hidden' }}>
               <div style={{ height:'100%', width:`${pct}%`, background: pct>=100 ? '#3B6D11' : '#B8892A', borderRadius:99 }} />
             </div>
             <span style={{ fontSize:10, color:'#6b7280', fontWeight:600, whiteSpace:'nowrap' }}>{pct}%</span>
           </div>
+        ) : (
+          <div style={{ fontSize:10, color:'#9ca3af', fontStyle:'italic', textAlign:'center', margin:'2px 0 8px' }}>No renovation started</div>
         )}
         <div style={{ display:'flex', flexWrap:'wrap', gap:4, alignItems:'center', justifyContent:'center' }}>
           {p.type === 'Retail Listing' && <span style={cardPill(badge.color, '#F0EDE6')}>{badge.text}</span>}

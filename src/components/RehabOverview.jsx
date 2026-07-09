@@ -66,7 +66,7 @@ export default function RehabStatCards({ propertyId, onOpenFull, closingDate }) 
           background:'#B8892A', color:'#fff', border:'none', borderRadius:8, padding:'10px 18px',
           fontSize:13, fontWeight:700, cursor:'pointer', fontFamily:'inherit',
         }}>
-          + Start Renovation Tracker
+          Start Renovation
         </button>
       </div>
     )
