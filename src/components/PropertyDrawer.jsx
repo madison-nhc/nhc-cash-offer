@@ -707,21 +707,6 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
           </FieldRow>
 
           <div className="drawer-section">Valuation</div>
-          <Field label="After Renovation Value ($)">
-            <input style={{ ...monoInp, borderLeft:'3px solid #D97825' }} type="number" value={form.arv||''} onChange={set('arv')} />
-          </Field>
-          <FieldRow>
-            <Field label="As-Is Deduction %"><input style={monoInp} type="number" value={form.asis_pct||50} onChange={set('asis_pct')} /></Field>
-            <Field label="As-Is Listing Price Override ($)"><input style={monoInp} type="number" value={form.asis_override||''} onChange={set('asis_override')} /></Field>
-          </FieldRow>
-          <FieldRow>
-            <Field label="Profit Margin %"><input style={monoInp} type="number" value={form.profit_margin||15} onChange={set('profit_margin')} /></Field>
-            <Field label="Cash Offer Override ($)"><input style={monoInp} type="number" value={form.cash_offer_override||''} onChange={set('cash_offer_override')} /></Field>
-          </FieldRow>
-          <FieldRow>
-            <Field label="Holding % / mo"><input style={monoInp} type="number" step="0.05" value={form.hold_opt3_pct||0.5} onChange={set('hold_opt3_pct')} /></Field>
-            <Field label="Holding Months"><input style={monoInp} type="number" value={form.hold_opt3_months||6} onChange={set('hold_opt3_months')} /></Field>
-          </FieldRow>
 
           {form.arv && (
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:8 }}>
@@ -765,30 +750,6 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
             </div>
           )}
 
-          <div className="drawer-section">Repairs ({fmt(d.reno)} total)</div>
-          <table style={{ width:'100%', borderCollapse:'collapse' }}>
-            <thead>
-              <tr>
-                {['Item','Sq Ft','$/Sq Ft','Total',''].map((h,i)=>(
-                  <th key={h} style={{ textAlign:i>0?'right':'left', fontSize:10, color:'#9ca3af', fontWeight:600, textTransform:'uppercase', letterSpacing:0.5, paddingBottom:4, width:i===4?24:undefined }}>{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {repairs.map(r=>(
-                <tr key={r.id}>
-                  <td style={{ paddingBottom:6, paddingRight:6 }}><input style={{ ...inp, fontSize:12 }} value={r.name||''} onChange={e=>updateRepair(r.id,'name',e.target.value)} /></td>
-                  <td style={{ paddingBottom:6, paddingRight:6 }}><input style={{ ...monoInp, fontSize:12, textAlign:'right' }} type="number" value={r.sqft||''} onChange={e=>updateRepair(r.id,'sqft',e.target.value)} /></td>
-                  <td style={{ paddingBottom:6, paddingRight:6 }}><input style={{ ...monoInp, fontSize:12, textAlign:'right' }} type="number" step="0.01" value={r.pricePerSqft||''} onChange={e=>updateRepair(r.id,'pricePerSqft',e.target.value)} /></td>
-                  <td style={{ paddingBottom:6, paddingRight:6 }}>
-                    <div style={{ ...monoInp, fontSize:12, textAlign:'right', background:'#FAFAF8', color:'#2C2C2C', fontWeight:600, display:'flex', alignItems:'center', justifyContent:'flex-end' }}>{r.cost?fmt(r.cost):'—'}</div>
-                  </td>
-                  <td style={{ paddingBottom:6, textAlign:'center' }}><button onClick={()=>removeRepair(r.id)} style={{ background:'none', border:'none', color:'#D6D2CA', cursor:'pointer', fontSize:16, padding:0 }}>×</button></td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          <button onClick={addRepair} style={{ background:'transparent', border:'1px dashed #D6D2CA', borderRadius:6, padding:'6px', color:'#9ca3af', fontSize:12, cursor:'pointer', fontFamily:'inherit', width:'100%' }}>+ Add Line Item</button>
           {form.arv && (
             <button onClick={()=>onViewOffer&&onViewOffer({...form, repair_items:repairs.filter(r=>r.name||r.cost).map(r=>({name:r.name,cost:parseFloat(r.cost)||0}))})}
               style={{ background:'#2D6FAF', color:'#fff', border:'none', borderRadius:6, padding:'10px 16px', cursor:'pointer', fontSize:13, fontWeight:700, fontFamily:'inherit', width:'100%', marginTop:4 }}>
@@ -802,7 +763,7 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
               onClick={() => window.open(`${window.location.origin}/?propertyView=${form.id}`, 'nhc_property_view', 'width=1500,height=980,noopener,noreferrer')}
               style={{ background:'#6b21a8', color:'#fff', border:'none', borderRadius:8, padding:'11px 16px', cursor:'pointer', fontSize:13, fontWeight:700, fontFamily:'inherit', width:'100%', display:'flex', alignItems:'center', justifyContent:'space-between' }}
             >
-              <span>Open Full Property View — Tour, Condition, Notes &amp; Photos</span>
+              <span>Open Full Property View (Edit Offer)</span>
               <span style={{ fontSize:16 }}>&#8599;</span>
             </button>
           )}
