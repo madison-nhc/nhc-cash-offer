@@ -6,6 +6,7 @@ import PropertyDrawer from '../components/PropertyDrawer.jsx'
 import ProposalModal from '../components/ProposalModal.jsx'
 import PackageDeals from './PackageDeals.jsx'
 import MobileCard, { CardRow, CardLabel, CardValue } from '../components/MobileCard.jsx'
+import KanbanBoard from '../components/KanbanBoard.jsx'
 
 function calcCashOffer(p) {
   const arv = parseFloat(p.arv) || 0
@@ -37,19 +38,11 @@ function daysAgo(dateStr) {
   return Math.max(0, Math.floor(diff / 86400000))
 }
 
-function BoardCard({ p, onOpen, onDragStart, locked=false }) {
+function analyzerCardContent(p) {
   const cashOffer = calcCashOffer(p)
   const days = daysAgo(p.updated_at)
   return (
-    <div
-      draggable={!locked}
-      onDragStart={locked ? undefined : e => onDragStart(e, p.id)}
-      onClick={() => onOpen(p)}
-      style={{
-        background:'#fff', border:'0.5px solid #D6D2CA', borderRadius:8, padding:'10px 12px',
-        marginBottom:8, cursor: locked ? 'pointer' : 'grab',
-      }}
-    >
+    <>
       <div style={{ fontSize:13, fontWeight:700, color:'#2C2C2C', marginBottom:4 }}>{p.address || 'New Property'}</div>
       {p.seller_name && <div style={{ fontSize:11, color:'#6b7280', marginBottom:4 }}>{p.seller_name}</div>}
       <div style={{ display:'flex', flexWrap:'wrap', gap:6, alignItems:'center' }}>
@@ -60,25 +53,18 @@ function BoardCard({ p, onOpen, onDragStart, locked=false }) {
         {p.source ? <Badge>{p.source}</Badge> : <span />}
         {days !== null && <span style={{ fontSize:10, color:'#9ca3af' }}>{days===0 ? 'today' : `${days}d`}</span>}
       </div>
-    </div>
+    </>
   )
 }
 
 function AnalyzerBoard({ properties, onOpen, onMoved }) {
-  const [dragOverCol, setDragOverCol] = useState(null)
-
   const columnFor = p => {
     if (p.type === 'Lost' || p.stage === 'Lost') return 'Rejected / Lost'
     if (p.stage === 'Under Contract') return 'Under Contract'
     return (p.stage && p.stage !== 'Analyzing') ? p.stage : 'New Lead'
   }
 
-  async function handleDrop(e, columnKey) {
-    e.preventDefault()
-    setDragOverCol(null)
-    if (BOARD_COLUMNS.find(c => c.key === columnKey)?.locked) return
-    const id = e.dataTransfer.getData('text/plain')
-    if (!id) return
+  async function handleDrop(id, columnKey) {
     const payload = columnKey === 'Rejected / Lost'
       ? { type:'Analyzing', stage:'Lost', disposition:'lost' }
       : { type:'Analyzing', stage:columnKey, disposition:null }
@@ -88,36 +74,14 @@ function AnalyzerBoard({ properties, onOpen, onMoved }) {
   }
 
   return (
-    <div style={{ display:'flex', gap:12, overflowX:'auto', paddingBottom:8, alignItems:'flex-start' }}>
-      {BOARD_COLUMNS.map(col => {
-        const items = properties.filter(p => columnFor(p) === col.key)
-        return (
-          <div
-            key={col.key}
-            onDragOver={col.locked ? undefined : e => { e.preventDefault(); setDragOverCol(col.key) }}
-            onDragLeave={col.locked ? undefined : () => setDragOverCol(null)}
-            onDrop={col.locked ? undefined : e => handleDrop(e, col.key)}
-            style={{
-              flex:'0 0 260px', minWidth:260, background: dragOverCol===col.key ? '#fef9f0' : '#F0EDE6',
-              borderRadius:8, padding:10, transition:'background 0.1s',
-            }}
-          >
-            <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:8, padding:'0 2px', borderTop:`3px solid ${col.color}`, paddingTop:8 }}>
-              <span style={{ fontSize:12, fontWeight:700, color:'#2C2C2C' }}>{col.key}</span>
-              <span style={{ fontSize:11, color:'#9ca3af', fontWeight:600 }}>{items.length}</span>
-            </div>
-            <div style={{ minHeight:40 }}>
-              {items.map(p => (
-                <BoardCard key={p.id} p={p} onOpen={onOpen} locked={!!col.locked} onDragStart={(e,id)=>e.dataTransfer.setData('text/plain', id)} />
-              ))}
-              {items.length===0 && (
-                <div style={{ fontSize:11, color:'#9ca3af', textAlign:'center', padding:'12px 0' }}>No deals</div>
-              )}
-            </div>
-          </div>
-        )
-      })}
-    </div>
+    <KanbanBoard
+      columns={BOARD_COLUMNS}
+      items={properties}
+      columnFor={columnFor}
+      onOpen={onOpen}
+      onDrop={handleDrop}
+      renderCard={analyzerCardContent}
+    />
   )
 }
 
