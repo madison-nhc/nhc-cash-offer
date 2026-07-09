@@ -7,10 +7,11 @@ import ProposalModal from '../components/ProposalModal.jsx'
 import KanbanBoard, { cardPill, cardChip, MoneyBurst, PROMO_PAYLOADS } from '../components/KanbanBoard.jsx'
 
 const PROMO_ZONES = [
+  { key:'Analyzing', label:'RE-ANALYZE', emoji:'\u{1F50D}', color:'#6b7280' },
+  { divider:true },
   { key:'Flip',      label:'FLIP',       emoji:'\u{1F528}', color:'#D97825' },
   { key:'Hold',      label:'HOLD',       emoji:'\u{1F3E0}', color:'#B8892A' },
   { key:'Wholesale', label:'WHOLESALE',  emoji:'\u{1F91D}', color:'#6b21a8' },
-  { key:'Analyzing', label:'RE-ANALYZE', emoji:'\u{1F50D}', color:'#6b7280' },
   { key:'Sold',      label:'SOLD',       emoji:'\u{1F4B0}', color:'#3B6D11' },
   { divider:true },
   { key:'Cancelled / Expired', label:'CANCEL / EXPIRE', emoji:'\u{1F6AB}', color:'#9ca3af' },
