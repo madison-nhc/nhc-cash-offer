@@ -112,7 +112,7 @@ export default function RehabStatCards({ propertyId, onOpenFull, closingDate }) 
         background:'#B8892A12', border:'1px solid #B8892A30', borderRadius:8,
         padding:'12px 14px', display:'flex', justifyContent:'space-between', alignItems:'center',
       }}>
-        <div style={{ fontSize:11, fontWeight:700, color:'#B8892A', textTransform:'uppercase', letterSpacing:0.8 }}>Total Rehab Cost</div>
+        <div style={{ fontSize:11, fontWeight:700, color:'#B8892A', textTransform:'uppercase', letterSpacing:0.8 }}>Reno Cost</div>
         <div style={{ fontSize:20, fontWeight:700, color:'#B8892A', fontFamily:'monospace' }}>{fmt(totalRehabCost)}</div>
       </div>
 
@@ -131,7 +131,6 @@ export default function RehabStatCards({ propertyId, onOpenFull, closingDate }) 
         />
       </div>
 
-      <div style={{ fontSize:11, fontWeight:700, color:'#9ca3af', textTransform:'uppercase', letterSpacing:0.8, marginTop:2 }}>Who's In</div>
       {(() => {
         const others = Object.keys(paidByPrincipal).filter(who => who !== 'BPV')
         const PersonCard = (who) => (
@@ -146,10 +145,14 @@ export default function RehabStatCards({ propertyId, onOpenFull, closingDate }) 
         )
         return (
           <>
+            <div style={{ fontSize:11, fontWeight:700, color:'#9ca3af', textTransform:'uppercase', letterSpacing:0.8, marginTop:2 }}>Business Expenses</div>
             {PersonCard('BPV')}
-            <div style={{ display:'grid', gridTemplateColumns:`repeat(${others.length}, 1fr)`, gap:10 }}>
-              {others.map(who => PersonCard(who))}
-            </div>
+            {others.length > 0 && (<>
+              <div style={{ fontSize:11, fontWeight:700, color:'#9ca3af', textTransform:'uppercase', letterSpacing:0.8, marginTop:6 }}>Partner Investments</div>
+              <div style={{ display:'grid', gridTemplateColumns:`repeat(${others.length}, 1fr)`, gap:10 }}>
+                {others.map(who => PersonCard(who))}
+              </div>
+            </>)}
           </>
         )
       })()}
@@ -164,4 +167,5 @@ export default function RehabStatCards({ propertyId, onOpenFull, closingDate }) 
     </div>
   )
 }
+
 

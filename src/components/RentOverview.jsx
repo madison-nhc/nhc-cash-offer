@@ -57,6 +57,16 @@ function LeaseUnitCard({ lease }) {
   )
 }
 
+function PersonCard(who, amount) {
+  return (
+    <div key={who} style={{ background:'#fff', borderRadius:8, padding:'12px 14px', border:'0.5px solid #D6D2CA', borderTop:`3px solid ${PAID_BY_COLOR[who]||'#9ca3af'}` }}>
+      <div style={{ fontSize:10, fontWeight:700, color:PAID_BY_COLOR[who]||'#9ca3af', textTransform:'uppercase', letterSpacing:0.6, marginBottom:6 }}>{who}</div>
+      <div style={{ fontSize:9, color:'#9ca3af', textTransform:'uppercase', letterSpacing:0.5 }}>Amount</div>
+      <div style={{ fontSize:16, fontWeight:700, color:'#2C2C2C', fontFamily:'monospace' }}>{fmt(amount)}</div>
+    </div>
+  )
+}
+
 function TurnExpenseCards({ propertyId }) {
   const [expenses, setExpenses] = useState([])
   const [loading, setLoading]   = useState(true)
@@ -75,23 +85,28 @@ function TurnExpenseCards({ propertyId }) {
   const total = expenses.reduce((s,e) => s + (parseFloat(e.amount)||0), 0)
   const done  = expenses.filter(e => e.status === 'Completed').length
 
-  const paidByTotals = { Bob:0, Eric:0, BPV:0 }
-  expenses.forEach(e => { if (paidByTotals[e.paid_by] !== undefined) paidByTotals[e.paid_by] += parseFloat(e.amount)||0 })
+  // Principal per person — BPV plus any partner (Bob/Eric/etc.) that shows up in the data.
+  const paidByTotals = { BPV:0 }
+  expenses.forEach(e => {
+    if (!e.paid_by) return
+    if (paidByTotals[e.paid_by] === undefined) paidByTotals[e.paid_by] = 0
+    paidByTotals[e.paid_by] += parseFloat(e.amount)||0
+  })
+  const others = Object.keys(paidByTotals).filter(who => who !== 'BPV')
 
   return (
     <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
       <StatCard topColor="#D97825" label="Maintenance" value={fmt(total)} sub={`${done} of ${expenses.length} completed`} />
-      <div style={{ background:'#fff', borderRadius:8, padding:'12px 14px', border:'0.5px solid #D6D2CA', borderTop:'3px solid #6b21a8' }}>
-        <div style={{ fontSize:10, fontWeight:700, color:'#9ca3af', textTransform:'uppercase', letterSpacing:0.8, marginBottom:8 }}>Who's In</div>
-        <div style={{ display:'flex', justifyContent:'space-between' }}>
-          {Object.entries(paidByTotals).map(([who, t]) => (
-            <div key={who}>
-              <div style={{ fontSize:10, fontWeight:700, color:PAID_BY_COLOR[who] }}>{who}</div>
-              <div style={{ fontSize:16, fontWeight:700, color:'#2C2C2C', fontFamily:'monospace' }}>{fmt(t)}</div>
-            </div>
-          ))}
+
+      <div style={{ fontSize:11, fontWeight:700, color:'#9ca3af', textTransform:'uppercase', letterSpacing:0.8, marginTop:2 }}>Business Expenses</div>
+      {PersonCard('BPV', paidByTotals.BPV)}
+
+      {others.length > 0 && (<>
+        <div style={{ fontSize:11, fontWeight:700, color:'#9ca3af', textTransform:'uppercase', letterSpacing:0.8, marginTop:6 }}>Partner Investments</div>
+        <div style={{ display:'grid', gridTemplateColumns:`repeat(${others.length}, 1fr)`, gap:10 }}>
+          {others.map(who => PersonCard(who, paidByTotals[who]))}
         </div>
-      </div>
+      </>)}
     </div>
   )
 }

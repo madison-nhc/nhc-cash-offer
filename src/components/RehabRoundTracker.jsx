@@ -343,6 +343,22 @@ export default function RehabRoundTracker({ property, repairItems = [], onChange
     onClose()
   }
 
+  async function handleDeleteRenovation() {
+    if (!confirm('Delete this entire renovation? This removes all services, supplies, and utility bills, and resets the renovation stage back to Not Started. This cannot be undone.')) return
+    try {
+      await supabase.from('cashoffer_rehab_items').delete().eq('property_id', propertyId)
+      await supabase.from('cashoffer_supplies').delete().eq('property_id', propertyId)
+      await supabase.from('cashoffer_utility_bills').delete().eq('property_id', propertyId)
+      await supabase.from('cashoffer_properties').update({
+        rehab_stage: 'Not Started', rehab_start_date: null, rehab_complete_date: null, rehab_cost: null,
+      }).eq('id', propertyId)
+      notifyParent()
+      onClose()
+    } catch (err) {
+      alert('Something went wrong deleting the renovation: ' + err.message)
+    }
+  }
+
   if (!open) return null
 
   const budgetNum   = parseFloat(budget) || 0
@@ -360,7 +376,8 @@ export default function RehabRoundTracker({ property, repairItems = [], onChange
       onClose={onClose}
       width={1240}
       footer={
-        <div style={{ display:'flex', justifyContent:'flex-end', alignItems:'center' }}>
+        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+          <Btn variant="danger" onClick={handleDeleteRenovation}>Delete Renovation</Btn>
           <div style={{ display:'flex', alignItems:'center', gap:8 }}>
             <Btn variant="outline" onClick={handleCancel}>Cancel</Btn>
             <Btn onClick={handleSave} disabled={saving}>{saving ? 'Saving…' : 'Save'}</Btn>
@@ -543,6 +560,7 @@ export default function RehabRoundTracker({ property, repairItems = [], onChange
     </>
   )
 }
+
 
 
 
