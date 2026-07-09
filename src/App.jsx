@@ -14,6 +14,7 @@ import MailingTracker from './pages/MailingTracker.jsx'
 import Vendors from './pages/Vendors.jsx'
 import Inventory from './pages/Inventory.jsx'
 import OpsLog from './pages/OpsLog.jsx'
+import PropertyFullView from './components/PropertyFullView.jsx'
 
 function GlobalSearch({ onSelect, mobile }) {
   const [query, setQuery] = useState('')
@@ -121,6 +122,11 @@ function initialTab() {
 }
 
 export default function App() {
+  // Popup route: window.open(`${origin}/?propertyView=<id>`) from the drawer opens a
+  // standalone full-page view — no nav chrome, own data loading, own autosave.
+  const popupPropertyId = new URLSearchParams(window.location.search).get('propertyView')
+  if (popupPropertyId) return <PropertyFullView propertyId={popupPropertyId} />
+
   const [active, setActive] = useState(initialTab)
   const [targetProperty, setTargetProperty] = useState(null)
   const [newPropertyOpen, setNewPropertyOpen] = useState(false)

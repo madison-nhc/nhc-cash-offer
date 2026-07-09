@@ -31,7 +31,7 @@ const getReviewerName = () => localStorage.getItem('nhc_reviewer_name') || ''
 const setReviewerName = n => localStorage.setItem('nhc_reviewer_name', (n || '').trim())
 
 // -- Tour embed + link --
-function TourSection({ propertyId, tourUrl, onSaved }) {
+export function TourSection({ propertyId, tourUrl, onSaved }) {
   const [editing, setEditing] = useState(!tourUrl)
   const [draft, setDraft] = useState(tourUrl || '')
   const [view, setView] = useState('pano')
@@ -91,7 +91,7 @@ function TourSection({ propertyId, tourUrl, onSaved }) {
 }
 
 // -- Condition rating checklist --
-function ConditionRatings({ propertyId }) {
+export function ConditionRatings({ propertyId }) {
   const [rows, setRows] = useState([])
   const [loading, setLoading] = useState(true)
   const [reviewer, setReviewer] = useState(getReviewerName())
@@ -244,7 +244,7 @@ function ConditionRatings({ propertyId }) {
 }
 
 // -- Team comments --
-function PropertyComments({ propertyId }) {
+export function PropertyComments({ propertyId }) {
   const [comments, setComments] = useState([])
   const [name, setName] = useState(getReviewerName())
   const [text, setText] = useState('')
@@ -304,7 +304,7 @@ function PropertyComments({ propertyId }) {
 // -- AI floor plan reader --
 const FP_FLOORS = ['1st Floor', '2nd Floor', 'Basement', 'Attic / Other']
 
-function FloorPlanReaderModal({ propertyId, onClose, onSaved }) {
+export function FloorPlanReaderModal({ propertyId, onClose, onSaved }) {
   const [slots, setSlots] = useState([{ label: FP_FLOORS[0], image: null }])
   const [analyzing, setAnalyzing] = useState(false)
   const [result, setResult] = useState(null)

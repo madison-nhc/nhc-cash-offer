@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase.js'
 import { Field, FieldRow, inp, monoInp, Btn, fmt, fmtK, DatePicker, PAID_BY_OPTIONS, PARTNERS, calcOwed } from './ui.jsx'
+import { calcOffers } from '../lib/valuation.js'
 import Drawer from './Drawer.jsx'
 import AddressInput from './AddressInput.jsx'
 import RehabRoundTracker from './RehabRoundTracker.jsx'
@@ -9,7 +10,6 @@ import LoanTracker from './LoanTracker.jsx'
 import RentTracker from './RentTracker.jsx'
 import LoanOverview from './LoanOverview.jsx'
 import RentOverview from './RentOverview.jsx'
-import PropertyTour from './PropertyTour.jsx'
 import PartnerLedgerModal from './PartnerLedgerModal.jsx'
 
 // ── Type options (primary) ────────────────────────────────────────────────────
@@ -101,33 +101,6 @@ function shortAddress(addr) {
   if (!addr) return 'New Property'
   const parts = addr.split(',')
   return parts[0].trim()
-}
-
-function calcOffers(p, repairs) {
-  const arv       = parseFloat(p.arv)||0
-  const reno      = repairs.reduce((s,r)=>s+(parseFloat(r.cost)||0),0)
-  const commCash  = (parseFloat(p.comm_cash_pct)||9)/100
-  const commList  = (parseFloat(p.comm_list_pct)||6)/100
-  const profitPct = (parseFloat(p.profit_margin)||15)/100
-  const profit    = p.profit_override ? parseFloat(p.profit_override) : arv*profitPct
-  const asisDisc  = (parseFloat(p.asis_pct)||50)/100
-  const asisVal   = p.asis_override ? parseFloat(p.asis_override) : arv-(asisDisc*reno)
-  const cashHoldMo= parseFloat(p.hold_cash_months)||6
-  const cashHold  = (parseFloat(p.hold_cash_pct)||0.75)/100*cashHoldMo*arv
-  const cashOffer = p.cash_offer_override ? parseFloat(p.cash_offer_override) : arv-reno-(commCash*arv)-cashHold-profit
-  const opt2HoldMo= parseFloat(p.hold_opt2_months)||3
-  const opt2Comm  = commList*asisVal
-  const opt2Hold  = (parseFloat(p.hold_opt2_pct)||0.5)/100*opt2HoldMo*arv
-  const opt2Net   = asisVal-opt2Comm-opt2Hold
-  const opt3HoldMo= parseFloat(p.hold_opt3_months)||6
-  const opt3Comm  = commList*arv
-  const opt3Hold  = (parseFloat(p.hold_opt3_pct)||0.5)/100*opt3HoldMo*arv
-  const opt3Net   = arv-reno-opt3Comm-opt3Hold
-  return {
-    arv, reno, cashOffer, asisVal, asisDeduction:asisDisc*reno, opt2Net, opt3Net, profit,
-    commCashPct:commCash, commListPct:commList,
-    cashHold, cashHoldMo, opt2Comm, opt2Hold, opt2HoldMo, opt3Comm, opt3Hold, opt3HoldMo,
-  }
 }
 
 function ProfitBox({ label, value, sub, color }) {
@@ -824,7 +797,15 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
           )}
           <Field label="Notes"><textarea style={{ ...inp, minHeight:56, resize:'vertical' }} value={form.nhc_notes||''} onChange={set('nhc_notes')} /></Field>
 
-          {form.id && <PropertyTour propertyId={form.id} tourUrl={form.zillow_tour_url} onSaved={()=>setForm(f=>({...f}))} />}
+          {form.id && (
+            <button
+              onClick={() => window.open(`${window.location.origin}/?propertyView=${form.id}`, 'nhc_property_view', 'width=1500,height=980,noopener,noreferrer')}
+              style={{ background:'#6b21a8', color:'#fff', border:'none', borderRadius:8, padding:'11px 16px', cursor:'pointer', fontSize:13, fontWeight:700, fontFamily:'inherit', width:'100%', display:'flex', alignItems:'center', justifyContent:'space-between' }}
+            >
+              <span>Open Full Property View — Tour, Condition, Notes &amp; Photos</span>
+              <span style={{ fontSize:16 }}>&#8599;</span>
+            </button>
+          )}
         </div>
       )}
 
