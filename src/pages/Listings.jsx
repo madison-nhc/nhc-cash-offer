@@ -4,7 +4,14 @@ import { useIsMobile } from '../hooks/useIsMobile.js'
 import { PageWrap, SectionBar, Card, EmptyState, LoadingSpinner, fmt, fmtK, useSort, SortTh } from '../components/ui.jsx'
 import PropertyDrawer from '../components/PropertyDrawer.jsx'
 import ProposalModal from '../components/ProposalModal.jsx'
-import KanbanBoard from '../components/KanbanBoard.jsx'
+import KanbanBoard, { cardPill, cardChip, MoneyBurst, PROMO_PAYLOADS } from '../components/KanbanBoard.jsx'
+
+const PROMO_ZONES = [
+  { key:'Flip',      label:'FLIP',       emoji:'\u{1F528}', color:'#D97825' },
+  { key:'Hold',      label:'HOLD',       emoji:'\u{1F3E0}', color:'#B8892A' },
+  { key:'Wholesale', label:'WHOLESALE',  emoji:'\u{1F91D}', color:'#6b21a8' },
+  { key:'Analyzing', label:'RE-ANALYZE', emoji:'\u{1F50D}', color:'#6b7280' },
+]
 
 const BOARD_COLUMNS = [
   { key:'Reno In Progress',    color:'#D97825' },  // Client Reno only
@@ -42,6 +49,7 @@ export default function Listings() {
   const [proposal, setProposal] = useState(null)
   const [view, setView] = useState('board')
   const [ownerFilter, setOwnerFilter] = useState('all')  // all | owned | client
+  const [burst, setBurst] = useState(null)
 
   useEffect(() => { load() }, [])
 
@@ -85,18 +93,38 @@ export default function Listings() {
 
   function openDrawer(p) { setDrawerTab('analyzer'); setDrawer(p) }
 
+  async function handlePromote(id, typeKey, coords) {
+    const item = properties.find(p => p.id === id)
+    if (item && item.type === typeKey) { alert(`Already a ${typeKey} deal.`); return }
+    const payload = PROMO_PAYLOADS[typeKey]
+    if (!payload) return
+    const { error } = await supabase.from('cashoffer_properties').update(payload).eq('id', id)
+    if (error) { alert(`Could not move deal: ${error.message}`); load(); return }
+    setBurst({ ...coords, key: Date.now() })
+    setTimeout(() => setBurst(null), 1600)
+    if (typeKey === 'Flip' || typeKey === 'Hold') {
+      const { data } = await supabase.from('cashoffer_properties').select('*').eq('id', id).single()
+      if (data) setTimeout(() => { setDrawerTab('acquisition'); setDrawer(data) }, 900)
+    }
+    load()
+  }
+
   function listingCardContent(p) {
     const badge = ownerLabel(p)
     return (
       <>
-        <div style={{ fontSize:13, fontWeight:700, color:'#2C2C2C', marginBottom:4 }}>{p.address || 'New Property'}</div>
-        <div style={{ display:'flex', flexWrap:'wrap', gap:6, alignItems:'center' }}>
-          {p.arv && <span style={{ fontSize:11, fontFamily:'monospace', color:'#6b7280' }}>ARV {fmt(p.arv)}</span>}
-          {p.commission_earned && <span style={{ fontSize:11, fontFamily:'monospace', color:'#3B6D11', fontWeight:700 }}>{fmt(p.commission_earned)}</span>}
+        <div style={{ fontSize:13, fontWeight:700, color:'#2C2C2C', marginBottom:3 }}>{p.address || 'New Property'}</div>
+        <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:8, marginBottom:8 }}>
+          <div style={{ minWidth:0 }}>
+            {p.seller_name && <div style={{ fontSize:11.5, color:'#B8892A', fontWeight:600, marginBottom:1 }}>{p.seller_name}</div>}
+            {p.owner && badge.owned && <div style={{ fontSize:11, color:'#6b7280' }}>{p.owner}</div>}
+          </div>
+          {p.commission_earned ? <span style={cardChip('#3B6D11','#EEF5E7','#CBDDB8')}>{fmt(p.commission_earned)}</span> : null}
         </div>
-        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginTop:6 }}>
-          <span style={{ fontSize:10, fontWeight:700, color:badge.color }}>{badge.text}</span>
-          {p.days_on_market ? <span style={{ fontSize:10, color: p.days_on_market > 60 ? '#B91C1C' : '#9ca3af' }}>{p.days_on_market}d DOM</span> : <span />}
+        <div style={{ display:'flex', flexWrap:'wrap', gap:4, alignItems:'center' }}>
+          <span style={cardPill(badge.color, '#F0EDE6')}>{badge.text}</span>
+          {p.arv && <span style={cardPill('#6b7280','#F0EDE6')}>ARV {fmt(p.arv)}</span>}
+          {p.days_on_market ? <span style={{ fontSize:10, color: p.days_on_market > 60 ? '#B91C1C' : '#9ca3af', marginLeft:'auto' }}>{p.days_on_market}d DOM</span> : null}
         </div>
       </>
     )
@@ -157,14 +185,19 @@ export default function Listings() {
         shown.length === 0 ? (
           <EmptyState icon="○" text="No active listings match this filter." />
         ) : (
-          <KanbanBoard
-            columns={BOARD_COLUMNS}
-            items={shown}
-            columnFor={columnFor}
-            onOpen={openDrawer}
-            onDrop={handleDrop}
-            renderCard={listingCardContent}
-          />
+          <>
+            <KanbanBoard
+              columns={BOARD_COLUMNS}
+              items={shown}
+              columnFor={columnFor}
+              onOpen={openDrawer}
+              onDrop={handleDrop}
+              renderCard={listingCardContent}
+              promoZones={PROMO_ZONES}
+              onPromote={handlePromote}
+            />
+            {burst && <MoneyBurst key={burst.key} x={burst.x} y={burst.y} />}
+          </>
         )
       ) : (
       <>

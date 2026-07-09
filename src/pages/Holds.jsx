@@ -4,7 +4,7 @@ import { useIsMobile } from '../hooks/useIsMobile.js'
 import { PageWrap, SectionBar, Card, Badge, EmptyState, LoadingSpinner, fmt, fmtK, useSort, SortTh } from '../components/ui.jsx'
 import PropertyDrawer from '../components/PropertyDrawer.jsx'
 import ProposalModal from '../components/ProposalModal.jsx'
-import KanbanBoard from '../components/KanbanBoard.jsx'
+import KanbanBoard, { cardPill, cardChip, cardBtn } from '../components/KanbanBoard.jsx'
 
 const BOARD_COLUMNS = [
   { key:'Purchased',  color:'#D97825' },
@@ -94,18 +94,28 @@ export default function Holds() {
     const rent = monthlyRent(p.id)
     const payment = loanPayment(p.id)
     const cashflow = rent - payment
+    const lease = leases.find(l => l.property_id === p.id)
     return (
       <>
-        <div style={{ fontSize:13, fontWeight:700, color:'#2C2C2C', marginBottom:4 }}>{p.address || 'New Property'}</div>
-        <div style={{ display:'flex', flexWrap:'wrap', gap:6, alignItems:'center' }}>
-          {rent > 0 && <span style={{ fontSize:11, fontFamily:'monospace', color:'#3B6D11', fontWeight:700 }}>{fmt(rent)}/mo</span>}
-          {payment > 0 && <span style={{ fontSize:11, fontFamily:'monospace', color:'#D97825' }}>−{fmt(payment)}/mo</span>}
-        </div>
-        {(rent > 0 || payment > 0) && (
-          <div style={{ fontSize:10, marginTop:6, color: cashflow >= 0 ? '#3B6D11' : '#B91C1C', fontWeight:600 }}>
-            {cashflow >= 0 ? '+' : ''}{fmt(cashflow)}/mo cash flow
+        <div style={{ fontSize:13, fontWeight:700, color:'#2C2C2C', marginBottom:3 }}>{p.address || 'New Property'}</div>
+        <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:8, marginBottom:8 }}>
+          <div style={{ minWidth:0 }}>
+            {lease?.tenant_name && <div style={{ fontSize:11.5, color:'#3B6D11', fontWeight:600, marginBottom:1 }}>{lease.tenant_name}</div>}
+            {p.owner && <div style={{ fontSize:11, color:'#6b7280' }}>{p.owner}</div>}
           </div>
-        )}
+          {rent > 0 ? <span style={cardChip('#3B6D11','#EEF5E7','#CBDDB8')}>{fmt(rent)}/mo</span> : null}
+        </div>
+        <div style={{ display:'flex', flexWrap:'wrap', gap:4, alignItems:'center' }}>
+          {payment > 0 && <span style={cardPill('#D97825','#FBF0E4')}>Loan {fmt(payment)}/mo</span>}
+          {(rent > 0 || payment > 0) && (
+            <span style={cardPill(cashflow >= 0 ? '#3B6D11' : '#B91C1C', '#F0EDE6')}>
+              {cashflow >= 0 ? '+' : ''}{fmt(cashflow)}/mo
+            </span>
+          )}
+        </div>
+        {lease ? (
+          <button style={cardBtn} onClick={e => { e.stopPropagation(); setDrawerTab('rent'); setDrawer(p) }}>View Lease</button>
+        ) : null}
       </>
     )
   }

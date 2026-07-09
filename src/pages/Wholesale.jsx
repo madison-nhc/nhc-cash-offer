@@ -4,7 +4,13 @@ import { useIsMobile } from '../hooks/useIsMobile.js'
 import { PageWrap, SectionBar, Card, Badge, EmptyState, LoadingSpinner, fmt, fmtK, useSort, SortTh } from '../components/ui.jsx'
 import PropertyDrawer from '../components/PropertyDrawer.jsx'
 import ProposalModal from '../components/ProposalModal.jsx'
-import KanbanBoard from '../components/KanbanBoard.jsx'
+import KanbanBoard, { cardPill, cardChip, MoneyBurst, PROMO_PAYLOADS } from '../components/KanbanBoard.jsx'
+
+const PROMO_ZONES = [
+  { key:'Flip',      label:'FLIP',       emoji:'\u{1F528}', color:'#D97825' },
+  { key:'Hold',      label:'HOLD',       emoji:'\u{1F3E0}', color:'#B8892A' },
+  { key:'Analyzing', label:'RE-ANALYZE', emoji:'\u{1F50D}', color:'#6b7280' },
+]
 
 const BOARD_COLUMNS = [
   { key:'Under Contract', color:'#2D6FAF' },
@@ -22,6 +28,7 @@ export default function Wholesale() {
   const [drawerTab, setDrawerTab] = useState('analyzer')
   const [proposal, setProposal] = useState(null)
   const [view, setView] = useState('board')
+  const [burst, setBurst] = useState(null)
 
   useEffect(() => { load() }, [])
 
@@ -51,14 +58,36 @@ export default function Wholesale() {
 
   function openDrawer(p) { setDrawerTab('analyzer'); setDrawer(p) }
 
+  async function handlePromote(id, typeKey, coords) {
+    const item = properties.find(p => p.id === id)
+    if (item && item.type === typeKey) { alert(`Already a ${typeKey} deal.`); return }
+    const payload = PROMO_PAYLOADS[typeKey]
+    if (!payload) return
+    const { error } = await supabase.from('cashoffer_properties').update(payload).eq('id', id)
+    if (error) { alert(`Could not move deal: ${error.message}`); load(); return }
+    setBurst({ ...coords, key: Date.now() })
+    setTimeout(() => setBurst(null), 1600)
+    if (typeKey === 'Flip' || typeKey === 'Hold') {
+      const { data } = await supabase.from('cashoffer_properties').select('*').eq('id', id).single()
+      if (data) setTimeout(() => { setDrawerTab('acquisition'); setDrawer(data) }, 900)
+    }
+    load()
+  }
+
   function wholesaleCardContent(p) {
     return (
       <>
-        <div style={{ fontSize:13, fontWeight:700, color:'#2C2C2C', marginBottom:4 }}>{p.address || 'New Property'}</div>
-        {p.wholesale_buyer && <div style={{ fontSize:11, color:'#6b7280', marginBottom:4 }}>{p.wholesale_buyer}</div>}
-        <div style={{ display:'flex', flexWrap:'wrap', gap:6, alignItems:'center' }}>
-          {p.purchase_price && <span style={{ fontSize:11, fontFamily:'monospace', color:'#6b7280' }}>Contract {fmt(p.purchase_price)}</span>}
-          {p.wholesale_fee && <span style={{ fontSize:11, fontFamily:'monospace', color:'#6b21a8', fontWeight:700 }}>Fee {fmt(p.wholesale_fee)}</span>}
+        <div style={{ fontSize:13, fontWeight:700, color:'#2C2C2C', marginBottom:3 }}>{p.address || 'New Property'}</div>
+        <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:8, marginBottom:8 }}>
+          <div style={{ minWidth:0 }}>
+            {p.wholesale_buyer && <div style={{ fontSize:11.5, color:'#6b21a8', fontWeight:600, marginBottom:1 }}>{p.wholesale_buyer}</div>}
+            {p.seller_name && <div style={{ fontSize:11, color:'#6b7280' }}>{p.seller_name}</div>}
+          </div>
+          {p.wholesale_fee ? <span style={cardChip('#6b21a8','#F3EBFA','#DCC8EE')}>{fmt(p.wholesale_fee)}</span> : null}
+        </div>
+        <div style={{ display:'flex', flexWrap:'wrap', gap:4, alignItems:'center' }}>
+          {p.source && <span style={cardPill('#D97825','#FBF0E4')}>{p.source}</span>}
+          {p.purchase_price && <span style={cardPill('#6b7280','#F0EDE6')}>Contract {fmt(p.purchase_price)}</span>}
         </div>
       </>
     )
@@ -114,14 +143,19 @@ export default function Wholesale() {
         properties.length === 0 ? (
           <EmptyState icon="○" text="No wholesale deals yet. Set deal type to Wholesale on a property in the Analyzer." />
         ) : (
-          <KanbanBoard
-            columns={BOARD_COLUMNS}
-            items={properties}
-            columnFor={columnFor}
-            onOpen={openDrawer}
-            onDrop={handleDrop}
-            renderCard={wholesaleCardContent}
-          />
+          <>
+            <KanbanBoard
+              columns={BOARD_COLUMNS}
+              items={properties}
+              columnFor={columnFor}
+              onOpen={openDrawer}
+              onDrop={handleDrop}
+              renderCard={wholesaleCardContent}
+              promoZones={PROMO_ZONES}
+              onPromote={handlePromote}
+            />
+            {burst && <MoneyBurst key={burst.key} x={burst.x} y={burst.y} />}
+          </>
         )
       ) : (
       <>

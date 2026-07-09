@@ -1,5 +1,61 @@
 import { useState } from 'react'
 
+// ── Shared card design language ────────────────────────────────────────────────
+// So every board's cards look and feel identical.
+export const cardPill = (color, bg) => ({
+  fontSize:9, fontWeight:700, letterSpacing:0.5, textTransform:'uppercase',
+  color, background:bg, borderRadius:4, padding:'2px 6px',
+})
+export const cardChip = (color='#B8892A', bg='#FBF6EA', border='#E8D9B5') => ({
+  fontSize:11, fontFamily:'monospace', fontWeight:700, color, background:bg,
+  border:`0.5px solid ${border}`, borderRadius:10, padding:'2px 8px',
+  whiteSpace:'nowrap', flexShrink:0,
+})
+export const cardBtn = {
+  marginTop:8, width:'100%', padding:'5px 0', border:'0.5px solid #D6D2CA',
+  borderRadius:6, background:'#FAF8F4', color:'#6b7280', fontSize:10.5,
+  fontWeight:700, letterSpacing:0.4, textTransform:'uppercase',
+  cursor:'pointer', fontFamily:'inherit',
+}
+
+// One payload map for every promotion/relegation tray
+export const PROMO_PAYLOADS = {
+  'Flip':           { type:'Flip',           stage:'Purchased',      disposition:'flip' },
+  'Hold':           { type:'Hold',           stage:'Purchased',      disposition:'hold' },
+  'Retail Listing': { type:'Retail Listing', stage:'Listed',         disposition:'listing' },
+  'Wholesale':      { type:'Wholesale',      stage:'Under Contract', disposition:'wholesale' },
+  'Analyzing':      { type:'Analyzing',      stage:'New Lead',       disposition:null },
+}
+
+const MONEY = ['\u{1F4B8}','\u{1F4B5}','\u{1F4B0}']
+export function MoneyBurst({ x, y }) {
+  const pieces = Array.from({ length: 22 }, (_, i) => ({
+    id: i,
+    emoji: MONEY[i % MONEY.length],
+    dx: (Math.random() - 0.5) * 480,
+    dy: -80 - Math.random() * 360,
+    rot: (Math.random() - 0.5) * 540,
+    delay: Math.random() * 0.15,
+    size: 16 + Math.random() * 16,
+  }))
+  return (
+    <div style={{ position:'fixed', left:0, top:0, width:'100vw', height:'100vh', pointerEvents:'none', zIndex:300 }}>
+      <style>{`@keyframes moneyFly {
+        0%   { transform: translate(0,0) rotate(0deg); opacity:1 }
+        70%  { opacity:1 }
+        100% { transform: translate(var(--dx), var(--dy)) rotate(var(--rot)); opacity:0 }
+      }`}</style>
+      {pieces.map(p => (
+        <span key={p.id} style={{
+          position:'absolute', left:x, top:y, fontSize:p.size,
+          '--dx':`${p.dx}px`, '--dy':`${p.dy}px`, '--rot':`${p.rot}deg`,
+          animation:`moneyFly 1.3s cubic-bezier(0.2,0.6,0.4,1) ${p.delay}s forwards`,
+        }}>{p.emoji}</span>
+      ))}
+    </div>
+  )
+}
+
 // ── Shared drag-and-drop kanban board ─────────────────────────────────────────
 // Extracted from the Analyzer board so every pipeline page can reuse it.
 //
@@ -55,11 +111,16 @@ export default function KanbanBoard({ columns, items, columnFor, onOpen, onDrop,
               borderRadius:8, padding:10, transition:'background 0.1s',
             }}
           >
-            <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom: col.hint ? 2 : 8, padding:'0 2px', borderTop:`3px solid ${col.color}`, paddingTop:8 }}>
-              <span style={{ fontSize:12, fontWeight:700, color: col.exit ? '#6b7280' : '#2C2C2C' }}>{col.label || col.key}</span>
-              {!col.exit && <span style={{ fontSize:11, color:'#9ca3af', fontWeight:600 }}>{colItems.length}</span>}
+            <div style={{
+              display:'flex', alignItems:'center', justifyContent:'space-between', gap:8,
+              margin:'-10px -10px 10px', padding:'10px 12px',
+              background: col.exit ? 'transparent' : '#fff',
+              borderRadius:'8px 8px 0 0', borderBottom:`3px solid ${col.color}`,
+            }}>
+              <span style={{ fontSize:11, fontWeight:800, letterSpacing:0.8, textTransform:'uppercase', color:col.color }}>{col.label || col.key}</span>
+              {!col.exit && <span style={{ fontSize:11, fontWeight:700, color:'#2C2C2C', background:'#E8E4DB', borderRadius:999, padding:'1px 8px' }}>{colItems.length}</span>}
             </div>
-            {col.hint && <div style={{ fontSize:10, color:'#9ca3af', marginBottom:8, padding:'0 2px' }}>{col.hint}</div>}
+            {col.hint && <div style={{ fontSize:10, color:'#9ca3af', margin:'-4px 0 8px', padding:'0 2px' }}>{col.hint}</div>}
             <div style={{ minHeight:40 }}>
               {colItems.map(p => (
                 <div

@@ -6,7 +6,7 @@ import PropertyDrawer from '../components/PropertyDrawer.jsx'
 import ProposalModal from '../components/ProposalModal.jsx'
 import PackageDeals from './PackageDeals.jsx'
 import MobileCard, { CardRow, CardLabel, CardValue } from '../components/MobileCard.jsx'
-import KanbanBoard from '../components/KanbanBoard.jsx'
+import KanbanBoard, { cardPill, cardChip, cardBtn, MoneyBurst, PROMO_PAYLOADS } from '../components/KanbanBoard.jsx'
 
 function calcCashOffer(p) {
   const arv = parseFloat(p.arv) || 0
@@ -41,42 +41,7 @@ const PROMO_ZONES = [
   { key:'Wholesale',      label:'WHOLESALE', emoji:'\u{1F91D}', color:'#6b21a8' },
 ]
 
-const MONEY = ['\u{1F4B8}','\u{1F4B5}','\u{1F4B0}']
-
-function MoneyBurst({ x, y }) {
-  const pieces = Array.from({ length: 22 }, (_, i) => ({
-    id: i,
-    emoji: MONEY[i % MONEY.length],
-    dx: (Math.random() - 0.5) * 480,
-    dy: -80 - Math.random() * 360,
-    rot: (Math.random() - 0.5) * 540,
-    delay: Math.random() * 0.15,
-    size: 16 + Math.random() * 16,
-  }))
-  return (
-    <div style={{ position:'fixed', left:0, top:0, width:'100vw', height:'100vh', pointerEvents:'none', zIndex:300 }}>
-      <style>{`@keyframes moneyFly {
-        0%   { transform: translate(0,0) rotate(0deg); opacity:1 }
-        70%  { opacity:1 }
-        100% { transform: translate(var(--dx), var(--dy)) rotate(var(--rot)); opacity:0 }
-      }`}</style>
-      {pieces.map(p => (
-        <span key={p.id} style={{
-          position:'absolute', left:x, top:y, fontSize:p.size,
-          '--dx':`${p.dx}px`, '--dy':`${p.dy}px`, '--rot':`${p.rot}deg`,
-          animation:`moneyFly 1.3s cubic-bezier(0.2,0.6,0.4,1) ${p.delay}s forwards`,
-        }}>{p.emoji}</span>
-      ))}
-    </div>
-  )
-}
-
-const pillStyle = (color, bg) => ({
-  fontSize:9, fontWeight:700, letterSpacing:0.5, textTransform:'uppercase',
-  color, background:bg, borderRadius:4, padding:'2px 6px',
-})
-
-function analyzerCardContent(p) {
+function analyzerCardContent(p, onViewOffer) {
   const cashOffer = calcCashOffer(p)
   const days = daysAgo(p.updated_at)
   return (
@@ -88,20 +53,23 @@ function analyzerCardContent(p) {
           {p.owner && <div style={{ fontSize:11, color:'#6b7280' }}>{p.owner}</div>}
         </div>
         {cashOffer ? (
-          <span style={{ fontSize:11, fontFamily:'monospace', fontWeight:700, color:'#B8892A', background:'#FBF6EA', border:'0.5px solid #E8D9B5', borderRadius:10, padding:'2px 8px', whiteSpace:'nowrap', flexShrink:0 }}>{fmt(cashOffer)}</span>
+          <span style={cardChip()}>{fmt(cashOffer)}</span>
         ) : null}
       </div>
       <div style={{ display:'flex', flexWrap:'wrap', gap:4, alignItems:'center' }}>
-        {p.source && <span style={pillStyle('#D97825','#FBF0E4')}>{p.source}</span>}
-        {p.acquisition_type === 'Pre-Owned' && <span style={pillStyle('#6b21a8','#F3EBFA')}>Pre-Owned</span>}
-        {p.arv && <span style={pillStyle('#6b7280','#F0EDE6')}>ARV {fmt(p.arv)}</span>}
+        {p.source && <span style={cardPill('#D97825','#FBF0E4')}>{p.source}</span>}
+        {p.acquisition_type === 'Pre-Owned' && <span style={cardPill('#6b21a8','#F3EBFA')}>Pre-Owned</span>}
+        {p.arv && <span style={cardPill('#6b7280','#F0EDE6')}>ARV {fmt(p.arv)}</span>}
         {days !== null && <span style={{ fontSize:10, color:'#9ca3af', marginLeft:'auto' }}>{days===0 ? 'today' : `${days}d`}</span>}
       </div>
+      {cashOffer ? (
+        <button style={cardBtn} onClick={e => { e.stopPropagation(); onViewOffer(p) }}>View Offer PDF</button>
+      ) : null}
     </>
   )
 }
 
-function AnalyzerBoard({ properties, onOpen, onMoved, onPromoted }) {
+function AnalyzerBoard({ properties, onOpen, onMoved, onPromoted, onViewOffer }) {
   const [burst, setBurst] = useState(null)
 
   const columnFor = p => {
@@ -119,12 +87,7 @@ function AnalyzerBoard({ properties, onOpen, onMoved, onPromoted }) {
   }
 
   async function handlePromote(id, typeKey, coords) {
-    const payload = {
-      'Flip':           { type:'Flip',           stage:'Purchased',      disposition:'flip' },
-      'Hold':           { type:'Hold',           stage:'Purchased',      disposition:'hold' },
-      'Retail Listing': { type:'Retail Listing', stage:'Listed',         disposition:'listing' },
-      'Wholesale':      { type:'Wholesale',      stage:'Under Contract', disposition:'wholesale' },
-    }[typeKey]
+    const payload = PROMO_PAYLOADS[typeKey]
     if (!payload) return
     const { error } = await supabase.from('cashoffer_properties').update(payload).eq('id', id)
     if (error) { alert(`Could not promote deal: ${error.message}`); onMoved(); return }
@@ -142,7 +105,7 @@ function AnalyzerBoard({ properties, onOpen, onMoved, onPromoted }) {
         columnFor={columnFor}
         onOpen={onOpen}
         onDrop={handleDrop}
-        renderCard={analyzerCardContent}
+        renderCard={p => analyzerCardContent(p, onViewOffer)}
         promoZones={PROMO_ZONES}
         onPromote={handlePromote}
       />
@@ -257,7 +220,7 @@ export default function Analyzer({ openPropertyId, openInPackage, onOpenedTarget
             filtered.length === 0 ? (
               <EmptyState icon="○" text="No properties being analyzed. Use the + Add Property button in the nav to add one." />
             ) : (
-              <AnalyzerBoard properties={filtered} onOpen={p => { setDrawerTab('analyzer'); setDrawer(p) }} onMoved={load}
+              <AnalyzerBoard properties={filtered} onOpen={p => { setDrawerTab('analyzer'); setDrawer(p) }} onMoved={load} onViewOffer={p => setProposal(p)}
                 onPromoted={async (id, typeKey) => {
                   // Celebration first, paperwork second — open on the tab the new type needs
                   const tab = typeKey === 'Wholesale' ? 'disposition' : typeKey === 'Retail Listing' ? 'analyzer' : 'acquisition'
