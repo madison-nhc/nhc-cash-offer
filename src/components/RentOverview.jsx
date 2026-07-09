@@ -360,6 +360,14 @@ export default function RentOverview({ propertyId, onOpenFull }) {
         ))}
       </div>
 
+      <button onClick={onOpenFull} style={{
+        background:'#3B6D11', color:'#fff', border:'none', borderRadius:8, padding:'10px 14px',
+        fontSize:12.5, fontWeight:700, cursor:'pointer', fontFamily:'inherit',
+        display:'flex', alignItems:'center', justifyContent:'center', gap:6,
+      }}>
+        Open Lease Details <span>→</span>
+      </button>
+
       {/* Maintenance Cost */}
       {maintenanceCount.total > 0 && (
         <StatCard topColor="#D97825" label="Total Maintenance Expenses" value={fmt(maintenanceTotal)} sub={`${maintenanceCount.done} of ${maintenanceCount.total} completed`} />
@@ -367,17 +375,10 @@ export default function RentOverview({ propertyId, onOpenFull }) {
 
       {/* Expenses (who funded it) */}
       <ExpensesSection propertyId={propertyId} />
-
-      <button onClick={onOpenFull} style={{
-        background:'#3B6D11', color:'#fff', border:'none', borderRadius:8, padding:'10px 14px',
-        fontSize:12.5, fontWeight:700, cursor:'pointer', fontFamily:'inherit',
-        display:'flex', alignItems:'center', justifyContent:'center', gap:6, marginTop:2,
-      }}>
-        Open Lease Details <span>→</span>
-      </button>
     </div>
   )
 }
+
 
 
 
