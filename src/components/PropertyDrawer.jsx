@@ -18,27 +18,26 @@ const TYPE_OPTIONS = [
   { value:'Hold',            color:'#B8892A' },
   { value:'Retail Listing',  color:'#3B6D11' },
   { value:'Wholesale',       color:'#6b21a8' },
-  { value:'Lost',            color:'#9ca3af' },
 ]
 const TYPE_COLOR = Object.fromEntries(TYPE_OPTIONS.map(t=>[t.value,t.color]))
 
 // Legacy disposition <-> new type mapping (disposition kept in sync for Sold/Rehabs/PackageDeals pages)
-const TYPE_TO_DISP = { 'Analyzing':null, 'Flip':'flip', 'Hold':'hold', 'Retail Listing':'listing', 'Wholesale':'wholesale', 'Lost':'lost' }
+const TYPE_TO_DISP = { 'Analyzing':null, 'Flip':'flip', 'Hold':'hold', 'Retail Listing':'listing', 'Wholesale':'wholesale' }
 
 // Stages scoped per type — As-Is Retail Listing skips the two Reno stages
 const STAGE_BY_TYPE = {
-  'Analyzing':      ['New Lead','Needs Cash Offer','Offer Submitted','Offer Accepted'],
+  'Analyzing':      ['New Lead','Needs Cash Offer','Offer Submitted','Offer Accepted','Lost'],
   'Flip':           ['Purchased','Rehab','Listed','Under Contract','Sold'],
   'Hold':           ['Purchased','Rehab','Rent Ready','Leased','Sold'],
-  'Retail Listing': { 'As-Is':['Listed','Under Contract','Sold'], 'Reno':['Reno In Progress','Reno Completed','Listed','Under Contract','Sold'] },
-  'Wholesale':      ['Under Contract','Assigned','Closed'],
-  'Lost':           [],
+  'Retail Listing': { 'As-Is':['Listed','Under Contract','Sold','Cancelled / Expired'], 'Reno':['Reno In Progress','Reno Completed','Listed','Under Contract','Sold','Cancelled / Expired'] },
+  'Wholesale':      ['Under Contract','Assigned','Closed','Cancelled'],
 }
 const STAGE_COLOR = {
   'New Lead':'#9ca3af', 'Needs Cash Offer':'#D97825', 'Offer Submitted':'#B8892A', 'Offer Accepted':'#3B6D11',
   Purchased:'#D97825', Rehab:'#6b21a8', Listed:'#3B6D11', 'Under Contract':'#2D6FAF', Sold:'#3B6D11',
   'Rent Ready':'#B8892A', Leased:'#3B6D11', 'Reno In Progress':'#D97825', 'Reno Completed':'#B8892A',
   Assigned:'#6b21a8', Closed:'#3B6D11',
+  Lost:'#9ca3af', 'Cancelled / Expired':'#9ca3af', Cancelled:'#9ca3af',
 }
 
 function stagesForType(type, listingType) {
@@ -403,7 +402,7 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
   const isNew   = !form.id
   const type       = form.type || 'Analyzing'
   const listingType = form.listing_type || 'As-Is'
-  const disp    = TYPE_TO_DISP[type] // derived — kept in sync for Sold/Rehabs/PackageDeals pages
+  const disp    = form.stage === 'Lost' ? 'lost' : TYPE_TO_DISP[type] // derived — kept in sync for Sold/Rehabs/PackageDeals pages
   const scopedStages = stagesForType(type, listingType)
   const stage   = form.stage || (scopedStages[0] || null)
   const typeColor  = TYPE_COLOR[type] || '#9ca3af'

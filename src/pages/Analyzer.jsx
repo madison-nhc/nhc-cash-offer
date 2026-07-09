@@ -68,7 +68,7 @@ function AnalyzerBoard({ properties, onOpen, onMoved }) {
   const [dragOverCol, setDragOverCol] = useState(null)
 
   const columnFor = p => {
-    if (p.type === 'Lost') return 'Rejected / Lost'
+    if (p.type === 'Lost' || p.stage === 'Lost') return 'Rejected / Lost'
     if (p.stage === 'Under Contract') return 'Under Contract'
     return (p.stage && p.stage !== 'Analyzing') ? p.stage : 'New Lead'
   }
@@ -80,7 +80,7 @@ function AnalyzerBoard({ properties, onOpen, onMoved }) {
     const id = e.dataTransfer.getData('text/plain')
     if (!id) return
     const payload = columnKey === 'Rejected / Lost'
-      ? { type:'Lost', stage:null, disposition:'lost' }
+      ? { type:'Analyzing', stage:'Lost', disposition:'lost' }
       : { type:'Analyzing', stage:columnKey, disposition:null }
     const { error } = await supabase.from('cashoffer_properties').update(payload).eq('id', id)
     if (error) alert(`Could not move deal: ${error.message}`)
@@ -154,7 +154,8 @@ export default function Analyzer({ openPropertyId, openInPackage, onOpenedTarget
   async function load() {
     setLoading(true)
     const [{ data: p }, { data: m }] = await Promise.all([
-      // Analyzer shows Analyzing + Lost, plus any type currently Under Contract
+      // Analyzer shows Analyzing (incl. stage='Lost') plus any type currently Under Contract.
+      // type='Lost' kept in the filter defensively for any legacy rows.
       supabase.from('cashoffer_properties').select('*')
         .is('package_id', null)
         .or('type.in.(Analyzing,Lost),stage.eq.Under Contract')
@@ -283,7 +284,7 @@ export default function Analyzer({ openPropertyId, openInPackage, onOpenedTarget
                         <td style={{ padding:'10px 14px', fontSize:13, fontFamily:'monospace', color:'#6b7280' }}>{rehabTotal > 0 ? fmt(rehabTotal) : '—'}</td>
                         <td style={{ padding:'10px 14px', fontSize:13, fontFamily:'monospace', fontWeight:700 }}>{fmt(p.arv) || '—'}</td>
                         <td style={{ padding:'10px 14px' }}>
-                        {p.type==='Lost' && (
+                        {(p.type==='Lost' || p.stage==='Lost') && (
                           <span style={{ fontSize:11, fontWeight:600, color:'#9ca3af' }}>Lost</span>
                         )}
                         {p.stage && p.stage!=='Analyzing' && (
