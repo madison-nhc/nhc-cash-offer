@@ -85,7 +85,8 @@ export default function Wholesale() {
   function wholesaleCardContent(p) {
     return (
       <>
-        <div style={{ fontSize:13, fontWeight:700, color:'#2C2C2C', marginBottom:3 }}>{p.address || 'New Property'}</div>
+        <div style={{ fontSize:13, fontWeight:700, color:'#2C2C2C' }}>{p.address?.split(',')[0] || 'New Property'}</div>
+        <div style={{ fontSize:10, color:'#9ca3af', marginTop:1, marginBottom:3 }}>{p.address?.split(',').slice(1,3).join(',').trim() || ''}</div>
         <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:8, marginBottom:8 }}>
           <div style={{ minWidth:0 }}>
             {p.wholesale_buyer && <div style={{ fontSize:11.5, color:'#6b21a8', fontWeight:600, marginBottom:1 }}>{p.wholesale_buyer}</div>}

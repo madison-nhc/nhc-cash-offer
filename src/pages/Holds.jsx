@@ -112,7 +112,8 @@ export default function Holds() {
     const lease = leases.find(l => l.property_id === p.id)
     return (
       <>
-        <div style={{ fontSize:13, fontWeight:700, color:'#2C2C2C', marginBottom:3 }}>{p.address || 'New Property'}</div>
+        <div style={{ fontSize:13, fontWeight:700, color:'#2C2C2C' }}>{p.address?.split(',')[0] || 'New Property'}</div>
+        <div style={{ fontSize:10, color:'#9ca3af', marginTop:1, marginBottom:3 }}>{p.address?.split(',').slice(1,3).join(',').trim() || ''}</div>
         <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:8, marginBottom:8 }}>
           <div style={{ minWidth:0 }}>
             {lease?.tenant_name && <div style={{ fontSize:11.5, color:'#3B6D11', fontWeight:600, marginBottom:1 }}>{lease.tenant_name}</div>}
