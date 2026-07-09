@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase.js'
 import { Modal, Field, FieldRow, inp, monoInp, Btn, fmt, fmtK, DatePicker, PAID_BY_OPTIONS, PARTNERS, PartnerLedger, NoPartnerCells } from './ui.jsx'
 
@@ -7,13 +7,12 @@ const TURN_STATUS_COLORS  = { 'Scheduled':'#9ca3af', 'In Progress':'#D97825', 'C
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function firstOfMonth(date) {
-  // Returns 'YYYY-MM-01' string for the given date
   const d = new Date(date)
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-01`
 }
 
 function monthsBetween(startStr, endStr) {
-  // Returns array of 'YYYY-MM-01' strings from start to end (inclusive)
+  // Array of 'YYYY-MM-01' strings from start to end (inclusive)
   const months = []
   const start = new Date(startStr + 'T12:00:00')
   const end   = new Date(endStr   + 'T12:00:00')
@@ -27,22 +26,35 @@ function monthsBetween(startStr, endStr) {
 }
 
 function fmtMonth(dateStr) {
-  // '2024-03-01' → 'Mar 2024'
   return new Date(dateStr + 'T12:00:00').toLocaleDateString('en-US', { month:'short', year:'numeric' })
 }
 
-const STATUS_COLOR = {
-  'Paid':    '#3B6D11',
-  'Partial': '#D97825',
-  'Unpaid':  '#B91C1C',
-  'Vacant':  '#9ca3af',
+function fmtMonthShort(dateStr) {
+  return new Date(dateStr + 'T12:00:00').toLocaleDateString('en-US', { month:'short' })
 }
 
+function daysBetween(fromStr, toStr) {
+  const from = new Date(fromStr + 'T12:00:00')
+  const to   = new Date(toStr   + 'T12:00:00')
+  return Math.round((to - from) / 86400000)
+}
+
+// Months a lease expects rent for, from lease_start through today (or lease_end if it already passed)
+function expectedMonths(lease) {
+  if (!lease.lease_start) return []
+  const today = firstOfMonth(new Date())
+  const cutoff = lease.lease_end && lease.lease_end < today.slice(0,7)+'-01' ? firstOfMonth(lease.lease_end + 'T12:00:00') : today
+  return monthsBetween(lease.lease_start, cutoff)
+}
+
+const EXC_STATUS = ['Missed', 'Partial', 'Vacant']
+const EXC_COLOR  = { Missed:'#B91C1C', Partial:'#D97825', Vacant:'#9ca3af' }
+const PAID_COLOR = '#3B6D11'
 const LEASE_STATUS = ['Active','Month-to-Month','Expired','Vacated']
 
 // ── Lease form ────────────────────────────────────────────────────────────────
 const EMPTY_LEASE = {
-  unit_label:'', tenant_name:'', rent_amount:'',
+  unit_label:'', tenant_name:'', tenant_phone:'', tenant_email:'', rent_amount:'',
   lease_start:'', lease_end:'', status:'Active', deposit_amount:'', notes:''
 }
 
@@ -59,6 +71,14 @@ function LeaseForm({ lease, onSave, onCancel, onDelete }) {
         </Field>
         <Field label="Tenant Name">
           <input style={inp} value={form.tenant_name} onChange={set('tenant_name')} />
+        </Field>
+      </FieldRow>
+      <FieldRow>
+        <Field label="Tenant Phone">
+          <input style={inp} value={form.tenant_phone} onChange={set('tenant_phone')} />
+        </Field>
+        <Field label="Tenant Email">
+          <input style={inp} value={form.tenant_email} onChange={set('tenant_email')} />
         </Field>
       </FieldRow>
       <FieldRow>
@@ -96,119 +116,145 @@ function LeaseForm({ lease, onSave, onCancel, onDelete }) {
   )
 }
 
-// ── Payment row ───────────────────────────────────────────────────────────────
-function PaymentRow({ payment, onUpdate }) {
-  const [editing, setEditing] = useState(false)
-  const [amtPaid, setAmtPaid] = useState(payment.amount_paid || '')
-  const [note, setNote]       = useState(payment.notes || '')
-  const isCurrentMonth = payment.period_month === firstOfMonth(new Date())
-  const statusColor = STATUS_COLOR[payment.status] || '#9ca3af'
-
-  async function markPaid() {
-    const paid = parseFloat(amtPaid) || payment.amount_due
-    const status = paid >= payment.amount_due ? 'Paid' : paid > 0 ? 'Partial' : 'Unpaid'
-    await supabase.from('cashoffer_rent_payments').update({
-      amount_paid: paid, status, paid_date: new Date().toISOString().split('T')[0], notes: note
-    }).eq('id', payment.id)
-    setEditing(false)
-    onUpdate()
-  }
-
-  async function markVacant() {
-    await supabase.from('cashoffer_rent_payments').update({ status:'Vacant', amount_paid:0 }).eq('id', payment.id)
-    onUpdate()
-  }
-
-  async function markUnpaid() {
-    await supabase.from('cashoffer_rent_payments').update({ status:'Unpaid', amount_paid:0, paid_date:null }).eq('id', payment.id)
-    onUpdate()
-  }
+// ── Exception form (log a Missed / Partial / Vacant month) ───────────────────
+function ExceptionForm({ month, existing, defaultDue, onSave, onCancel, onDelete }) {
+  const [status, setStatus]   = useState(existing?.status || 'Missed')
+  const [amtPaid, setAmtPaid] = useState(existing?.amount_paid ?? '')
+  const [amtDue, setAmtDue]   = useState(existing?.amount_due ?? defaultDue)
+  const [notes, setNotes]     = useState(existing?.notes || '')
 
   return (
-    <div style={{
-      padding:'8px 12px', borderTop:'0.5px solid #F0EDE6',
-      background: isCurrentMonth ? '#fef9f0' : 'transparent',
-      borderLeft: isCurrentMonth ? '3px solid #B8892A' : '3px solid transparent',
-    }}>
-      {editing ? (
-        <div style={{ display:'flex', gap:8, alignItems:'center', flexWrap:'wrap' }}>
-          <span style={{ fontSize:12, fontWeight:600, minWidth:70, color:'#2C2C2C' }}>{fmtMonth(payment.period_month)}</span>
-          <span style={{ fontSize:11, color:'#9ca3af', minWidth:60, fontFamily:'monospace' }}>Due: {fmt(payment.amount_due)}</span>
-          <input
-            style={{ ...monoInp, width:100, fontSize:12, padding:'4px 8px' }}
-            type="number" value={amtPaid}
-            onChange={e=>setAmtPaid(e.target.value)}
-          />
-          <input
-            style={{ ...inp, flex:1, minWidth:120, fontSize:12, padding:'4px 8px' }}
-            value={note} onChange={e=>setNote(e.target.value)}
-          />
-          <Btn onClick={markPaid} style={{ fontSize:11, padding:'5px 10px' }}>Save</Btn>
-          <button onClick={()=>setEditing(false)} style={{ background:'none', border:'none', fontSize:18, cursor:'pointer', color:'#9ca3af' }}>×</button>
-        </div>
-      ) : (
-        <div style={{ display:'flex', alignItems:'center', gap:12 }}>
-          <span style={{ fontSize:12, fontWeight:600, minWidth:70, color: isCurrentMonth?'#B8892A':'#2C2C2C' }}>
-            {fmtMonth(payment.period_month)}{isCurrentMonth?' ←':''}
-          </span>
-          <span style={{ fontSize:11, fontFamily:'monospace', color:'#6b7280', minWidth:60 }}>{fmt(payment.amount_due)}</span>
-          <span style={{ fontSize:11, fontFamily:'monospace', fontWeight:600,
-            color: payment.amount_paid > 0 ? '#3B6D11' : '#9ca3af', minWidth:60 }}>
-            {payment.amount_paid > 0 ? fmt(payment.amount_paid) : '—'}
-          </span>
-          <span style={{ fontSize:10, fontWeight:700, padding:'2px 7px', borderRadius:4,
-            background:statusColor+'18', color:statusColor, minWidth:52, textAlign:'center' }}>
-            {payment.status}
-          </span>
-          {payment.notes && <span style={{ fontSize:11, color:'#9ca3af', flex:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{payment.notes}</span>}
-          <div style={{ display:'flex', gap:4, marginLeft:'auto' }}>
-            {payment.status !== 'Vacant' && (
-              <button onClick={()=>setEditing(true)} style={{ background:'#F0EDE6', border:'none', borderRadius:4, padding:'3px 8px', fontSize:11, cursor:'pointer', color:'#6b7280', fontFamily:'inherit' }}>
-                {payment.status === 'Unpaid' ? 'Mark Paid' : 'Edit'}
-              </button>
-            )}
-            {payment.status === 'Unpaid' && (
-              <button onClick={markVacant} style={{ background:'none', border:'1px solid #D6D2CA', borderRadius:4, padding:'3px 8px', fontSize:11, cursor:'pointer', color:'#9ca3af', fontFamily:'inherit' }}>
-                Vacant
-              </button>
-            )}
-            {(payment.status === 'Paid' || payment.status === 'Partial') && (
-              <button onClick={markUnpaid} style={{ background:'none', border:'1px solid #D6D2CA', borderRadius:4, padding:'3px 8px', fontSize:11, cursor:'pointer', color:'#9ca3af', fontFamily:'inherit' }}>
-                Undo
-              </button>
-            )}
-          </div>
-        </div>
+    <div style={{ background:'#FAFAF8', border:'0.5px solid #D6D2CA', borderRadius:8, padding:12, marginTop:6 }}>
+      <div style={{ fontSize:12, fontWeight:700, color:'#2C2C2C', marginBottom:8 }}>
+        {fmtMonth(month)} — Log Exception
+      </div>
+      <div style={{ display:'flex', gap:8, marginBottom:8, flexWrap:'wrap' }}>
+        {EXC_STATUS.map(s=>(
+          <button key={s} onClick={()=>setStatus(s)} style={{
+            border:`1px solid ${status===s?EXC_COLOR[s]:'#D6D2CA'}`,
+            background: status===s ? EXC_COLOR[s]+'18' : '#fff',
+            color: status===s ? EXC_COLOR[s] : '#6b7280',
+            borderRadius:6, padding:'5px 12px', fontSize:11, fontWeight:700, cursor:'pointer', fontFamily:'inherit',
+          }}>{s}</button>
+        ))}
+      </div>
+      {status === 'Partial' && (
+        <FieldRow>
+          <Field label="Due ($)">
+            <input style={monoInp} type="number" value={amtDue} onChange={e=>setAmtDue(e.target.value)} />
+          </Field>
+          <Field label="Received ($)">
+            <input style={monoInp} type="number" value={amtPaid} onChange={e=>setAmtPaid(e.target.value)} />
+          </Field>
+        </FieldRow>
       )}
+      <Field label="Notes">
+        <input style={inp} value={notes} onChange={e=>setNotes(e.target.value)} placeholder="Optional" />
+      </Field>
+      <div style={{ display:'flex', justifyContent:'space-between', marginTop:10 }}>
+        {existing && <Btn variant="danger" onClick={()=>onDelete(existing.id)} style={{ fontSize:11 }}>Clear (Mark Paid)</Btn>}
+        <div style={{ display:'flex', gap:8, marginLeft:'auto' }}>
+          <Btn variant="outline" onClick={onCancel} style={{ fontSize:11 }}>Cancel</Btn>
+          <Btn onClick={()=>onSave({
+            status,
+            amount_due:  status==='Partial' ? (parseFloat(amtDue)||0) : (parseFloat(defaultDue)||0),
+            amount_paid: status==='Partial' ? (parseFloat(amtPaid)||0) : 0,
+            notes: notes || null,
+          })} style={{ fontSize:11 }}>Save</Btn>
+        </div>
+      </div>
     </div>
   )
 }
 
-// ── Lease card with payment log ───────────────────────────────────────────────
-function LeaseCard({ lease, onEdit, onPaymentsChange }) {
-  const [payments, setPayments] = useState([])
-  const [expanded, setExpanded] = useState(true)
-  const [loading, setLoading]   = useState(true)
+// ── Compact month strip ────────────────────────────────────────────────────────
+function MonthStrip({ months, exceptionsByMonth, onPick }) {
+  if (months.length === 0) return <div style={{ fontSize:11, color:'#9ca3af' }}>No months elapsed yet.</div>
+  return (
+    <div style={{ display:'flex', flexWrap:'wrap', gap:4 }}>
+      {months.map(m=>{
+        const exc = exceptionsByMonth[m]
+        const color = exc ? EXC_COLOR[exc.status] : PAID_COLOR
+        return (
+          <button key={m} onClick={()=>onPick(m)} title={`${fmtMonth(m)} — ${exc ? exc.status : 'Paid'}`} style={{
+            width:34, height:26, borderRadius:5, border:`1px solid ${color}55`,
+            background: color+'18', color, fontSize:9, fontWeight:700, cursor:'pointer',
+            fontFamily:'inherit', display:'flex', alignItems:'center', justifyContent:'center',
+          }}>
+            {fmtMonthShort(m)}
+          </button>
+        )
+      })}
+    </div>
+  )
+}
 
-  useEffect(() => { loadPayments() }, [lease.id])
+// ── Lease card ──────────────────────────────────────────────────────────────────
+function LeaseCard({ lease, onEdit, allExpenses, onExpensesChange }) {
+  const [exceptions, setExceptions] = useState([])
+  const [loading, setLoading]       = useState(true)
+  const [expanded, setExpanded]     = useState(true)
+  const [pickedMonth, setPickedMonth] = useState(null)
 
-  async function loadPayments() {
+  useEffect(() => { loadExceptions() }, [lease.id])
+
+  async function loadExceptions() {
     const { data } = await supabase
       .from('cashoffer_rent_payments')
       .select('*')
       .eq('lease_id', lease.id)
       .order('period_month', { ascending: false })
-    setPayments(data || [])
+    setExceptions(data || [])
     setLoading(false)
   }
 
-  const totalDue       = payments.reduce((s,p)=>s+(parseFloat(p.amount_due)||0),0)
-  const totalCollected = payments.reduce((s,p)=>s+(parseFloat(p.amount_paid)||0),0)
-  const paidCount      = payments.filter(p=>p.status==='Paid').length
-  const vacantCount    = payments.filter(p=>p.status==='Vacant').length
-  const unpaidCount    = payments.filter(p=>p.status==='Unpaid'||p.status==='Partial').length
+  const months = expectedMonths(lease)
+  const exceptionsByMonth = {}
+  exceptions.forEach(e => { exceptionsByMonth[e.period_month] = e })
+
+  const rent = parseFloat(lease.rent_amount) || 0
+  const expected = months.length * rent
+  const shortfall = exceptions.reduce((s,e) => {
+    const due = e.status === 'Partial' ? (parseFloat(e.amount_due)||rent) : rent
+    const paid = e.status === 'Partial' ? (parseFloat(e.amount_paid)||0) : 0
+    return s + Math.max(due - paid, 0)
+  }, 0)
+  const collected = Math.max(expected - shortfall, 0)
+  const exceptionCount = exceptions.length
+
+  async function saveException(month, payload) {
+    const existing = exceptionsByMonth[month]
+    if (existing) {
+      await supabase.from('cashoffer_rent_payments').update(payload).eq('id', existing.id)
+    } else {
+      await supabase.from('cashoffer_rent_payments').insert({
+        lease_id: lease.id, property_id: lease.property_id, period_month: month, ...payload,
+      })
+    }
+    setPickedMonth(null)
+    loadExceptions()
+  }
+
+  async function deleteException(id) {
+    await supabase.from('cashoffer_rent_payments').delete().eq('id', id)
+    setPickedMonth(null)
+    loadExceptions()
+  }
 
   const statusColor = { Active:'#3B6D11', 'Month-to-Month':'#B8892A', Expired:'#9ca3af', Vacated:'#9ca3af' }
+
+  // Renewal countdown
+  let renewalLabel = 'Month-to-month'
+  let renewalColor = '#9ca3af'
+  if (lease.lease_end) {
+    const days = daysBetween(new Date().toISOString().slice(0,10), lease.lease_end)
+    if (days < 0) { renewalLabel = `Expired ${Math.abs(days)}d ago`; renewalColor = '#B91C1C' }
+    else if (days <= 60) { renewalLabel = `Renews in ${days}d`; renewalColor = '#D97825' }
+    else { renewalLabel = `Renews in ${days}d`; renewalColor = '#3B6D11' }
+  }
+
+  // Turn history — expenses tagged to this lease
+  const turnHistory = allExpenses.filter(e => e.lease_id === lease.id)
 
   return (
     <div style={{ border:'0.5px solid #D6D2CA', borderRadius:8, overflow:'hidden', marginBottom:12 }}>
@@ -216,24 +262,35 @@ function LeaseCard({ lease, onEdit, onPaymentsChange }) {
       <div style={{ background:'#FAFAF8', padding:'12px 14px' }}>
         <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', marginBottom:10 }}>
           <div>
-            <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+            <div style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
               <span style={{ fontSize:14, fontWeight:700, color:'#2C2C2C' }}>
                 {lease.unit_label || 'Unit'}{lease.tenant_name ? ` — ${lease.tenant_name}` : ''}
               </span>
               <span style={{ background:(statusColor[lease.status]||'#9ca3af')+'18', color:statusColor[lease.status]||'#9ca3af',
                 border:`1px solid ${statusColor[lease.status]||'#9ca3af'}40`, borderRadius:4,
                 padding:'2px 8px', fontSize:10, fontWeight:700 }}>{lease.status}</span>
+              <span style={{ background:renewalColor+'18', color:renewalColor,
+                border:`1px solid ${renewalColor}40`, borderRadius:4,
+                padding:'2px 8px', fontSize:10, fontWeight:700 }}>{renewalLabel}</span>
             </div>
             <div style={{ fontSize:12, color:'#6b7280', marginTop:3 }}>
               {fmt(lease.rent_amount)}/mo
               {lease.lease_start ? ` · From ${new Date(lease.lease_start+'T12:00:00').toLocaleDateString('en-US',{month:'short',year:'numeric'})}` : ''}
               {lease.lease_end ? ` to ${new Date(lease.lease_end+'T12:00:00').toLocaleDateString('en-US',{month:'short',year:'numeric'})}` : ' · Month-to-month'}
             </div>
+            {(lease.tenant_phone || lease.tenant_email) && (
+              <div style={{ fontSize:11, color:'#9ca3af', marginTop:2 }}>
+                {[lease.tenant_phone, lease.tenant_email].filter(Boolean).join('  ·  ')}
+              </div>
+            )}
+            {lease.deposit_amount ? (
+              <div style={{ fontSize:11, color:'#9ca3af', marginTop:2 }}>Deposit: {fmt(lease.deposit_amount)}</div>
+            ) : null}
           </div>
           <div style={{ display:'flex', gap:6 }}>
             <button onClick={()=>onEdit(lease)} style={{ background:'none', border:'1px solid #D6D2CA', borderRadius:4, padding:'4px 10px', fontSize:11, cursor:'pointer', color:'#6b7280', fontFamily:'inherit' }}>Edit</button>
             <button onClick={()=>setExpanded(e=>!e)} style={{ background:'none', border:'1px solid #D6D2CA', borderRadius:4, padding:'4px 10px', fontSize:11, cursor:'pointer', color:'#6b7280', fontFamily:'inherit' }}>
-              {expanded ? '▲ Hide' : '▼ Payments'}
+              {expanded ? '▲ Hide' : '▼ Details'}
             </button>
           </div>
         </div>
@@ -241,10 +298,10 @@ function LeaseCard({ lease, onEdit, onPaymentsChange }) {
         {/* Summary stats */}
         <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:8 }}>
           {[
-            { label:'Collected',  value:fmtK(totalCollected), color:'#3B6D11' },
-            { label:'Expected',   value:fmtK(totalDue),       color:'#2C2C2C' },
-            { label:'Paid Months',value:paidCount,             color:'#3B6D11' },
-            { label:'Unpaid',     value:unpaidCount,           color:unpaidCount>0?'#B91C1C':'#9ca3af' },
+            { label:'Collected',  value:fmtK(collected), color:'#3B6D11' },
+            { label:'Expected',   value:fmtK(expected),  color:'#2C2C2C' },
+            { label:'Months',     value:months.length,   color:'#2C2C2C' },
+            { label:'Exceptions', value:exceptionCount,   color:exceptionCount>0?'#B91C1C':'#9ca3af' },
           ].map(({label,value,color})=>(
             <div key={label} style={{ background:'#fff', borderRadius:6, padding:'6px 10px', border:'0.5px solid #D6D2CA', textAlign:'center' }}>
               <div style={{ fontSize:9, color:'#9ca3af', textTransform:'uppercase', letterSpacing:0.7, marginBottom:2 }}>{label}</div>
@@ -254,23 +311,68 @@ function LeaseCard({ lease, onEdit, onPaymentsChange }) {
         </div>
       </div>
 
-      {/* Payment rows */}
       {expanded && (
-        <div>
-          {/* Column header */}
-          <div style={{ display:'grid', gridTemplateColumns:'70px 60px 60px 52px 1fr auto', gap:12, padding:'6px 12px', background:'#2C2C2C' }}>
-            {['Month','Due','Paid','Status','Notes',''].map(h=>(
-              <div key={h} style={{ fontSize:9, fontWeight:700, color:'#B8892A', textTransform:'uppercase', letterSpacing:0.7 }}>{h}</div>
-            ))}
-          </div>
+        <div style={{ padding:'12px 14px' }}>
           {loading ? (
-            <div style={{ padding:'16px', textAlign:'center', color:'#9ca3af', fontSize:12 }}>Loading...</div>
-          ) : payments.length === 0 ? (
-            <div style={{ padding:'16px', textAlign:'center', color:'#9ca3af', fontSize:12 }}>No payment records yet.</div>
+            <div style={{ textAlign:'center', color:'#9ca3af', fontSize:12, padding:12 }}>Loading...</div>
           ) : (
-            payments.map(p=>(
-              <PaymentRow key={p.id} payment={p} onUpdate={()=>{ loadPayments(); onPaymentsChange() }} />
-            ))
+            <>
+              {/* Month strip */}
+              <div style={{ fontSize:10, fontWeight:700, color:'#9ca3af', textTransform:'uppercase', letterSpacing:0.7, marginBottom:6 }}>
+                Rent collected by month — assumed paid unless flagged
+              </div>
+              <MonthStrip months={months} exceptionsByMonth={exceptionsByMonth} onPick={setPickedMonth} />
+              {pickedMonth && (
+                <ExceptionForm
+                  month={pickedMonth}
+                  existing={exceptionsByMonth[pickedMonth]}
+                  defaultDue={rent}
+                  onSave={(payload)=>saveException(pickedMonth, payload)}
+                  onCancel={()=>setPickedMonth(null)}
+                  onDelete={deleteException}
+                />
+              )}
+
+              {/* Exceptions list */}
+              {exceptions.length > 0 && (
+                <div style={{ marginTop:14 }}>
+                  <div style={{ fontSize:10, fontWeight:700, color:'#9ca3af', textTransform:'uppercase', letterSpacing:0.7, marginBottom:6 }}>Exceptions</div>
+                  {exceptions.map(e=>(
+                    <div key={e.id} onClick={()=>setPickedMonth(e.period_month)} style={{
+                      display:'flex', alignItems:'center', gap:10, padding:'6px 10px', borderRadius:6,
+                      border:'0.5px solid #D6D2CA', marginBottom:4, cursor:'pointer', background:'#fff',
+                    }}>
+                      <span style={{ fontSize:11, fontWeight:600, minWidth:70 }}>{fmtMonth(e.period_month)}</span>
+                      <span style={{ fontSize:10, fontWeight:700, padding:'2px 7px', borderRadius:4,
+                        background:EXC_COLOR[e.status]+'18', color:EXC_COLOR[e.status] }}>{e.status}</span>
+                      {e.status === 'Partial' && (
+                        <span style={{ fontSize:11, fontFamily:'monospace', color:'#6b7280' }}>
+                          {fmt(e.amount_paid)} / {fmt(e.amount_due)}
+                        </span>
+                      )}
+                      {e.notes && <span style={{ fontSize:11, color:'#9ca3af', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{e.notes}</span>}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Turn history */}
+              <div style={{ marginTop:14 }}>
+                <div style={{ fontSize:10, fontWeight:700, color:'#9ca3af', textTransform:'uppercase', letterSpacing:0.7, marginBottom:6 }}>Turn History</div>
+                {turnHistory.length === 0 ? (
+                  <div style={{ fontSize:11, color:'#9ca3af' }}>No turn expenses tagged to this unit yet.</div>
+                ) : (
+                  turnHistory.map(e=>(
+                    <div key={e.id} style={{ display:'flex', alignItems:'center', gap:10, padding:'5px 10px', fontSize:11, color:'#6b7280' }}>
+                      <span style={{ fontWeight:600, color:'#2C2C2C', minWidth:120 }}>{e.name || 'Untitled'}</span>
+                      <span>{e.vendor}</span>
+                      <span style={{ marginLeft:'auto', fontFamily:'monospace' }}>{fmt(e.amount)}</span>
+                      <span style={{ color:TURN_STATUS_COLORS[e.status] }}>{e.status}</span>
+                    </div>
+                  ))
+                )}
+              </div>
+            </>
           )}
         </div>
       )}
@@ -286,7 +388,7 @@ export default function RentTracker({ propertyId, propertyAddress, open, onClose
   const [expenses, setExpenses]           = useState([])
   const [deletedExpenseIds, setDeletedExpenseIds] = useState([])
   const [expensesSaving, setExpensesSaving] = useState(false)
-  const closingDate = null // turn expenses don't have a natural "closing" cutoff like a sale does
+  const closingDate = null
 
   useEffect(() => { if (open && propertyId) load() }, [open, propertyId])
 
@@ -302,11 +404,11 @@ export default function RentTracker({ propertyId, propertyAddress, open, onClose
     setLoading(false)
   }
 
-  // Turn expenses — local drafts, committed only on Save (same pattern as Rehab)
+  // Turn expenses — local drafts, committed only on Save
   function addExpense() {
     setExpenses(p => [...p, {
       id: `new-${Date.now()}-${Math.random().toString(36).slice(2)}`, _isNew: true,
-      property_id: propertyId, name: '', amount: 0, vendor: '', status: 'Scheduled',
+      property_id: propertyId, name: '', amount: 0, vendor: '', status: 'Scheduled', lease_id: null,
     }])
   }
   function updateExpense(id, field, value) {
@@ -344,6 +446,8 @@ export default function RentTracker({ propertyId, propertyAddress, open, onClose
       property_id:    propertyId,
       unit_label:     form.unit_label || 'Main',
       tenant_name:    form.tenant_name || null,
+      tenant_phone:   form.tenant_phone || null,
+      tenant_email:   form.tenant_email || null,
       rent_amount:    parseFloat(form.rent_amount) || 0,
       lease_start:    form.lease_start || null,
       lease_end:      form.lease_end   || null,
@@ -352,44 +456,12 @@ export default function RentTracker({ propertyId, propertyAddress, open, onClose
       notes:          form.notes || null,
     }
 
-    let leaseId = form.id
     if (form.id) {
       await supabase.from('cashoffer_leases').update(payload).eq('id', form.id)
     } else {
-      const { data } = await supabase.from('cashoffer_leases').insert(payload).select().single()
-      leaseId = data?.id
+      await supabase.from('cashoffer_leases').insert(payload)
     }
-
-    // Auto-generate monthly payment rows from lease_start to today (or lease_end if earlier)
-    if (leaseId && payload.lease_start) {
-      const today    = firstOfMonth(new Date())
-      const end      = payload.lease_end && payload.lease_end < today.slice(0,7)+'-01'
-                       ? firstOfMonth(payload.lease_end + 'T12:00:00')
-                       : today
-      const months   = monthsBetween(payload.lease_start, end)
-
-      // Check which months already exist to avoid duplicates
-      const { data: existing } = await supabase
-        .from('cashoffer_rent_payments')
-        .select('period_month')
-        .eq('lease_id', leaseId)
-
-      const existingSet = new Set((existing||[]).map(r=>r.period_month))
-      const toInsert = months
-        .filter(m => !existingSet.has(m))
-        .map(m => ({
-          lease_id:     leaseId,
-          property_id:  propertyId,
-          period_month: m,
-          amount_due:   payload.rent_amount,
-          amount_paid:  0,
-          status:       'Unpaid',
-        }))
-
-      if (toInsert.length > 0) {
-        await supabase.from('cashoffer_rent_payments').insert(toInsert)
-      }
-    }
+    // No more auto-generated monthly rows — exceptions are logged on demand from the month strip.
 
     setEditing(null)
     load()
@@ -397,15 +469,13 @@ export default function RentTracker({ propertyId, propertyAddress, open, onClose
   }
 
   async function deleteLease(id) {
-    if (!confirm('Delete this lease and all its payment records?')) return
-    // Cascade deletes payment rows via FK
+    if (!confirm('Delete this lease and all its logged exceptions?')) return
     await supabase.from('cashoffer_leases').delete().eq('id', id)
     setEditing(null)
     load()
     onRentChange && onRentChange()
   }
 
-  // Portfolio summary across all leases
   const activeLeases    = leases.filter(l=>l.status==='Active'||l.status==='Month-to-Month')
   const totalMonthlyRent= activeLeases.reduce((s,l)=>s+(parseFloat(l.rent_amount)||0),0)
 
@@ -429,7 +499,6 @@ export default function RentTracker({ propertyId, propertyAddress, open, onClose
         </>
       ) : (
         <>
-          {/* Summary header */}
           {leases.length > 0 && (
             <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:10, marginBottom:20 }}>
               {[
@@ -445,7 +514,6 @@ export default function RentTracker({ propertyId, propertyAddress, open, onClose
             </div>
           )}
 
-          {/* Lease cards */}
           {leases.length === 0 ? (
             <div style={{ background:'#F0EDE6', borderRadius:8, padding:'24px', textAlign:'center', marginBottom:16 }}>
               <div style={{ fontSize:13, color:'#6b7280', marginBottom:10 }}>No leases for this property yet.</div>
@@ -457,12 +525,12 @@ export default function RentTracker({ propertyId, propertyAddress, open, onClose
                 key={l.id}
                 lease={l}
                 onEdit={setEditing}
-                onPaymentsChange={()=>onRentChange&&onRentChange()}
+                allExpenses={expenses}
+                onExpensesChange={()=>onRentChange&&onRentChange()}
               />
             ))
           )}
 
-          {/* Add lease button */}
           {leases.length > 0 && (
             <div style={{ paddingTop:12, borderTop:'1px solid #F0EDE6' }}>
               <Btn variant="outline" onClick={()=>setEditing('new')} style={{ fontSize:12 }}>
@@ -477,16 +545,20 @@ export default function RentTracker({ propertyId, propertyAddress, open, onClose
           {/* Turn Expenses */}
           <div style={{ marginTop:24, paddingTop:16, borderTop:'1px solid #F0EDE6' }}>
             <div style={{ fontSize:13, fontWeight:700, color:'#2C2C2C', marginBottom:4 }}>Turn Expenses</div>
-            <div style={{ fontSize:11, color:'#9ca3af', marginBottom:8 }}>Turnover/make-ready costs between tenants — cleaning, repairs, touch-up paint, etc.</div>
+            <div style={{ fontSize:11, color:'#9ca3af', marginBottom:8 }}>Turnover/make-ready costs between tenants — cleaning, repairs, touch-up paint, etc. Tag a unit to show it in that lease's Turn History.</div>
             {expenses.length > 0 && (
               <div style={{ border:'0.5px solid #D6D2CA', borderRadius:8, overflow:'hidden', marginBottom:8 }}>
-                <div style={{ display:'grid', gridTemplateColumns:'2fr 1.4fr 0.9fr 0.9fr 0.9fr 1.1fr 0.9fr 28px', gap:14, background:'#F0EDE6', padding:'8px 10px' }}>
-                  {['Name','Vendor','Status','Amount','Paid By','Date Paid','Interest',''].map(h=><div key={h} style={{ fontSize:10, fontWeight:600, color:'#6b7280', textTransform:'uppercase' }}>{h}</div>)}
+                <div style={{ display:'grid', gridTemplateColumns:'1.6fr 1.2fr 0.9fr 0.9fr 0.9fr 0.9fr 1.1fr 0.9fr 28px', gap:12, background:'#F0EDE6', padding:'8px 10px' }}>
+                  {['Name','Vendor','Unit','Status','Amount','Paid By','Date Paid','Interest',''].map(h=><div key={h} style={{ fontSize:10, fontWeight:600, color:'#6b7280', textTransform:'uppercase' }}>{h}</div>)}
                 </div>
                 {expenses.map((e,i) => (
-                  <div key={e.id} style={{ display:'grid', gridTemplateColumns:'2fr 1.4fr 0.9fr 0.9fr 0.9fr 1.1fr 0.9fr 28px', gap:14, padding:'8px 10px', alignItems:'center', background:i%2===0?'#fff':'#FAFAF8', borderTop:i>0?'0.5px solid #F0EDE6':'none' }}>
+                  <div key={e.id} style={{ display:'grid', gridTemplateColumns:'1.6fr 1.2fr 0.9fr 0.9fr 0.9fr 0.9fr 1.1fr 0.9fr 28px', gap:12, padding:'8px 10px', alignItems:'center', background:i%2===0?'#fff':'#FAFAF8', borderTop:i>0?'0.5px solid #F0EDE6':'none' }}>
                     <input style={{ ...inp, fontSize:12, padding:'4px 6px', marginRight:6 }} value={e.name||''} onChange={ev=>updateExpense(e.id,'name',ev.target.value)} />
                     <input style={{ ...inp, fontSize:12, padding:'4px 6px', marginRight:6 }} value={e.vendor||''} onChange={ev=>updateExpense(e.id,'vendor',ev.target.value)} />
+                    <select value={e.lease_id||''} onChange={ev=>updateExpense(e.id,'lease_id',ev.target.value||null)} style={{ border:'0.5px solid #D6D2CA', borderRadius:4, padding:'4px 6px', fontSize:11, fontFamily:'inherit', background:'#fff', cursor:'pointer', marginRight:6 }}>
+                      <option value="">—</option>
+                      {leases.map(l=><option key={l.id} value={l.id}>{l.unit_label||'Unit'}</option>)}
+                    </select>
                     <select style={{ border:'0.5px solid #D6D2CA', borderRadius:4, padding:'4px 6px', fontSize:11, color:TURN_STATUS_COLORS[e.status], fontWeight:700, marginRight:6, background:'#fff' }} value={e.status||'Scheduled'} onChange={ev=>updateExpense(e.id,'status',ev.target.value)}>
                       {TURN_STATUS_OPTIONS.map(s=><option key={s} value={s}>{s}</option>)}
                     </select>
@@ -523,4 +595,3 @@ export default function RentTracker({ propertyId, propertyAddress, open, onClose
     </Modal>
   )
 }
-
