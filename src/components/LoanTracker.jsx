@@ -73,7 +73,9 @@ function addMonths(dateStr, n) {
 function dueDateForMonth(loanStart, monthIndex, dueDay) {
   if (!loanStart) return null
   const [y, m] = loanStart.split('-').map(Number)
-  const total = (m - 1) + (monthIndex - 1)
+  // First payment always falls in the month AFTER closing — you can't owe a payment
+  // before the loan has even funded, regardless of which day of the month is chosen.
+  const total = (m - 1) + monthIndex
   const newY = y + Math.floor(total / 12)
   const newM = (total % 12) + 1
   const day = Math.min(dueDay || 1, 28)
