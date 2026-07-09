@@ -54,9 +54,9 @@ function analyzerCardContent(p, onViewOffer) {
         </div>
         <div style={{ fontSize:10, color:'#9ca3af', marginTop:1, marginBottom:3 }}>{p.address?.split(',').slice(1,3).join(',').trim() || ''}</div>
       {p.seller_name && <div style={{ fontSize:11.5, color:'#B8892A', fontWeight:600, marginBottom:8 }}>{p.seller_name}</div>}
-      <div style={{ display:'flex', flexWrap:'wrap', gap:6, alignItems:'center', justifyContent:'center', marginBottom:6 }}>
-        {cashOffer ? <span style={cardChip()}>Cash Offer {fmt(cashOffer)}</span> : null}
-        {p.arv && <span style={cardPill('#6b7280','#F0EDE6')}>ARV {fmt(p.arv)}</span>}
+      <div style={{ display:'flex', flexWrap:'nowrap', gap:6, alignItems:'center', justifyContent:'center', marginBottom:6 }}>
+        {cashOffer ? <span style={cardChip()}>Cash: {fmt(cashOffer)}</span> : null}
+        {p.arv && <span style={cardChip('#3B6D11','#EEF5E7','#CBDDB8')}>ARV: {fmt(p.arv)}</span>}
       </div>
       <div style={{ display:'flex', flexWrap:'wrap', gap:4, alignItems:'center', justifyContent:'center' }}>
         {p.source && <span style={cardPill('#D97825','#FBF0E4')}>{p.source}</span>}
