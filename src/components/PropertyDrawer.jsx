@@ -559,7 +559,7 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
     { key:'analyzer',    label:'Analyzer' },
     { key:'acquisition', label:'Acquisition' },
     ...(showLoanTab ? [{ key:'loan', label:'Loan' }] : []),
-    { key:'rehab',       label:'Rehab' },
+    { key:'rehab',       label:'Renovation' },
     ...(showRentTab ? [{ key:'rent', label:'Lease' }] : []),
     { key:'disposition', label:'Disposition' },
   ]
@@ -937,7 +937,7 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
               other types (client Reno listings, post-fork history) set it here */}
           {type!=='Renovation' && (
           <FieldRow>
-            <Field label="Rehab Stage">
+            <Field label="Renovation Stage">
               <select
                 value={form.rehab_stage||'Not Started'}
                 onChange={e=>{
@@ -961,10 +961,10 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
           </FieldRow>
           )}
           <FieldRow>
-            <Field label="Rehab Start Date">
+            <Field label="Renovation Start Date">
               <DatePicker style={inp} value={form.rehab_start_date||''} onChange={set('rehab_start_date')} />
             </Field>
-            <Field label="Rehab Complete Date">
+            <Field label="Renovation Complete Date">
               <DatePicker style={inp} value={form.rehab_complete_date||''} onChange={set('rehab_complete_date')} />
             </Field>
           </FieldRow>
@@ -975,7 +975,7 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
             return (
               <div style={{ fontSize:11, color:'#9ca3af', marginTop:-8 }}>
                 {form.rehab_complete_date
-                  ? `Rehab took ${days} day${days===1?'':'s'} (${form.rehab_start_date} → ${form.rehab_complete_date})`
+                  ? `Renovation took ${days} day${days===1?'':'s'} (${form.rehab_start_date} → ${form.rehab_complete_date})`
                   : `${days} day${days===1?'':'s'} in progress so far`}
               </div>
             )

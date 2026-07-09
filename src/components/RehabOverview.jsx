@@ -61,12 +61,12 @@ export default function RehabStatCards({ propertyId, onOpenFull, closingDate }) 
   if (!hasAnything) {
     return (
       <div style={{ background:'#F0EDE6', borderRadius:8, padding:20, textAlign:'center' }}>
-        <div style={{ fontSize:13, color:'#6b7280', marginBottom:12 }}>No rehab line items yet.</div>
+        <div style={{ fontSize:13, color:'#6b7280', marginBottom:12 }}>No renovation line items yet.</div>
         <button onClick={onOpenFull} style={{
           background:'#B8892A', color:'#fff', border:'none', borderRadius:8, padding:'10px 18px',
           fontSize:13, fontWeight:700, cursor:'pointer', fontFamily:'inherit',
         }}>
-          + Start Rehab Tracker
+          + Start Renovation Tracker
         </button>
       </div>
     )
@@ -97,9 +97,17 @@ export default function RehabStatCards({ propertyId, onOpenFull, closingDate }) 
   bills.forEach(r => addRow(r.paid_by, parseFloat(r.amount)||0))
 
   const totalRehabCost = servicesTotal + suppliesTotal + utilitiesTotal
+  const estRenoCost = items.reduce((s,r)=>s+(parseFloat(r.estimated_cost)||0), 0) + suppliesTotal
 
   return (
     <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+      <div style={{
+        background:'#F0EDE6', border:'1px solid #D6D2CA', borderRadius:8,
+        padding:'10px 14px', display:'flex', justifyContent:'space-between', alignItems:'center',
+      }}>
+        <div style={{ fontSize:11, fontWeight:700, color:'#6b7280', textTransform:'uppercase', letterSpacing:0.8 }}>Est. Reno Cost</div>
+        <div style={{ fontSize:17, fontWeight:700, color:'#6b7280', fontFamily:'monospace' }}>{fmt(estRenoCost)}</div>
+      </div>
       <div style={{
         background:'#B8892A12', border:'1px solid #B8892A30', borderRadius:8,
         padding:'12px 14px', display:'flex', justifyContent:'space-between', alignItems:'center',
@@ -151,7 +159,7 @@ export default function RehabStatCards({ propertyId, onOpenFull, closingDate }) 
         fontSize:12.5, fontWeight:700, cursor:'pointer', fontFamily:'inherit',
         display:'flex', alignItems:'center', justifyContent:'center', gap:6, marginTop:2,
       }}>
-        Open Rehab Dashboard <span>→</span>
+        Open Renovation Dashboard <span>→</span>
       </button>
     </div>
   )

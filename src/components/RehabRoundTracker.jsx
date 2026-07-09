@@ -356,7 +356,7 @@ export default function RehabRoundTracker({ property, repairItems = [], onChange
   return (
     <>
     <Modal
-      title={`Rehab Dashboard — ${property?.address?.split(',')[0] || ''}`}
+      title={`Renovation Dashboard — ${property?.address?.split(',')[0] || ''}`}
       onClose={onClose}
       width={1240}
       footer={

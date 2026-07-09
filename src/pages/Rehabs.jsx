@@ -132,9 +132,11 @@ export default function Rehabs({ onOpenSupplies }) {
 
     // The fork: renovation done -> Flip (List For Sale) or Hold (Rent Ready)
     if (zoneKey === 'Listed') {
+      const today = new Date().toISOString().slice(0,10)
       const payload = isReno
-        ? { stage:'Listed' }  // client listing goes to market, type unchanged
-        : { type:'Flip', stage:'Listed', disposition:'flip', rehab_active:false }
+        ? { stage:'Listed', ...(item.rehab_complete_date ? {} : { rehab_complete_date: today }) }  // client listing goes to market, type unchanged
+        : { type:'Flip', stage:'Listed', disposition:'flip', rehab_active:false,
+            ...(item.rehab_complete_date ? {} : { rehab_complete_date: today }) }
       const { error } = await supabase.from('cashoffer_properties').update(payload).eq('id', id)
       if (error) { alert(`Could not move deal: ${error.message}`); load(); return }
       setBurst({ ...coords, key: Date.now() })
@@ -145,7 +147,8 @@ export default function Rehabs({ onOpenSupplies }) {
     if (zoneKey === 'Rent Ready') {
       if (isReno) { alert('Rent Ready is for owned renovations — client Reno listings go to market instead.'); return }
       const { error } = await supabase.from('cashoffer_properties')
-        .update({ type:'Hold', stage:'Rent Ready', disposition:'hold', rehab_active:false }).eq('id', id)
+        .update({ type:'Hold', stage:'Rent Ready', disposition:'hold', rehab_active:false,
+                  ...(item.rehab_complete_date ? {} : { rehab_complete_date: new Date().toISOString().slice(0,10) }) }).eq('id', id)
       if (error) { alert(`Could not move deal: ${error.message}`); load(); return }
       setBurst({ ...coords, key: Date.now() })
       setTimeout(() => setBurst(null), 1600)
@@ -169,7 +172,7 @@ export default function Rehabs({ onOpenSupplies }) {
             <div style={{ fontSize:11, color:'#6b7280' }}>{p.owner || 'BPV'}</div>
           </div>
           {(spent > 0 || est > 0) ? (
-            <div style={{ display:'flex', flexDirection:'column', gap:2, alignItems:'flex-end', flexShrink:0 }}>
+            <div style={{ display:'flex', gap:4, alignItems:'center', flexShrink:0 }}>
               <span style={cardChip('#B8892A','#FBF6EA','#E8D9B5')}>Est {est > 0 ? fmt(est) : '\u2014'}</span>
               <span style={cardChip(over ? '#B91C1C' : '#3B6D11', over ? '#FBEAEA' : '#EEF5E7', over ? '#EFC5C5' : '#CBDDB8')}>Spent {fmt(spent)}</span>
             </div>
