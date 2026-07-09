@@ -97,7 +97,7 @@ export default function Wholesale() {
           </div>
           {p.wholesale_fee ? <span style={cardChip('#6b21a8','#F3EBFA','#DCC8EE')}>{fmt(p.wholesale_fee)}</span> : null}
         </div>
-        <div style={{ display:'flex', flexWrap:'wrap', gap:4, alignItems:'center' }}>
+        <div style={{ display:'flex', flexWrap:'wrap', gap:4, alignItems:'center', justifyContent:'center' }}>
           {p.source && <span style={cardPill('#D97825','#FBF0E4')}>{p.source}</span>}
           {p.purchase_price && <span style={cardPill('#6b7280','#F0EDE6')}>Contract {fmt(p.purchase_price)}</span>}
         </div>

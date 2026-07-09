@@ -53,19 +53,15 @@ function analyzerCardContent(p, onViewOffer) {
           {p.owner ? <div style={{ fontSize:11, color:'#6b7280', flexShrink:0 }}>{p.owner}</div> : null}
         </div>
         <div style={{ fontSize:10, color:'#9ca3af', marginTop:1, marginBottom:3 }}>{p.address?.split(',').slice(1,3).join(',').trim() || ''}</div>
-      <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:8, marginBottom:8 }}>
-        <div style={{ minWidth:0 }}>
-          {p.seller_name && <div style={{ fontSize:11.5, color:'#B8892A', fontWeight:600, marginBottom:1 }}>{p.seller_name}</div>}
-        </div>
-        {cashOffer ? (
-          <span style={cardChip()}>{fmt(cashOffer)}</span>
-        ) : null}
+      {p.seller_name && <div style={{ fontSize:11.5, color:'#B8892A', fontWeight:600, marginBottom:8 }}>{p.seller_name}</div>}
+      <div style={{ display:'flex', flexWrap:'wrap', gap:6, alignItems:'center', justifyContent:'center', marginBottom:6 }}>
+        {cashOffer ? <span style={cardChip()}>Cash Offer {fmt(cashOffer)}</span> : null}
+        {p.arv && <span style={cardPill('#6b7280','#F0EDE6')}>ARV {fmt(p.arv)}</span>}
       </div>
-      <div style={{ display:'flex', flexWrap:'wrap', gap:4, alignItems:'center' }}>
+      <div style={{ display:'flex', flexWrap:'wrap', gap:4, alignItems:'center', justifyContent:'center' }}>
         {p.source && <span style={cardPill('#D97825','#FBF0E4')}>{p.source}</span>}
         {p.acquisition_type === 'Pre-Owned' && <span style={cardPill('#6b21a8','#F3EBFA')}>Pre-Owned</span>}
-        {p.arv && <span style={cardPill('#6b7280','#F0EDE6')}>ARV {fmt(p.arv)}</span>}
-        {days !== null && <span style={{ fontSize:10, color:'#9ca3af', marginLeft:'auto' }}>{days===0 ? 'today' : `${days}d`}</span>}
+        {days !== null && <span style={{ fontSize:10, color:'#9ca3af' }}>{days===0 ? 'today' : `${days}d`}</span>}
       </div>
       {cashOffer ? (
         <button style={cardBtn} onClick={e => { e.stopPropagation(); onViewOffer(p) }}>View Offer PDF</button>

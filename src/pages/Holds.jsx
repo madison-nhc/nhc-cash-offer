@@ -117,19 +117,10 @@ export default function Holds() {
           {p.owner ? <div style={{ fontSize:11, color:'#6b7280', flexShrink:0 }}>{p.owner}</div> : null}
         </div>
         <div style={{ fontSize:10, color:'#9ca3af', marginTop:1, marginBottom:3 }}>{p.address?.split(',').slice(1,3).join(',').trim() || ''}</div>
-        <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:8, marginBottom:8 }}>
-          <div style={{ minWidth:0 }}>
-            {lease?.tenant_name && <div style={{ fontSize:11.5, color:'#3B6D11', fontWeight:600, marginBottom:1 }}>{lease.tenant_name}</div>}
-          </div>
-          {rent > 0 ? <span style={cardChip('#3B6D11','#EEF5E7','#CBDDB8')}>{fmt(rent)}/mo</span> : null}
-        </div>
-        <div style={{ display:'flex', flexWrap:'wrap', gap:4, alignItems:'center' }}>
+        {lease?.tenant_name && <div style={{ fontSize:11.5, color:'#3B6D11', fontWeight:600, marginBottom:8 }}>{lease.tenant_name}</div>}
+        <div style={{ display:'flex', flexWrap:'wrap', gap:6, alignItems:'center', justifyContent:'center' }}>
+          {rent > 0 && <span style={cardChip('#3B6D11','#EEF5E7','#CBDDB8')}>Rent {fmt(rent)}/mo</span>}
           {payment > 0 && <span style={cardPill('#D97825','#FBF0E4')}>Loan {fmt(payment)}/mo</span>}
-          {(rent > 0 || payment > 0) && (
-            <span style={cardPill(cashflow >= 0 ? '#3B6D11' : '#B91C1C', '#F0EDE6')}>
-              {cashflow >= 0 ? '+' : ''}{fmt(cashflow)}/mo
-            </span>
-          )}
         </div>
         {lease ? (
           <button style={cardBtn} onClick={e => { e.stopPropagation(); setDrawerTab('rent'); setDrawer(p) }}>View Lease</button>

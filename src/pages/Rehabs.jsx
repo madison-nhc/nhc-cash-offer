@@ -185,10 +185,10 @@ export default function Rehabs({ onOpenSupplies }) {
             <span style={{ fontSize:10, color:'#6b7280', fontWeight:600, whiteSpace:'nowrap' }}>{pct}%</span>
           </div>
         )}
-        <div style={{ display:'flex', flexWrap:'wrap', gap:4, alignItems:'center' }}>
+        <div style={{ display:'flex', flexWrap:'wrap', gap:4, alignItems:'center', justifyContent:'center' }}>
           {p.type === 'Retail Listing' && <span style={cardPill(badge.color, '#F0EDE6')}>{badge.text}</span>}
           {p.stage === 'Purchased' && <span style={cardPill('#D97825', '#FBF0E4')}>Purchased</span>}
-          {daysActive !== null && <span style={{ fontSize:10, color: daysActive > 60 ? '#B91C1C' : '#9ca3af', marginLeft:'auto' }}>{daysActive}d</span>}
+          {daysActive !== null && <span style={{ fontSize:10, color: daysActive > 60 ? '#B91C1C' : '#9ca3af' }}>{daysActive}d</span>}
         </div>
         <button style={cardBtn} onClick={e => { e.stopPropagation(); setDashboard(p) }}>Renovation Dashboard</button>
       </>

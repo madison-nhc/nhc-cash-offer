@@ -143,10 +143,10 @@ export default function Listings() {
           </div>
           {p.commission_earned ? <span style={cardChip('#3B6D11','#EEF5E7','#CBDDB8')}>{fmt(p.commission_earned)}</span> : null}
         </div>
-        <div style={{ display:'flex', flexWrap:'wrap', gap:4, alignItems:'center' }}>
+        <div style={{ display:'flex', flexWrap:'wrap', gap:4, alignItems:'center', justifyContent:'center' }}>
           <span style={cardPill(badge.color, '#F0EDE6')}>{badge.text}</span>
           {p.arv && <span style={cardPill('#6b7280','#F0EDE6')}>ARV {fmt(p.arv)}</span>}
-          {p.days_on_market ? <span style={{ fontSize:10, color: p.days_on_market > 60 ? '#B91C1C' : '#9ca3af', marginLeft:'auto' }}>{p.days_on_market}d DOM</span> : null}
+          {p.days_on_market ? <span style={{ fontSize:10, color: p.days_on_market > 60 ? '#B91C1C' : '#9ca3af' }}>{p.days_on_market}d DOM</span> : null}
         </div>
       </>
     )
