@@ -479,7 +479,7 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
       address:form.address, beds:form.beds||null, baths:form.baths||null,
       seller_name:form.seller_name||null, seller_fub_link:form.seller_fub_link||null,
       photos_drive_link:form.photos_drive_link||null,
-      sqft:form.sqft||null, unit_count:parseInt(form.unit_count)||null,
+      sqft:form.sqft||null, unit_count:parseInt(form.unit_count)||null, unit_names:form.unit_names||null,
       arv:form.arv||null, asis_pct:form.asis_pct||50, asis_override:form.asis_override||null,
       profit_margin:form.profit_margin||15, profit_override:form.profit_override||null,
       cash_offer_override:form.cash_offer_override||null,
@@ -694,6 +694,14 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
             <Field label="Sq Ft"><input style={monoInp} type="number" value={form.sqft||''} onChange={set('sqft')} /></Field>
             <Field label="Units"><input style={monoInp} type="number" value={form.unit_count||''} onChange={set('unit_count')} /></Field>
           </FieldRow>
+          {parseInt(form.unit_count) > 1 && (
+            <Field label="Unit Names (comma-separated, optional)">
+              <input style={inp} value={form.unit_names||''} onChange={set('unit_names')} placeholder="e.g. A, B  or  101, 102" />
+              <div style={{ fontSize:11, color:'#9ca3af', marginTop:5 }}>
+                Used for empty unit slots on the Lease tab before a lease is added. Leave blank to default to "Unit 1", "Unit 2", etc.
+              </div>
+            </Field>
+          )}
           <div className="drawer-section">Owner / Seller</div>
           <FieldRow>
             <Field label="Name"><input style={inp} value={form.seller_name||''} onChange={set('seller_name')} /></Field>
@@ -1258,6 +1266,7 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
         propertyId={form.id}
         propertyAddress={form.address}
         unitCount={form.unit_count}
+        unitNames={form.unit_names}
         open={rentOpen}
         onClose={()=>setRentOpen(false)}
         onRentChange={()=>onSave()}

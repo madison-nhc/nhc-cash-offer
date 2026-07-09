@@ -497,7 +497,7 @@ function LeaseCard({ lease, onEdit, allExpenses, onSaved, defaultExpanded=true }
 }
 
 // ── Main RentTracker modal ────────────────────────────────────────────────────
-export default function RentTracker({ propertyId, propertyAddress, unitCount, open, onClose, onRentChange }) {
+export default function RentTracker({ propertyId, propertyAddress, unitCount, unitNames, open, onClose, onRentChange }) {
   const [leases, setLeases]   = useState([])
   const [loading, setLoading] = useState(true)
   const [editing, setEditing] = useState(null)  // null | 'new' | lease obj
@@ -617,8 +617,14 @@ export default function RentTracker({ propertyId, propertyAddress, unitCount, op
     return { label, current, past }
   })
   const slotCount = Math.max(unitCount || 0, unitSlots.length)
+  const customNames = (unitNames || '').split(',').map(s=>s.trim()).filter(Boolean)
+  const usedLabelsLower = new Set(unitSlots.map(s => s.label.toLowerCase()))
+  const availableCustomNames = customNames.filter(n => !usedLabelsLower.has(n.toLowerCase()))
+  let customIdx = 0
   for (let i = unitSlots.length; i < slotCount; i++) {
-    unitSlots.push({ label:`Unit ${i+1}`, current:null, past:[] })
+    const label = availableCustomNames[customIdx] || `Unit ${i+1}`
+    if (availableCustomNames[customIdx]) customIdx++
+    unitSlots.push({ label, current:null, past:[] })
   }
   // Current lease per unit, for the Maintenance table's Unit dropdown — tagging maintenance
   // to a specific past tenancy doesn't make sense, so only currently-open leases are offered.
@@ -774,5 +780,6 @@ export default function RentTracker({ propertyId, propertyAddress, unitCount, op
     </Modal>
   )
 }
+
 
 

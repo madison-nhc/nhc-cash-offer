@@ -260,6 +260,7 @@ export default function RentOverview({ propertyId, onOpenFull }) {
   const [maintenanceTotal, setMaintenanceTotal] = useState(0)
   const [maintenanceCount, setMaintenanceCount] = useState({ done:0, total:0 })
   const [unitCount, setUnitCount] = useState(null)
+  const [unitNames, setUnitNames] = useState('')
   const [loan, setLoan] = useState(null)
   const [loading, setLoading]     = useState(true)
 
@@ -269,13 +270,14 @@ export default function RentOverview({ propertyId, onOpenFull }) {
     setLoading(true)
     const [{ data: l }, { data: prop }, { data: exp }, { data: loans }] = await Promise.all([
       supabase.from('cashoffer_leases').select('*').eq('property_id', propertyId).order('lease_start', { ascending: false }),
-      supabase.from('cashoffer_properties').select('unit_count').eq('id', propertyId).single(),
+      supabase.from('cashoffer_properties').select('unit_count, unit_names').eq('id', propertyId).single(),
       supabase.from('cashoffer_turn_expenses').select('amount, status').eq('property_id', propertyId),
       supabase.from('cashoffer_loans').select('*').eq('property_id', propertyId).eq('is_active', true).limit(1),
     ])
     const leaseRows = l || []
     setLeases(leaseRows)
     setUnitCount(prop?.unit_count || null)
+    setUnitNames(prop?.unit_names || '')
     setLoan(loans?.[0] || null)
     setMaintenanceTotal((exp||[]).reduce((s,e)=>s+(parseFloat(e.amount)||0),0))
     setMaintenanceCount({ done:(exp||[]).filter(e=>e.status==='Completed').length, total:(exp||[]).length })
@@ -345,8 +347,14 @@ export default function RentOverview({ propertyId, onOpenFull }) {
   })
   // Pad out to unit_count from the Analyzer/Acquisition details, if that's more units than we have leases for
   const slotCount = Math.max(unitCount || 0, slots.length)
+  const customNames = (unitNames || '').split(',').map(s=>s.trim()).filter(Boolean)
+  const usedLabelsLower = new Set(slots.map(s => s.label.toLowerCase()))
+  const availableCustomNames = customNames.filter(n => !usedLabelsLower.has(n.toLowerCase()))
+  let customIdx = 0
   for (let i = slots.length; i < slotCount; i++) {
-    slots.push({ label:`Unit ${i+1}`, current:null, past:[] })
+    const label = availableCustomNames[customIdx] || `Unit ${i+1}`
+    if (availableCustomNames[customIdx]) customIdx++
+    slots.push({ label, current:null, past:[] })
   }
 
   const totalRentEarned = leases.reduce((s,l) => s + collectedForLease(l, exceptionsByLease).collected, 0)
@@ -388,4 +396,5 @@ export default function RentOverview({ propertyId, onOpenFull }) {
     </div>
   )
 }
+
 
