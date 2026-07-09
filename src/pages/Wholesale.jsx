@@ -4,6 +4,14 @@ import { useIsMobile } from '../hooks/useIsMobile.js'
 import { PageWrap, SectionBar, Card, Badge, EmptyState, LoadingSpinner, fmt, fmtK, useSort, SortTh } from '../components/ui.jsx'
 import PropertyDrawer from '../components/PropertyDrawer.jsx'
 import ProposalModal from '../components/ProposalModal.jsx'
+import KanbanBoard from '../components/KanbanBoard.jsx'
+
+const BOARD_COLUMNS = [
+  { key:'Under Contract', color:'#2D6FAF' },
+  { key:'Assigned',       color:'#6b21a8' },
+  { key:'Closed',         color:'#3B6D11' },  // terminal: drop opens drawer on Disposition
+  { key:'Cancelled',      color:'#9ca3af' },  // terminal: drops off this page (still in search/history)
+]
 
 export default function Wholesale() {
   const mobile = useIsMobile()
@@ -11,7 +19,9 @@ export default function Wholesale() {
   const [mailings, setMailings] = useState([])
   const [loading, setLoading] = useState(true)
   const [drawer, setDrawer] = useState(null)
+  const [drawerTab, setDrawerTab] = useState('analyzer')
   const [proposal, setProposal] = useState(null)
+  const [view, setView] = useState('board')
 
   useEffect(() => { load() }, [])
 
@@ -24,6 +34,34 @@ export default function Wholesale() {
     setProperties(p || [])
     setMailings(m || [])
     setLoading(false)
+  }
+
+  const columnFor = p => p.stage || 'Under Contract'
+
+  async function handleDrop(id, columnKey) {
+    const { error } = await supabase.from('cashoffer_properties').update({ stage: columnKey }).eq('id', id)
+    if (error) { alert(`Could not move deal: ${error.message}`); load(); return }
+    if (columnKey === 'Closed') {
+      // Terminal stage: open the drawer on Disposition so fee + close date get filled in
+      const { data } = await supabase.from('cashoffer_properties').select('*').eq('id', id).single()
+      if (data) { setDrawerTab('disposition'); setDrawer(data) }
+    }
+    load()
+  }
+
+  function openDrawer(p) { setDrawerTab('analyzer'); setDrawer(p) }
+
+  function wholesaleCardContent(p) {
+    return (
+      <>
+        <div style={{ fontSize:13, fontWeight:700, color:'#2C2C2C', marginBottom:4 }}>{p.address || 'New Property'}</div>
+        {p.wholesale_buyer && <div style={{ fontSize:11, color:'#6b7280', marginBottom:4 }}>{p.wholesale_buyer}</div>}
+        <div style={{ display:'flex', flexWrap:'wrap', gap:6, alignItems:'center' }}>
+          {p.purchase_price && <span style={{ fontSize:11, fontFamily:'monospace', color:'#6b7280' }}>Contract {fmt(p.purchase_price)}</span>}
+          {p.wholesale_fee && <span style={{ fontSize:11, fontFamily:'monospace', color:'#6b21a8', fontWeight:700 }}>Fee {fmt(p.wholesale_fee)}</span>}
+        </div>
+      </>
+    )
   }
 
   const totalFees       = properties.reduce((s, p) => s + (parseFloat(p.wholesale_fee) || 0), 0)
@@ -62,6 +100,31 @@ export default function Wholesale() {
         ))}
       </div>
 
+      {!mobile && (
+        <div style={{ display:'flex', justifyContent:'flex-end', marginBottom:14 }}>
+          <div style={{ display:'flex', gap:2 }}>
+            {[['board','Board'],['table','Table']].map(([v,l]) => (
+              <button key={v} onClick={() => setView(v)} style={{ padding:'6px 14px', border:'none', borderRadius:6, cursor:'pointer', background: view === v ? '#2C2C2C' : '#F0EDE6', color: view === v ? '#fff' : '#6b7280', fontSize:12, fontWeight: view === v ? 700 : 400, fontFamily:'inherit' }}>{l}</button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {view === 'board' && !mobile ? (
+        properties.length === 0 ? (
+          <EmptyState icon="○" text="No wholesale deals yet. Set deal type to Wholesale on a property in the Analyzer." />
+        ) : (
+          <KanbanBoard
+            columns={BOARD_COLUMNS}
+            items={properties}
+            columnFor={columnFor}
+            onOpen={openDrawer}
+            onDrop={handleDrop}
+            renderCard={wholesaleCardContent}
+          />
+        )
+      ) : (
+      <>
       <SectionBar>Wholesale Deals ({properties.length})</SectionBar>
 
       {properties.length === 0 ? (
@@ -81,7 +144,7 @@ export default function Wholesale() {
             </thead>
             <tbody>
               {sorted.map((p, i) => (
-                <tr key={p.id} onClick={() => setDrawer(p)}
+                <tr key={p.id} onClick={() => openDrawer(p)}
                   style={{ background:i%2===0?'#fff':'#FAFAF8', borderTop:'0.5px solid #F0EDE6', cursor:'pointer' }}
                   onMouseEnter={e=>e.currentTarget.style.background='#fef9f0'}
                   onMouseLeave={e=>e.currentTarget.style.background=i%2===0?'#fff':'#FAFAF8'}>
@@ -107,8 +170,10 @@ export default function Wholesale() {
           </table>
         </Card>
       )}
+      </>
+      )}
 
-      <PropertyDrawer property={drawer} open={!!drawer} onClose={() => setDrawer(null)} onSave={() => load()} mailings={mailings} onViewOffer={p => setProposal(p)} />
+      <PropertyDrawer property={drawer} open={!!drawer} onClose={() => setDrawer(null)} onSave={() => load()} mailings={mailings} onViewOffer={p => setProposal(p)} initialTab={drawerTab} />
       {proposal && <ProposalModal property={proposal} onClose={() => setProposal(null)} />}
     </PageWrap>
   )
