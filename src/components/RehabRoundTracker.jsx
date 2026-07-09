@@ -62,7 +62,7 @@ function InventoryPickerModal({ propertyId, roundId, onClose, onDone }) {
   }
 
   return (
-    <Modal title="Add Supply From Inventory" onClose={onClose} width={420}>
+    <Modal title="Add Supply From Inventory" onClose={onClose} hideCloseButton width={420}>
       <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
         {loading ? (
           <div style={{ textAlign:'center', padding:20, color:'#9ca3af', fontSize:12 }}>Loading…</div>
@@ -386,6 +386,7 @@ export default function RehabRoundTracker({ property, repairItems = [], onChange
       title={`Renovation Dashboard — ${property?.address?.split(',')[0] || ''}`}
       onClose={onClose}
       isDirty={rehabDirty}
+      hideCloseButton
       width={1240}
       footer={
         <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>

@@ -50,7 +50,7 @@ export function SectionBar({ children }) {
   )
 }
 
-export function Modal({ title, onClose, children, width = 560, footer, isDirty }) {
+export function Modal({ title, onClose, children, width = 560, footer, isDirty, hideCloseButton = false }) {
   // If the caller passes isDirty (a function returning true when there are unsaved
   // local-draft changes), backdrop clicks and the × button only confirm when there's
   // actually something to lose — a no-op edit session closes silently.
@@ -78,10 +78,12 @@ export function Modal({ title, onClose, children, width = 560, footer, isDirty }
           padding: '14px 20px', borderBottom: '1px solid #F0EDE6', flexShrink: 0
         }}>
           <span style={{ fontSize: 15, fontWeight: 700, color: '#2C2C2C' }}>{title}</span>
-          <button onClick={guardedClose} style={{
-            background: 'none', border: 'none', fontSize: 20, cursor: 'pointer',
-            color: '#6b7280', lineHeight: 1, padding: '0 4px'
-          }}>×</button>
+          {!hideCloseButton && (
+            <button onClick={guardedClose} style={{
+              background: 'none', border: 'none', fontSize: 20, cursor: 'pointer',
+              color: '#6b7280', lineHeight: 1, padding: '0 4px'
+            }}>×</button>
+          )}
         </div>
         <div style={{ padding: '20px', overflowY: 'auto', flex: 1 }}>
           {children}

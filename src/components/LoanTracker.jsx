@@ -589,7 +589,7 @@ export default function LoanTracker({ propertyId, propertyAddress, open, onClose
   )
 
   return (
-    <Modal title={`Loan Tracker — ${propertyAddress?.split(',')[0] || ''}`} onClose={onClose} isDirty={loanFormDirty} width={1240} footer={footer}>
+    <Modal title={`Loan Tracker — ${propertyAddress?.split(',')[0] || ''}`} onClose={onClose} isDirty={loanFormDirty} hideCloseButton width={1240} footer={footer}>
       {loading ? (
         <div style={{ textAlign:'center', padding:32, color:'#B8892A', fontSize:24 }}>⟳</div>
       ) : (

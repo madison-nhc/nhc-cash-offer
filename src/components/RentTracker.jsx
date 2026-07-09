@@ -723,7 +723,7 @@ export default function RentTracker({ propertyId, propertyAddress, open, onClose
     // No more auto-generated monthly rows — exceptions are logged on demand from the month strip.
 
     setEditing(null)
-    load()
+    load(true) // silent — stay on the tracker's main page, no spinner flash
     onRentChange && onRentChange()
   }
 
@@ -731,7 +731,7 @@ export default function RentTracker({ propertyId, propertyAddress, open, onClose
     if (!confirm('Delete this lease and all its logged exceptions?')) return
     await supabase.from('cashoffer_leases').delete().eq('id', id)
     setEditing(null)
-    load()
+    load(true)
     onRentChange && onRentChange()
   }
 
@@ -785,7 +785,8 @@ export default function RentTracker({ propertyId, propertyAddress, open, onClose
     <Modal
       title={`Lease Tracker — ${propertyAddress?.split(',')[0] || ''}`}
       onClose={onClose}
-      isDirty={()=> !editing && expensesDirty()}
+      isDirty={()=> !!editing || expensesDirty()}
+      hideCloseButton
       width={1240}
       footer={!editing && !loading ? (
         <div style={{ display:'flex', justifyContent:'flex-end', alignItems:'center', gap:8 }}>
