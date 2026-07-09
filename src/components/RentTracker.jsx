@@ -691,7 +691,7 @@ export default function RentTracker({ propertyId, propertyAddress, open, onClose
   }
   function handleCancelExpenses() {
     supabase.from('cashoffer_turn_expenses').select('*').eq('property_id', propertyId).order('created_at', { ascending: true })
-      .then(({ data }) => { setExpenses(data || []); setExpensesSnapshot(data || []); setDeletedExpenseIds([]) })
+      .then(({ data }) => { setExpenses(data || []); setExpensesSnapshot(data || []); setDeletedExpenseIds([]); onClose() })
   }
   function expensesDirty() {
     return deletedExpenseIds.length > 0 || JSON.stringify(expenses) !== JSON.stringify(expensesSnapshot)
