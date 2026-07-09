@@ -4,7 +4,7 @@ import { useIsMobile } from '../hooks/useIsMobile.js'
 import { PageWrap, SectionBar, Card, EmptyState, LoadingSpinner, fmt, fmtK, useSort, SortTh } from '../components/ui.jsx'
 import PropertyDrawer from '../components/PropertyDrawer.jsx'
 import ProposalModal from '../components/ProposalModal.jsx'
-import KanbanBoard, { cardPill, cardChip, cardBtn, MoneyBurst } from '../components/KanbanBoard.jsx'
+import KanbanBoard, { cardPill, cardChip, cardBtn, MoneyBurst, shortStreet } from '../components/KanbanBoard.jsx'
 import RehabRoundTracker from '../components/RehabRoundTracker.jsx'
 
 const REHAB_STAGE_COLOR = {
@@ -167,7 +167,7 @@ export default function Rehabs({ onOpenSupplies }) {
     return (
       <>
         <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:8 }}>
-          <div style={{ fontSize:13, fontWeight:700, color:'#2C2C2C', minWidth:0 }}>{p.address?.split(',')[0] || 'New Property'}</div>
+          <div style={{ fontSize:13, fontWeight:700, color:'#2C2C2C', minWidth:0 }}>{shortStreet(p.address) || 'New Property'}</div>
           <div style={{ fontSize:11, color:'#6b7280', flexShrink:0 }}>{p.owner || 'BPV'}</div>
         </div>
         <div style={{ fontSize:10, color:'#9ca3af', marginTop:1, marginBottom:8 }}>{p.address?.split(',').slice(1,3).join(',').trim() || ''}</div>

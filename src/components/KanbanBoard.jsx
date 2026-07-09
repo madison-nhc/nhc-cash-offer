@@ -18,6 +18,16 @@ export const cardBtn = {
   cursor:'pointer', fontFamily:'inherit',
 }
 
+
+// "1234 Chestnut Parkway" -> "1234 Chestnut Pkwy" so street lines stay on one line
+const STREET_ABBREV = { Street:'St', Avenue:'Ave', Boulevard:'Blvd', Drive:'Dr', Lane:'Ln', Road:'Rd', Court:'Ct', Circle:'Cir', Place:'Pl', Parkway:'Pkwy', Terrace:'Ter', Trail:'Trl', Highway:'Hwy', Square:'Sq' }
+export function shortStreet(address) {
+  const street = (address || '').split(',')[0]
+  if (!street) return ''
+  return street.replace(/\b(Street|Avenue|Boulevard|Drive|Lane|Road|Court|Circle|Place|Parkway|Terrace|Trail|Highway|Square)\b/gi,
+    m => STREET_ABBREV[m[0].toUpperCase() + m.slice(1).toLowerCase()] || m)
+}
+
 // One payload map for every promotion/relegation tray
 export const PROMO_PAYLOADS = {
   'Renovation':     { type:'Renovation',     stage:'Purchased',      disposition:'renovation' },

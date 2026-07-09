@@ -6,7 +6,7 @@ import PropertyDrawer from '../components/PropertyDrawer.jsx'
 import ProposalModal from '../components/ProposalModal.jsx'
 import PackageDeals from './PackageDeals.jsx'
 import MobileCard, { CardRow, CardLabel, CardValue } from '../components/MobileCard.jsx'
-import KanbanBoard, { cardPill, cardChip, cardBtn, MoneyBurst, PROMO_PAYLOADS } from '../components/KanbanBoard.jsx'
+import KanbanBoard, { cardPill, cardChip, cardBtn, MoneyBurst, PROMO_PAYLOADS, shortStreet } from '../components/KanbanBoard.jsx'
 
 function calcCashOffer(p) {
   const arv = parseFloat(p.arv) || 0
@@ -48,12 +48,14 @@ function analyzerCardContent(p, onViewOffer) {
   const days = daysAgo(p.updated_at)
   return (
     <>
-      <div style={{ fontSize:13, fontWeight:700, color:'#2C2C2C' }}>{p.address?.split(',')[0] || 'New Property'}</div>
+      <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:8 }}>
+          <div style={{ fontSize:13, fontWeight:700, color:'#2C2C2C', minWidth:0 }}>{shortStreet(p.address) || 'New Property'}</div>
+          {p.owner ? <div style={{ fontSize:11, color:'#6b7280', flexShrink:0 }}>{p.owner}</div> : null}
+        </div>
         <div style={{ fontSize:10, color:'#9ca3af', marginTop:1, marginBottom:3 }}>{p.address?.split(',').slice(1,3).join(',').trim() || ''}</div>
       <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:8, marginBottom:8 }}>
         <div style={{ minWidth:0 }}>
           {p.seller_name && <div style={{ fontSize:11.5, color:'#B8892A', fontWeight:600, marginBottom:1 }}>{p.seller_name}</div>}
-          {p.owner && <div style={{ fontSize:11, color:'#6b7280' }}>{p.owner}</div>}
         </div>
         {cashOffer ? (
           <span style={cardChip()}>{fmt(cashOffer)}</span>
