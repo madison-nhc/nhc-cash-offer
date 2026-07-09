@@ -9,6 +9,7 @@ import Listings from './pages/Listings.jsx'
 import Holds from './pages/Holds.jsx'
 import Wholesale from './pages/Wholesale.jsx'
 import Sold from './pages/Sold.jsx'
+import DeadDeals from './pages/DeadDeals.jsx'
 import MailingTracker from './pages/MailingTracker.jsx'
 import Vendors from './pages/Vendors.jsx'
 import Inventory from './pages/Inventory.jsx'
@@ -95,6 +96,7 @@ const PIPELINE_TABS = [
   { id:'listings',   label:'Listings',         short:'Listings',  path:'/listings' },
   { id:'wholesale',  label:'Wholesale',        short:'Wholesale', path:'/wholesale' },
   { id:'sold',       label:'Sold',             short:'Sold',      path:'/sold' },
+  { id:'deaddeals',  label:'Dead Deals',       short:'Dead',      path:'/dead-deals' },
 ]
 const OPS_TABS = [
   { id:'vendors',    label:'Vendors',          short:'Vendors',   path:'/vendors' },
@@ -175,6 +177,7 @@ export default function App() {
     holds:     <Holds />,
     wholesale: <Wholesale />,
     sold:      <Sold />,
+    deaddeals: <DeadDeals />,
     mailings:  <MailingTracker />,
     vendors:   <Vendors />,
     inventory: <Inventory />,
