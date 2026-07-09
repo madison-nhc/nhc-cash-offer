@@ -36,12 +36,36 @@ function daysAgo(dateStr) {
 }
 
 const PROMO_ZONES = [
-  { key:'Renovation',     label:'PURCHASED', emoji:'\u{1F3D7}\u{FE0F}', color:'#6b21a8' },
-  { key:'Retail Listing', label:'LIST IT',   emoji:'\u{1FAA7}', color:'#3B6D11' },
-  { key:'Wholesale',      label:'WHOLESALE', emoji:'\u{1F91D}', color:'#6b21a8' },
+  { key:'Renovation',     label:'PURCHASED',        sub:'Flip / Hold',      emoji:'\u{1F3D7}\u{FE0F}', color:'#6b21a8' },
+  { key:'Retail Listing', label:'STANDARD LISTING', sub:'NHC \u00b7 client',   emoji:'\u{1FAA7}', color:'#3B6D11' },
+  { key:'Wholesale',      label:'WHOLESALE',        sub:'Assign contract',  emoji:'\u{1F91D}', color:'#6b21a8' },
   { divider:true },
-  { key:'Lost',           label:'DEAD',      emoji:'\u{1F480}', color:'#B91C1C' },
+  { key:'Lost',           label:'DEAD',             sub:'Lost / passed',    emoji:'\u{1F480}', color:'#B91C1C' },
 ]
+
+// Purchasing a deal kicks off its renovation automatically: the Analyzer's
+// repair estimates become Round 1 line items. Skipped when the property
+// already has renovation items (e.g. it cycled back through the Analyzer),
+// so real tracked costs are never duplicated or overwritten.
+async function seedRenovationFromAnalyzer(p) {
+  const estimates = (p.repair_items || []).filter(r => r.name && r.name.trim())
+  if (!estimates.length) return
+  const { count } = await supabase.from('cashoffer_rehab_items')
+    .select('id', { count: 'exact', head: true }).eq('property_id', p.id)
+  if (count > 0) return  // renovation already has items — leave it alone
+  let { data: round } = await supabase.from('cashoffer_rehab_rounds')
+    .select('id').eq('property_id', p.id).order('sort_order', { ascending: true }).limit(1).maybeSingle()
+  if (!round) {
+    const { data: created } = await supabase.from('cashoffer_rehab_rounds')
+      .insert({ property_id: p.id, label: 'Round 1', sort_order: 0 }).select().single()
+    round = created
+  }
+  if (!round) return
+  await supabase.from('cashoffer_rehab_items').insert(estimates.map((r, i) => ({
+    property_id: p.id, rehab_round_id: round.id,
+    name: r.name, estimated_cost: parseFloat(r.cost) || 0, status: 'Scheduled', sort_order: i,
+  })))
+}
 
 function analyzerCardContent(p, onViewOffer) {
   const cashOffer = calcCashOffer(p)
@@ -99,6 +123,10 @@ function AnalyzerBoard({ properties, onOpen, onMoved, onPromoted, onViewOffer })
     if (!payload) return
     const { error } = await supabase.from('cashoffer_properties').update(payload).eq('id', id)
     if (error) { alert(`Could not promote deal: ${error.message}`); onMoved(); return }
+    if (typeKey === 'Renovation') {
+      const item = properties.find(p => p.id === id)
+      if (item) await seedRenovationFromAnalyzer(item)
+    }
     setBurst({ ...coords, key: Date.now() })
     setTimeout(() => setBurst(null), 1600)
     onPromoted?.(id, typeKey)

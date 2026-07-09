@@ -16,19 +16,17 @@ const PROMO_ZONES = [
   { key:'Cancelled / Expired', label:'CANCEL / EXPIRE', emoji:'\u{1F6AB}', color:'#9ca3af' },
 ]
 
+// Pure market phases — renovation work (client Reno listings) is tracked on
+// the Renovations page; deals arrive here once they're headed to market.
+// Closed = SOLD in the tray, which sends the deal to the Sold page.
 const BOARD_COLUMNS = [
-  { key:'Reno In Progress',    color:'#D97825' },  // Client Reno only
-  { key:'Reno Completed',      color:'#B8892A' },  // Client Reno only
-  { key:'Listed',              color:'#3B6D11' },
-  { key:'Under Contract',      color:'#2D6FAF' },
+  { key:'Off Market',     color:'#9ca3af' },
+  { key:'Listed',         color:'#3B6D11', label:'On the Market' },
+  { key:'Under Contract', color:'#2D6FAF' },
 ]
 
-// Which columns a given deal may be dropped into (stage sets differ per type)
-function validDropTarget(p, col) {
-  if (col === 'Reno In Progress' || col === 'Reno Completed')
-    return p.type === 'Retail Listing' && p.listing_type === 'Reno'
-  return true // Listed / Under Contract valid for all types shown here
-}
+// All market columns are valid for every type shown on this page
+function validDropTarget() { return true }
 
 function ownerLabel(p) {
   if (p.type === 'Flip') return { text:'Flip',   color:'#D97825', owned:true }
@@ -57,8 +55,8 @@ export default function Listings() {
     const [{ data: p }, { data: m }] = await Promise.all([
       // Active listings only — no sold_date and no disposition_date
       supabase.from('cashoffer_properties').select('*')
-        .or('type.eq."Retail Listing",and(type.in.(Flip,Hold),stage.in.("Listed","Under Contract"))')
-        .not('stage', 'in', '("Sold","Closed","Cancelled / Expired")')
+        .or('type.eq."Retail Listing",and(type.in.(Flip,Hold),stage.in.("Off Market","Listed","Under Contract"))')
+        .not('stage', 'in', '("Sold","Closed","Cancelled / Expired","Reno In Progress","Reno Completed")')
         .order('list_date', { ascending: false }),
       supabase.from('cashoffer_mailings').select('id,campaign_name,drop_date').order('drop_date', { ascending: false }),
     ])
@@ -73,7 +71,7 @@ export default function Listings() {
     return true
   })
 
-  const columnFor = p => p.stage || 'Listed'
+  const columnFor = p => BOARD_COLUMNS.some(col => col.key === p.stage) ? p.stage : 'Off Market'
 
   async function handleDrop(id, columnKey) {
     const item = properties.find(p => p.id === id)

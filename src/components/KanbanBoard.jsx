@@ -31,7 +31,7 @@ export function shortStreet(address) {
 // One payload map for every promotion/relegation tray
 export const PROMO_PAYLOADS = {
   'Renovation':     { type:'Renovation',     stage:'Purchased',      disposition:'renovation' },
-  'Retail Listing': { type:'Retail Listing', stage:'Listed',         disposition:'listing' },
+  'Retail Listing': { type:'Retail Listing', stage:'Off Market',     disposition:'listing' },
   'Wholesale':      { type:'Wholesale',      stage:'Under Contract', disposition:'wholesale' },
   'Analyzing':      { type:'Analyzing',      stage:'New Lead',       disposition:null },
 }
@@ -187,6 +187,7 @@ export default function KanbanBoard({ columns, items, columnFor, onOpen, onDrop,
             >
               <div style={{ fontSize:22, marginBottom:4 }}>{z.emoji}</div>
               <div style={{ fontSize:11, fontWeight:700, letterSpacing:0.3, color: overZone===z.key ? '#fff' : z.color }}>{z.label}</div>
+              {z.sub && <div style={{ fontSize:9, marginTop:2, color: overZone===z.key ? '#ffffffcc' : '#9ca3af' }}>{z.sub}</div>}
             </div>
             )
           ))}

@@ -30,13 +30,13 @@ const TYPE_TO_DISP = { 'Analyzing':null, 'Renovation':'renovation', 'Flip':'flip
 const STAGE_BY_TYPE = {
   'Analyzing':      ['New Lead','Needs Cash Offer','Offer Submitted','Offer Accepted','Lost'],
   'Renovation':     ['Purchased','Renovation'],
-  'Flip':           ['Listed','Under Contract','Sold'],
+  'Flip':           ['Off Market','Listed','Under Contract','Sold'],
   'Hold':           ['Rent Ready','Rental Listed','Leased','Listed','Sold'],
-  'Retail Listing': { 'As-Is':['Listed','Under Contract','Sold','Cancelled / Expired'], 'Reno':['Reno In Progress','Reno Completed','Listed','Under Contract','Sold','Cancelled / Expired'] },
+  'Retail Listing': { 'As-Is':['Off Market','Listed','Under Contract','Sold','Cancelled / Expired'], 'Reno':['Reno In Progress','Reno Completed','Off Market','Listed','Under Contract','Sold','Cancelled / Expired'] },
   'Wholesale':      ['Under Contract','Assigned','Closed','Cancelled'],
 }
 const STAGE_COLOR = {
-  'New Lead':'#9ca3af', 'Needs Cash Offer':'#D97825', 'Offer Submitted':'#B8892A', 'Offer Accepted':'#3B6D11',
+  'New Lead':'#9ca3af', 'Needs Cash Offer':'#D97825', 'Offer Submitted':'#B8892A', 'Offer Accepted':'#3B6D11', 'Off Market':'#9ca3af',
   Purchased:'#D97825', Renovation:'#6b21a8', Rehab:'#6b21a8', Listed:'#3B6D11', 'Under Contract':'#2D6FAF', Sold:'#3B6D11',
   'Rent Ready':'#B8892A', 'Rental Listed':'#2D6FAF', Leased:'#3B6D11', 'Reno In Progress':'#D97825', 'Reno Completed':'#B8892A',
   Assigned:'#6b21a8', Closed:'#3B6D11',
