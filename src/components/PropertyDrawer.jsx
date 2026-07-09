@@ -1039,7 +1039,7 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
       {tab==='rent' && (
         <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
           {form.id ? (<>
-            <RentOverview propertyId={form.id} onOpenFull={()=>setRentOpen(true)} />
+            <RentOverview propertyId={form.id} onOpenFull={()=>setRentOpen(true)} refreshSignal={rentOpen} onRentChange={()=>onSave()} />
             <Btn variant="outline" onClick={()=>setLedgerOpen(true)} style={{ fontSize:12 }}>View Partner Payback</Btn>
           </>) : (
             <div style={{ background:'#F0EDE6', borderRadius:8, padding:'14px', textAlign:'center', fontSize:12, color:'#9ca3af' }}>
@@ -1256,8 +1256,6 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
       <RentTracker
         propertyId={form.id}
         propertyAddress={form.address}
-        unitCount={form.unit_count}
-        unitNames={form.unit_names}
         open={rentOpen}
         onClose={()=>setRentOpen(false)}
         onRentChange={()=>onSave()}

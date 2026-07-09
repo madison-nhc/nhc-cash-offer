@@ -119,14 +119,13 @@ function UnitSlot({ unitLabel, current, past, exceptionsByLease, onOpenFull }) {
   if (!current) {
     return (
       <div>
-        <div style={{
-          background:'transparent', borderRadius:8, padding:'18px 14px',
-          border:'2px dashed #D6D2CA', display:'flex', alignItems:'center', justifyContent:'center', gap:12,
-        }}>
+        <div
+          onClick={onOpenFull}
+          style={{
+            background:'transparent', borderRadius:8, padding:'18px 14px', cursor:'pointer',
+            border:'2px dashed #D6D2CA', display:'flex', alignItems:'center', justifyContent:'center',
+          }}>
           <div style={{ fontSize:12, color:'#9ca3af', fontWeight:600 }}>{unitLabel} — vacant</div>
-          <button onClick={onOpenFull} style={{ background:'none', border:'1px solid #3B6D11', borderRadius:6, padding:'5px 12px', fontSize:11, fontWeight:700, cursor:'pointer', color:'#3B6D11', fontFamily:'inherit' }}>
-            + Add Lease — {unitLabel}
-          </button>
         </div>
         {past.length > 0 && (
           <PastLeasesPanel past={past} exceptionsByLease={exceptionsByLease} showPast={showPast} setShowPast={setShowPast} />
@@ -254,7 +253,7 @@ function ExpensesSection({ propertyId }) {
   )
 }
 
-export default function RentOverview({ propertyId, onOpenFull }) {
+export default function RentOverview({ propertyId, onOpenFull, refreshSignal, onRentChange }) {
   const [leases, setLeases]       = useState([])
   const [exceptions, setExceptions] = useState([])
   const [maintenanceTotal, setMaintenanceTotal] = useState(0)
@@ -264,10 +263,13 @@ export default function RentOverview({ propertyId, onOpenFull }) {
   const [loan, setLoan] = useState(null)
   const [loading, setLoading]     = useState(true)
 
-  useEffect(() => { if (propertyId) load() }, [propertyId])
+  // Refetch whenever this property is selected, and again whenever the full Lease
+  // Tracker modal opens/closes (refreshSignal flips) — otherwise this panel keeps
+  // showing stale data (unit count, leases, etc.) after edits made in that modal.
+  useEffect(() => { if (propertyId) load() }, [propertyId, refreshSignal])
 
-  async function load() {
-    setLoading(true)
+  async function load(silent=false) {
+    if (!silent) setLoading(true)
     const [{ data: l }, { data: prop }, { data: exp }, { data: loans }] = await Promise.all([
       supabase.from('cashoffer_leases').select('*').eq('property_id', propertyId).order('lease_start', { ascending: false }),
       supabase.from('cashoffer_properties').select('unit_count, unit_names').eq('id', propertyId).single(),
@@ -290,6 +292,14 @@ export default function RentOverview({ propertyId, onOpenFull }) {
       setExceptions([])
     }
     setLoading(false)
+  }
+
+  async function changeUnitCount(delta) {
+    const next = Math.max(1, (unitCount || 1) + delta)
+    setUnitCount(next)
+    await supabase.from('cashoffer_properties').update({ unit_count: next }).eq('id', propertyId)
+    load(true)
+    onRentChange && onRentChange()
   }
 
   if (loading) return <div style={{ textAlign:'center', padding:20, color:'#9ca3af', fontSize:12 }}>Loading…</div>
@@ -352,8 +362,16 @@ export default function RentOverview({ propertyId, onOpenFull }) {
 
       {/* Leases */}
       <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
-        <div style={{ fontSize:11, fontWeight:700, color:'#9ca3af', textTransform:'uppercase', letterSpacing:0.8 }}>
-          {slots.length > 1 ? `${slots.length} Units` : 'Lease'}
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+          <div style={{ fontSize:11, fontWeight:700, color:'#9ca3af', textTransform:'uppercase', letterSpacing:0.8 }}>
+            {slots.length > 1 ? `${slots.length} Units` : 'Lease'}
+          </div>
+          <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+            <span style={{ fontSize:10, fontWeight:700, color:'#9ca3af', textTransform:'uppercase', letterSpacing:0.6 }}>Units</span>
+            <button onClick={()=>changeUnitCount(-1)} disabled={(unitCount||1)<=1} style={{ width:22, height:22, borderRadius:5, border:'1px solid #D6D2CA', background:'#fff', color:'#6b7280', fontSize:13, fontWeight:700, cursor: (unitCount||1)<=1 ? 'not-allowed' : 'pointer', fontFamily:'inherit', opacity: (unitCount||1)<=1 ? 0.4 : 1 }}>−</button>
+            <span style={{ fontSize:12, fontWeight:700, color:'#2C2C2C', fontFamily:'monospace', minWidth:16, textAlign:'center' }}>{unitCount||1}</span>
+            <button onClick={()=>changeUnitCount(1)} style={{ width:22, height:22, borderRadius:5, border:'1px solid #D6D2CA', background:'#fff', color:'#6b7280', fontSize:13, fontWeight:700, cursor:'pointer', fontFamily:'inherit' }}>+</button>
+          </div>
         </div>
         {slots.map(s => (
           <UnitSlot key={s.label} unitLabel={s.label} current={s.current} past={s.past} exceptionsByLease={exceptionsByLease} onOpenFull={onOpenFull} />
@@ -378,6 +396,7 @@ export default function RentOverview({ propertyId, onOpenFull }) {
     </div>
   )
 }
+
 
 
 

@@ -537,31 +537,22 @@ function LeaseCard({ lease, onEdit, allExpenses, onSaved, defaultExpanded=true }
 }
 
 // ── Main RentTracker modal ────────────────────────────────────────────────────
-export default function RentTracker({ propertyId, propertyAddress, unitCount, unitNames, open, onClose, onRentChange }) {
+export default function RentTracker({ propertyId, propertyAddress, open, onClose, onRentChange }) {
   const [leases, setLeases]   = useState([])
   const [loading, setLoading] = useState(true)
   const [editing, setEditing] = useState(null)  // null | 'new' | lease obj
   const [expenses, setExpenses]           = useState([])
   const [deletedExpenseIds, setDeletedExpenseIds] = useState([])
   const [expensesSaving, setExpensesSaving] = useState(false)
-  const [unitCountLocal, setUnitCountLocal] = useState(unitCount || 1)
-  const [unitNamesLocal, setUnitNamesLocal] = useState(unitNames || '')
+  const [unitCountLocal, setUnitCountLocal] = useState(1)
+  const [unitNamesLocal, setUnitNamesLocal] = useState('')
   const [selectedUnit, setSelectedUnit] = useState('All')
   const closingDate = null
 
-  useEffect(() => { setUnitCountLocal(unitCount || 1) }, [unitCount])
-  useEffect(() => { setUnitNamesLocal(unitNames || '') }, [unitNames])
-
-  async function changeUnitCount(delta) {
-    const next = Math.max(1, unitCountLocal + delta)
-    setUnitCountLocal(next)
-    await supabase.from('cashoffer_properties').update({ unit_count: next }).eq('id', propertyId)
-    onRentChange && onRentChange()
-  }
-
   // Rename a unit header. Real units (backed by at least one lease) rename the
   // underlying lease rows directly. Empty/padded slots just update their position
-  // in the property's stored unit_names list.
+  // in the property's stored unit_names list. The number of units itself is managed
+  // from the drawer's Lease tab now, not here — this only reads it for slot padding.
   async function renameUnit(oldLabel, newLabel, isReal, emptySlotIndex) {
     const trimmed = (newLabel || '').trim()
     if (!trimmed || trimmed === oldLabel) return
@@ -581,18 +572,21 @@ export default function RentTracker({ propertyId, propertyAddress, unitCount, un
 
   useEffect(() => { if (open && propertyId) load() }, [open, propertyId])
 
-  // silent=true skips the loading-spinner swap — used for small updates (renaming a unit,
-  // changing unit count) where briefly unmounting the whole content caused a click event
-  // to land on the modal backdrop mid-render and accidentally close the tracker.
+  // silent=true skips the loading-spinner swap — used for small updates (renaming a unit)
+  // where briefly unmounting the whole content caused a click event to land on the modal
+  // backdrop mid-render and accidentally close the tracker.
   async function load(silent=false) {
     if (!silent) setLoading(true)
-    const [leasesRes, expensesRes] = await Promise.all([
+    const [leasesRes, expensesRes, propRes] = await Promise.all([
       supabase.from('cashoffer_leases').select('*').eq('property_id', propertyId).order('lease_start', { ascending: false }),
       supabase.from('cashoffer_turn_expenses').select('*').eq('property_id', propertyId).order('created_at', { ascending: true }),
+      supabase.from('cashoffer_properties').select('unit_count, unit_names').eq('id', propertyId).single(),
     ])
     setLeases(leasesRes.data || [])
     setExpenses(expensesRes.data || [])
     setDeletedExpenseIds([])
+    setUnitCountLocal(propRes.data?.unit_count || 1)
+    setUnitNamesLocal(propRes.data?.unit_names || '')
     setLoading(false)
   }
 
@@ -760,23 +754,15 @@ export default function RentTracker({ propertyId, propertyAddress, unitCount, un
             </div>
           )}
 
-          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:12, flexWrap:'wrap', gap:10 }}>
-            <div style={{ display:'flex', alignItems:'center', gap:6, flexWrap:'wrap' }}>
-              {['All', ...unitSlots.map(s=>s.label)].map(label=>(
-                <button key={label} onClick={()=>setSelectedUnit(label)} style={{
-                  border:`1.5px solid ${selectedUnit===label ? '#B8892A' : '#D6D2CA'}`,
-                  background: selectedUnit===label ? '#B8892A18' : '#fff',
-                  color: selectedUnit===label ? '#B8892A' : '#6b7280',
-                  borderRadius:6, padding:'5px 12px', fontSize:12, fontWeight:700, cursor:'pointer', fontFamily:'inherit',
-                }}>{label}</button>
-              ))}
-            </div>
-            <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-              <span style={{ fontSize:11, fontWeight:700, color:'#9ca3af', textTransform:'uppercase', letterSpacing:0.7 }}>Units</span>
-              <button onClick={()=>changeUnitCount(-1)} disabled={unitCountLocal<=1} style={{ width:26, height:26, borderRadius:6, border:'1px solid #D6D2CA', background:'#fff', color:'#6b7280', fontSize:14, fontWeight:700, cursor: unitCountLocal<=1 ? 'not-allowed' : 'pointer', fontFamily:'inherit', opacity: unitCountLocal<=1 ? 0.4 : 1 }}>−</button>
-              <span style={{ fontSize:14, fontWeight:700, color:'#2C2C2C', fontFamily:'monospace', minWidth:20, textAlign:'center' }}>{unitCountLocal}</span>
-              <button onClick={()=>changeUnitCount(1)} style={{ width:26, height:26, borderRadius:6, border:'1px solid #D6D2CA', background:'#fff', color:'#6b7280', fontSize:14, fontWeight:700, cursor:'pointer', fontFamily:'inherit' }}>+</button>
-            </div>
+          <div style={{ display:'flex', alignItems:'center', gap:6, flexWrap:'wrap', marginBottom:12 }}>
+            {['All', ...unitSlots.map(s=>s.label)].map(label=>(
+              <button key={label} onClick={()=>setSelectedUnit(label)} style={{
+                border:`1.5px solid ${selectedUnit===label ? '#B8892A' : '#D6D2CA'}`,
+                background: selectedUnit===label ? '#B8892A18' : '#fff',
+                color: selectedUnit===label ? '#B8892A' : '#6b7280',
+                borderRadius:6, padding:'5px 12px', fontSize:12, fontWeight:700, cursor:'pointer', fontFamily:'inherit',
+              }}>{label}</button>
+            ))}
           </div>
 
           {unitSlots.filter(slot => selectedUnit==='All' || slot.label===selectedUnit).map(slot => (
@@ -872,6 +858,7 @@ export default function RentTracker({ propertyId, propertyAddress, unitCount, un
     </Modal>
   )
 }
+
 
 
 
