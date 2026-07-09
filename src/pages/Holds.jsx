@@ -7,6 +7,7 @@ import ProposalModal from '../components/ProposalModal.jsx'
 import KanbanBoard, { cardPill, cardChip, cardBtn, MoneyBurst, shortStreet } from '../components/KanbanBoard.jsx'
 
 const BOARD_COLUMNS = [
+  { key:'Vacant',        color:'#D97825' },  // between tenants, needs a turn — expenses live on the Rent tab
   { key:'Rent Ready',    color:'#B8892A' },
   { key:'Rental Listed', color:'#2D6FAF' },
   { key:'Leased',        color:'#3B6D11' },  // drop opens drawer on Rent tab to set up the lease
@@ -84,8 +85,8 @@ export default function Holds() {
   async function handleDrop(id, columnKey) {
     const { error } = await supabase.from('cashoffer_properties').update({ stage: columnKey }).eq('id', id)
     if (error) { alert(`Could not move deal: ${error.message}`); load(); return }
-    if (columnKey === 'Leased') {
-      // Set up the lease while it's in front of you
+    if (columnKey === 'Leased' || columnKey === 'Vacant') {
+      // Leased: set up the lease. Vacant: log turn expenses. Both live on the Rent tab.
       const { data } = await supabase.from('cashoffer_properties').select('*').eq('id', id).single()
       if (data) { setDrawerTab('rent'); setDrawer(data) }
     }
