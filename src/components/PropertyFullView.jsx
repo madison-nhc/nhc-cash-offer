@@ -130,7 +130,7 @@ export default function PropertyFullView({ propertyId }) {
   const d = calcOffers(property, repairs)
 
   return (
-    <div style={{ minHeight:'100vh', background:'#FAFAF8', fontFamily:'inherit' }}>
+    <div style={{ minHeight:'100vh', background:'#FAFAF8', fontFamily:'inherit', paddingBottom:76 }}>
       <div style={{ background:'#fff', borderBottom:'2px solid #B8892A', padding:'14px 24px', display:'flex', alignItems:'center', gap:12 }}>
         <img src="/nhc-logo.svg" alt="NHC" style={{ width:26, height:26 }} />
         <div style={{ fontSize:16, fontWeight:700, color:'#2C2C2C' }}>{property.address || 'Property'}</div>
@@ -152,6 +152,12 @@ export default function PropertyFullView({ propertyId }) {
             <Field label="Cash Offer Override ($)"><input style={{ ...monoInp, minHeight:34 }} type="number" value={property.cash_offer_override??''} onChange={set('cash_offer_override')} /></Field>
           </FieldRow>
 
+          <div style={{ fontSize:10, fontWeight:700, color:'#3B6D11', textTransform:'uppercase', letterSpacing:0.6, marginTop:4 }}>Cash Offer Commission</div>
+          <FieldRow>
+            <Field label="% of Cash Offer"><input style={{ ...monoInp, minHeight:34 }} type="number" step="0.5" placeholder="3" value={property.comm_cash_offer_pct??''} onChange={set('comm_cash_offer_pct')} /></Field>
+            <Field label="% of ARV"><input style={{ ...monoInp, minHeight:34 }} type="number" step="0.5" placeholder="6" value={property.comm_cash_arv_pct??''} onChange={set('comm_cash_arv_pct')} /></Field>
+          </FieldRow>
+
           <div style={{ fontSize:10, fontWeight:700, color:'#2D6FAF', textTransform:'uppercase', letterSpacing:0.6, marginTop:4 }}>Holding Cost — As-Is Net</div>
           <FieldRow>
             <Field label="As-Is Holding % / mo"><input style={{ ...monoInp, minHeight:34 }} type="number" step="0.05" placeholder="0.5" value={property.hold_opt2_pct??''} onChange={set('hold_opt2_pct')} /></Field>
@@ -170,7 +176,8 @@ export default function PropertyFullView({ propertyId }) {
                 { label:'Cash Offer', value:d.cashOffer, color:'#3B6D11', rows:[
                   { l:'ARV', v:fmt(d.arv) },
                   { l:'Repairs', v:`−${fmt(d.reno)}` },
-                  { l:`Comm (${(d.commCashPct*100).toFixed(1).replace(/\.0$/,'')}%)`, v:`−${fmt(d.commCashPct*d.arv)}` },
+                  { l:`Comm (${(d.commOfferPct*100).toFixed(1).replace(/\.0$/,'')}% of offer)`, v:`−${fmt(d.commOfferAmt)}` },
+                  { l:`Comm (${(d.commArvPct*100).toFixed(1).replace(/\.0$/,'')}% of ARV)`, v:`−${fmt(d.commArvAmt)}` },
                   { l:`Holding (${d.cashHoldMo}mo)`, v:`−${fmt(d.cashHold)}` },
                   { l:'Profit margin', v:`−${fmt(d.profit)}` },
                 ]},
@@ -232,13 +239,6 @@ export default function PropertyFullView({ propertyId }) {
             </tbody>
           </table>
           <button onClick={addRepair} style={{ background:'transparent', border:'1px dashed #D6D2CA', borderRadius:6, padding:'6px', color:'#9ca3af', fontSize:12, cursor:'pointer', fontFamily:'inherit', width:'100%' }}>+ Add Line Item</button>
-
-          {property.arv && (
-            <button onClick={()=>setProposalOpen(true)}
-              style={{ background:'#2D6FAF', color:'#fff', border:'none', borderRadius:6, padding:'11px 16px', cursor:'pointer', fontSize:13, fontWeight:700, fontFamily:'inherit', width:'100%', marginTop:4 }}>
-              Generate Offer
-            </button>
-          )}
         </div>
 
         <div style={{ background:'#fff', borderRadius:10, border:'0.5px solid #D6D2CA', padding:20 }}>
@@ -267,6 +267,13 @@ export default function PropertyFullView({ propertyId }) {
           )}
           {tab==='drive' && <DriveTab propertyId={propertyId} link={property.photos_drive_link} onSaved={load} />}
         </div>
+      </div>
+
+      <div style={{ position:'fixed', bottom:0, left:0, right:0, background:'#fff', borderTop:'2px solid #B8892A', padding:'12px 24px', display:'flex', justifyContent:'flex-end', boxShadow:'0 -4px 14px rgba(0,0,0,0.06)' }}>
+        <button onClick={()=>setProposalOpen(true)} disabled={!property.arv}
+          style={{ background: property.arv ? '#2D6FAF' : '#D6D2CA', color:'#fff', border:'none', borderRadius:6, padding:'11px 24px', cursor: property.arv ? 'pointer' : 'not-allowed', fontSize:13, fontWeight:700, fontFamily:'inherit' }}>
+          Generate Offer
+        </button>
       </div>
 
       {proposalOpen && (
