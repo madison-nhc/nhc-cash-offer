@@ -579,18 +579,8 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
     { key:'disposition', label:'Disposition' },
   ]
 
-  // Tabs that are visible but not yet usable — key: reason shown on hover
-  const disabledTabReasons = {
-    disposition: type==='Renovation'
-      ? 'Available once the renovation is done and the deal becomes a Flip or Hold'
-      : (type==='Hold' && stage!=='Sold')
-      ? 'Available once this Hold is marked Sold'
-      : null,
-  }
-
-  useEffect(() => {
-    if (disabledTabReasons[tab]) setTab('analyzer')
-  }, [disabledTabReasons[tab]]) // eslint-disable-line react-hooks/exhaustive-deps
+  // Disposition is always accessible — no gating on type/stage.
+  const disabledTabReasons = {}
 
   // P&L helpers
   const rc         = rehabCost!==null ? rehabCost : (parseFloat(form.rehab_cost)||0)
