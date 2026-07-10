@@ -631,69 +631,6 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
             <AddressInput value={form.address||''} onChange={v=>setForm(f=>({...f,address:v}))} />
           </Field>
 
-          {zillowUrl(form.address) && (
-            <button
-              onClick={() => window.open(zillowUrl(form.address), 'nhc_zillow', 'width=1400,height=950,noopener,noreferrer')}
-              style={{
-                width:'100%', background:'#fff', border:'1.5px solid #2D6FAF', borderRadius:8, padding:'8px 16px',
-                cursor:'pointer', fontFamily:'inherit', display:'flex', alignItems:'center', justifyContent:'space-between',
-              }}>
-              <div style={{ fontSize:12, fontWeight:700, color:'#2D6FAF' }}>View on Zillow</div>
-              <span style={{ fontSize:16, color:'#2D6FAF' }}>↗</span>
-            </button>
-          )}
-          {driveFolderId(form.photos_drive_link) && !editingPhotosLink ? (
-            <div style={{ display:'flex', gap:6, alignItems:'stretch' }}>
-              <button
-                onClick={() => window.open(
-                  `https://drive.google.com/drive/folders/${driveFolderId(form.photos_drive_link)}`,
-                  'nhc_photos',
-                  'width=1400,height=950,noopener,noreferrer'
-                )}
-                style={{
-                  flex:1, background:'#fff', border:'1.5px solid #B8892A', borderRadius:8, padding:'10px 16px',
-                  cursor:'pointer', fontFamily:'inherit', display:'flex', alignItems:'center', justifyContent:'space-between',
-                }}>
-                <div style={{ textAlign:'left' }}>
-                  <div style={{ fontSize:13, fontWeight:700, color:'#B8892A' }}>Open Photos — Large View</div>
-                  <div style={{ fontSize:11, color:'#9ca3af', marginTop:2 }}>Opens the full Drive folder in a larger window</div>
-                </div>
-                <span style={{ fontSize:18, color:'#B8892A' }}>↗</span>
-              </button>
-              <button
-                onClick={() => setEditingPhotosLink(true)}
-                title="Edit photo folder link"
-                style={{
-                  width:40, background:'#fff', border:'1.5px solid #D6D2CA', borderRadius:8,
-                  cursor:'pointer', fontSize:15, color:'#9ca3af', flexShrink:0,
-                }}>✎</button>
-            </div>
-          ) : (
-            <Field label="Photos (Google Drive folder link)">
-              <div style={{ display:'flex', gap:6 }}>
-                <input
-                  style={{ ...inp, flex:1 }}
-                  placeholder="Paste a shared Drive folder link — set to 'Anyone with the link'"
-                  value={form.photos_drive_link||''}
-                  onChange={set('photos_drive_link')}
-                  autoFocus={editingPhotosLink}
-                />
-                {driveFolderId(form.photos_drive_link) && (
-                  <button
-                    onClick={() => setEditingPhotosLink(false)}
-                    style={{
-                      background:'#B8892A', color:'#fff', border:'none', borderRadius:6, padding:'0 14px',
-                      cursor:'pointer', fontSize:12, fontWeight:700, fontFamily:'inherit', flexShrink:0,
-                    }}>Done</button>
-                )}
-              </div>
-              {form.photos_drive_link && !driveFolderId(form.photos_drive_link) && (
-                <div style={{ fontSize:11, color:'#B91C1C', marginTop:6 }}>
-                  Couldn't read a folder ID from that link — paste the full Drive folder URL.
-                </div>
-              )}
-            </Field>
-          )}
           <FieldRow>
             <Field label="Beds"><input style={monoInp} type="number" value={form.beds||''} onChange={set('beds')} /></Field>
             <Field label="Baths"><input style={monoInp} type="number" value={form.baths||''} onChange={set('baths')} /></Field>

@@ -30,10 +30,36 @@ function driveFolderId(link) {
 const TABS = [
   { key:'offer', label:'Offer' },
   { key:'tour', label:'3D Tour' },
+  { key:'zillow', label:'Zillow' },
   { key:'drive', label:'Photos (Drive)' },
   { key:'condition', label:'Condition' },
   { key:'notes', label:'Notes' },
 ]
+
+function zillowUrl(address) {
+  if (!address || !address.trim()) return null
+  return `https://www.zillow.com/homes/${address.trim().replace(/\s+/g,'-')}_rb/`
+}
+
+function ZillowTab({ address }) {
+  const url = zillowUrl(address)
+  return (
+    <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+      <div className="drawer-section">Zillow Listing</div>
+      {url ? (
+        <button
+          onClick={()=>window.open(url, 'nhc_zillow', 'width=1400,height=950,noopener,noreferrer')}
+          style={{ background:'#fff', border:'1.5px solid #2D6FAF', borderRadius:8, padding:'10px 16px', cursor:'pointer', fontFamily:'inherit', display:'flex', alignItems:'center', justifyContent:'space-between' }}
+        >
+          <div style={{ fontSize:13, fontWeight:700, color:'#2D6FAF' }}>Open on Zillow</div>
+          <span style={{ fontSize:18, color:'#2D6FAF' }}>&#8599;</span>
+        </button>
+      ) : (
+        <div style={{ fontSize:12, color:'#9ca3af' }}>Add an address to this property to search Zillow.</div>
+      )}
+    </div>
+  )
+}
 
 function DriveTab({ propertyId, link, onSaved }) {
   const [editing, setEditing] = useState(!link)
@@ -270,6 +296,7 @@ export default function PropertyFullView({ propertyId }) {
               <PropertyComments propertyId={propertyId} />
             </div>
           )}
+          {tab==='zillow' && <ZillowTab address={property.address} />}
           {tab==='drive' && <DriveTab propertyId={propertyId} link={property.photos_drive_link} onSaved={load} />}
         </div>
       </div>
