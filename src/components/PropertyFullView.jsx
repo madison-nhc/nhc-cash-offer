@@ -41,26 +41,6 @@ function zillowUrl(address) {
   return `https://www.zillow.com/homes/${address.trim().replace(/\s+/g,'-')}_rb/`
 }
 
-function ZillowTab({ address }) {
-  const url = zillowUrl(address)
-  return (
-    <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
-      <div className="drawer-section">Zillow Listing</div>
-      {url ? (
-        <button
-          onClick={()=>window.open(url, 'nhc_zillow', 'width=1400,height=950,noopener,noreferrer')}
-          style={{ background:'#fff', border:'1.5px solid #2D6FAF', borderRadius:8, padding:'10px 16px', cursor:'pointer', fontFamily:'inherit', display:'flex', alignItems:'center', justifyContent:'space-between' }}
-        >
-          <div style={{ fontSize:13, fontWeight:700, color:'#2D6FAF' }}>Open on Zillow</div>
-          <span style={{ fontSize:18, color:'#2D6FAF' }}>&#8599;</span>
-        </button>
-      ) : (
-        <div style={{ fontSize:12, color:'#9ca3af' }}>Add an address to this property to search Zillow.</div>
-      )}
-    </div>
-  )
-}
-
 function DriveTab({ propertyId, link, onSaved }) {
   const [editing, setEditing] = useState(!link)
   const [draft, setDraft] = useState(link || '')
@@ -270,13 +250,20 @@ export default function PropertyFullView({ propertyId }) {
         <div style={{ background:'#fff', borderRadius:10, border:'0.5px solid #D6D2CA', padding:20, position:'sticky', top:20, maxHeight:'calc(100vh - 40px)', overflowY:'auto' }}>
           <div style={{ display:'flex', gap:0, borderBottom:'2px solid #F0EDE6', marginBottom:16 }}>
             {TABS.map(t=>(
-              <button key={t.key} onClick={()=>setTab(t.key)} style={{
+              <button key={t.key} onClick={()=>{
+                if (t.key === 'zillow') {
+                  const url = zillowUrl(property.address)
+                  if (url) window.open(url, 'nhc_zillow', 'width=1400,height=950,noopener,noreferrer')
+                  return
+                }
+                setTab(t.key)
+              }} style={{
                 padding:'8px 18px', border:'none', background:'none', cursor:'pointer',
                 fontSize:12.5, fontWeight:tab===t.key?700:400, fontFamily:'inherit',
                 color:tab===t.key?'#B8892A':'#6b7280',
                 borderBottom:tab===t.key?'2px solid #B8892A':'2px solid transparent',
                 marginBottom:-2, letterSpacing:0.4,
-              }}>{t.label}</button>
+              }}>{t.key==='zillow' ? `${t.label} ↗` : t.label}</button>
             ))}
           </div>
 
@@ -296,7 +283,6 @@ export default function PropertyFullView({ propertyId }) {
               <PropertyComments propertyId={propertyId} />
             </div>
           )}
-          {tab==='zillow' && <ZillowTab address={property.address} />}
           {tab==='drive' && <DriveTab propertyId={propertyId} link={property.photos_drive_link} onSaved={load} />}
         </div>
       </div>
