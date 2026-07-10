@@ -176,7 +176,7 @@ export default function PropertyFullView({ propertyId }) {
 
   return (
     <div style={{ minHeight:'100vh', background:'#FAFAF8', fontFamily:'inherit', paddingBottom:76 }}>
-      <div style={{ background:'#fff', borderBottom:'2px solid #B8892A', padding:'14px 24px', display:'flex', alignItems:'center', gap:12 }}>
+      <div style={{ background:'#fff', borderBottom:'2px solid #B8892A', padding:'14px 24px', display:'flex', alignItems:'center', gap:12, position:'sticky', top:0, zIndex:10 }}>
         <img src="/nhc-logo.svg" alt="NHC" style={{ width:26, height:26 }} />
         <div style={{ fontSize:16, fontWeight:700, color:'#2C2C2C' }}>{property.address || 'Property'}</div>
         <span style={{ marginLeft:'auto', fontSize:11, color:'#9ca3af' }}>{savedAt ? `Saved ${savedAt.toLocaleTimeString()}` : ''}</span>
@@ -337,9 +337,23 @@ export default function PropertyFullView({ propertyId }) {
         {offerIsDirty && (
           <span style={{ fontSize:11, color:'#92400E', fontWeight:700 }}>⚠ Offer is out of date</span>
         )}
-        <button onClick={()=>{ regenerateOffer(); setTab('offer') }} disabled={!property.arv}
-          style={{ background: !property.arv ? '#D6D2CA' : offerIsDirty ? '#B8892A' : '#2D6FAF', color:'#fff', border:'none', borderRadius:6, padding:'11px 24px', cursor: property.arv ? 'pointer' : 'not-allowed', fontSize:13, fontWeight:700, fontFamily:'inherit' }}>
-          {offerSnapshot ? 'Re-Generate Offer' : 'Generate Offer'}
+        {offerSnapshot && !offerIsDirty && (
+          <span style={{ fontSize:11, color:'#9ca3af', fontWeight:600 }}>✓ Offer is up to date</span>
+        )}
+        <button
+          onClick={()=>{ regenerateOffer(); setTab('offer') }}
+          disabled={!property.arv || (offerSnapshot && !offerIsDirty)}
+          style={{
+            background: !property.arv ? '#D6D2CA'
+              : (offerSnapshot && !offerIsDirty) ? '#E5E1DB'
+              : offerIsDirty ? '#D97825'
+              : '#2D6FAF',
+            color: (offerSnapshot && !offerIsDirty && property.arv) ? '#9ca3af' : '#fff',
+            border:'none', borderRadius:6, padding:'11px 24px',
+            cursor: (property.arv && !(offerSnapshot && !offerIsDirty)) ? 'pointer' : 'not-allowed',
+            fontSize:13, fontWeight:700, fontFamily:'inherit',
+          }}>
+          {!offerSnapshot ? 'Generate Offer' : offerIsDirty ? 'Re-Generate Offer' : 'Most Recent'}
         </button>
       </div>
     </div>
