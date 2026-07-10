@@ -30,34 +30,10 @@ function driveFolderId(link) {
 const TABS = [
   { key:'offer', label:'Offer' },
   { key:'tour', label:'3D Tour' },
-  { key:'zillow', label:'Zillow' },
   { key:'drive', label:'Photos (Drive)' },
   { key:'condition', label:'Condition' },
   { key:'notes', label:'Notes' },
 ]
-
-function zillowUrl(address) {
-  if (!address || !address.trim()) return null
-  return `https://www.zillow.com/homes/${address.trim().replace(/\s+/g,'-')}_rb/`
-}
-
-function ZillowTab({ address }) {
-  const url = zillowUrl(address)
-  if (!url) return <div style={{ fontSize:12, color:'#9ca3af' }}>Add an address to this property to search Zillow.</div>
-  return (
-    <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
-      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-        <div className="drawer-section" style={{ margin:0 }}>Zillow Listing</div>
-        <button onClick={()=>window.open(url, 'nhc_zillow', 'width=1400,height=950,noopener,noreferrer')}
-          style={{ background:'none', border:'1px solid #2D6FAF', color:'#2D6FAF', borderRadius:6, padding:'4px 10px', fontSize:11, fontWeight:700, cursor:'pointer', fontFamily:'inherit' }}>
-          Open in new window &#8599;
-        </button>
-      </div>
-      <iframe title="Zillow Listing" src={url} style={{ width:'100%', height:600, border:'0.5px solid #D6D2CA', borderRadius:8 }} loading="lazy" />
-      <div style={{ fontSize:11, color:'#9ca3af' }}>Zillow sometimes blocks its listing pages from loading inside another site — if this looks blank, use "Open in new window" above.</div>
-    </div>
-  )
-}
 
 function DriveTab({ propertyId, link, onSaved }) {
   const [editing, setEditing] = useState(!link)
@@ -284,7 +260,6 @@ export default function PropertyFullView({ propertyId }) {
               : <div style={{ fontSize:12, color:'#9ca3af', padding:'20px 0', textAlign:'center' }}>Set an ARV in Valuation to generate an offer.</div>
           )}
           {tab==='tour' && <TourSection propertyId={propertyId} tourUrl={property.zillow_tour_url} onSaved={load} />}
-          {tab==='zillow' && <ZillowTab address={property.address} />}
           {tab==='condition' && <ConditionRatings propertyId={propertyId} />}
           {tab==='notes' && (
             <div style={{ display:'flex', flexDirection:'column', gap:20 }}>

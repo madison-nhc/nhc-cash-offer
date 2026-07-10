@@ -631,6 +631,18 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
             <AddressInput value={form.address||''} onChange={v=>setForm(f=>({...f,address:v}))} />
           </Field>
 
+          {zillowUrl(form.address) && (
+            <button
+              onClick={() => window.open(zillowUrl(form.address), 'nhc_zillow', 'width=1400,height=950,noopener,noreferrer')}
+              style={{
+                width:'100%', background:'#fff', border:'1.5px solid #2D6FAF', borderRadius:8, padding:'8px 16px',
+                cursor:'pointer', fontFamily:'inherit', display:'flex', alignItems:'center', justifyContent:'space-between',
+              }}>
+              <div style={{ fontSize:12, fontWeight:700, color:'#2D6FAF' }}>View on Zillow</div>
+              <span style={{ fontSize:16, color:'#2D6FAF' }}>↗</span>
+            </button>
+          )}
+
           <FieldRow>
             <Field label="Beds"><input style={monoInp} type="number" value={form.beds||''} onChange={set('beds')} /></Field>
             <Field label="Baths"><input style={monoInp} type="number" value={form.baths||''} onChange={set('baths')} /></Field>
