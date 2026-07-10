@@ -29,9 +29,9 @@ function driveFolderId(link) {
 
 const TABS = [
   { key:'tour', label:'3D Tour' },
+  { key:'drive', label:'Photos (Drive)' },
   { key:'condition', label:'Condition' },
   { key:'notes', label:'Notes' },
-  { key:'drive', label:'Photos (Drive)' },
 ]
 
 function DriveTab({ propertyId, link, onSaved }) {
@@ -173,7 +173,7 @@ export default function PropertyFullView({ propertyId }) {
             <thead>
               <tr>
                 {['Item','Sq Ft','$/Sq Ft','Total',''].map((h,i)=>(
-                  <th key={h} style={{ textAlign:i>0?'right':'left', fontSize:10, color:'#9ca3af', fontWeight:600, textTransform:'uppercase', letterSpacing:0.5, paddingBottom:4, width:i===4?24:undefined }}>{h}</th>
+                  <th key={h} style={{ textAlign:i===0?'left':i===4?'center':'center', fontSize:10, color:'#9ca3af', fontWeight:600, textTransform:'uppercase', letterSpacing:0.5, paddingBottom:4, width:i===4?24:undefined }}>{h}</th>
                 ))}
               </tr>
             </thead>
@@ -181,10 +181,10 @@ export default function PropertyFullView({ propertyId }) {
               {repairs.map(r=>(
                 <tr key={r.id}>
                   <td style={{ paddingBottom:6, paddingRight:6 }}><input style={{ ...inp, fontSize:12 }} value={r.name||''} onChange={e=>updateRepair(r.id,'name',e.target.value)} /></td>
-                  <td style={{ paddingBottom:6, paddingRight:6 }}><input style={{ ...monoInp, fontSize:12, textAlign:'right' }} type="number" value={r.sqft||''} onChange={e=>updateRepair(r.id,'sqft',e.target.value)} /></td>
-                  <td style={{ paddingBottom:6, paddingRight:6 }}><input style={{ ...monoInp, fontSize:12, textAlign:'right' }} type="number" step="0.01" value={r.pricePerSqft||''} onChange={e=>updateRepair(r.id,'pricePerSqft',e.target.value)} /></td>
+                  <td style={{ paddingBottom:6, paddingRight:6 }}><input style={{ ...monoInp, fontSize:12, textAlign:'center' }} type="number" value={r.sqft||''} onChange={e=>updateRepair(r.id,'sqft',e.target.value)} /></td>
+                  <td style={{ paddingBottom:6, paddingRight:6 }}><input style={{ ...monoInp, fontSize:12, textAlign:'center' }} type="number" step="0.01" value={r.pricePerSqft||''} onChange={e=>updateRepair(r.id,'pricePerSqft',e.target.value)} /></td>
                   <td style={{ paddingBottom:6, paddingRight:6 }}>
-                    <div style={{ ...monoInp, fontSize:12, textAlign:'right', background:'#FAFAF8', color:'#2C2C2C', fontWeight:600, display:'flex', alignItems:'center', justifyContent:'flex-end' }}>{r.cost?fmt(r.cost):'—'}</div>
+                    <div style={{ ...monoInp, fontSize:12, textAlign:'center', background:'#FAFAF8', color:'#2C2C2C', fontWeight:600, display:'flex', alignItems:'center', justifyContent:'center' }}>{r.cost?fmt(r.cost):'—'}</div>
                   </td>
                   <td style={{ paddingBottom:6, textAlign:'center' }}><button onClick={()=>removeRepair(r.id)} style={{ background:'none', border:'none', color:'#D6D2CA', cursor:'pointer', fontSize:16, padding:0 }}>×</button></td>
                 </tr>
