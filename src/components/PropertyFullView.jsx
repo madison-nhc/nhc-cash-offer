@@ -241,7 +241,7 @@ export default function PropertyFullView({ propertyId }) {
           <button onClick={addRepair} style={{ background:'transparent', border:'1px dashed #D6D2CA', borderRadius:6, padding:'6px', color:'#9ca3af', fontSize:12, cursor:'pointer', fontFamily:'inherit', width:'100%' }}>+ Add Line Item</button>
         </div>
 
-        <div style={{ background:'#fff', borderRadius:10, border:'0.5px solid #D6D2CA', padding:20 }}>
+        <div style={{ background:'#fff', borderRadius:10, border:'0.5px solid #D6D2CA', padding:20, position:'sticky', top:20, maxHeight:'calc(100vh - 40px)', overflowY:'auto' }}>
           <div style={{ display:'flex', gap:0, borderBottom:'2px solid #F0EDE6', marginBottom:16 }}>
             {TABS.map(t=>(
               <button key={t.key} onClick={()=>setTab(t.key)} style={{
