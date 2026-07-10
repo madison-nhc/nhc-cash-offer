@@ -186,7 +186,7 @@ const CSS = `
 
 `
 
-export default function ProposalModal({ property, onClose }) {
+export default function ProposalModal({ property, onClose, embedded=false }) {
   if (!property) return null
   const d    = calcOffers(property)
   const addr = property.address || '—'
@@ -368,12 +368,12 @@ export default function ProposalModal({ property, onClose }) {
   return (
     <>
       <style>{CSS}</style>
-      <div id="prop-overlay">
-        <div id="prop-toolbar">
+      <div id="prop-overlay" style={embedded ? { position:'static', inset:'auto', background:'transparent', height:'calc(100vh - 260px)', minHeight:520, borderRadius:8, overflow:'hidden' } : undefined}>
+        <div id="prop-toolbar" style={embedded ? { borderRadius:'8px 8px 0 0' } : undefined}>
           <button className="btn-print" onClick={handleDownload} disabled={downloading}>
             {downloading ? 'Generating PDF…' : '⬇ Download PDF'}
           </button>
-          <button className="btn-close" onClick={onClose}>✕ Close</button>
+          {!embedded && <button className="btn-close" onClick={onClose}>✕ Close</button>}
           <span className="tip">Downloads as a PDF matching this preview exactly</span>
           <span className="page-info">3 pages</span>
         </div>

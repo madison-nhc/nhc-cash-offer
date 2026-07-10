@@ -28,6 +28,7 @@ function driveFolderId(link) {
 }
 
 const TABS = [
+  { key:'offer', label:'Offer' },
   { key:'tour', label:'3D Tour' },
   { key:'drive', label:'Photos (Drive)' },
   { key:'condition', label:'Condition' },
@@ -78,7 +79,6 @@ export default function PropertyFullView({ propertyId }) {
   const [property, setProperty] = useState(null)
   const [repairs, setRepairs] = useState([])
   const [tab, setTab] = useState('tour')
-  const [proposalOpen, setProposalOpen] = useState(false)
   const [savedAt, setSavedAt] = useState(null)
   const saveTimer = useRef(null)
   const loadedRef = useRef(false)
@@ -248,6 +248,11 @@ export default function PropertyFullView({ propertyId }) {
             ))}
           </div>
 
+          {tab==='offer' && (
+            property.arv
+              ? <ProposalModal embedded property={{ ...property, repair_items: repairs.filter(r=>r.name||r.cost).map(r=>({ name:r.name, cost:parseFloat(r.cost)||0 })) }} />
+              : <div style={{ fontSize:12, color:'#9ca3af', padding:'20px 0', textAlign:'center' }}>Set an ARV in Valuation to generate an offer.</div>
+          )}
           {tab==='tour' && <TourSection propertyId={propertyId} tourUrl={property.zillow_tour_url} onSaved={load} />}
           {tab==='condition' && <ConditionRatings propertyId={propertyId} />}
           {tab==='notes' && (
@@ -264,18 +269,11 @@ export default function PropertyFullView({ propertyId }) {
       </div>
 
       <div style={{ position:'fixed', bottom:0, left:0, right:0, background:'#fff', borderTop:'2px solid #B8892A', padding:'12px 24px', display:'flex', justifyContent:'flex-end', boxShadow:'0 -4px 14px rgba(0,0,0,0.06)' }}>
-        <button onClick={()=>setProposalOpen(true)} disabled={!property.arv}
+        <button onClick={()=>setTab('offer')} disabled={!property.arv}
           style={{ background: property.arv ? '#2D6FAF' : '#D6D2CA', color:'#fff', border:'none', borderRadius:6, padding:'11px 24px', cursor: property.arv ? 'pointer' : 'not-allowed', fontSize:13, fontWeight:700, fontFamily:'inherit' }}>
           Generate Offer
         </button>
       </div>
-
-      {proposalOpen && (
-        <ProposalModal
-          property={{ ...property, repair_items: repairs.filter(r=>r.name||r.cost).map(r=>({ name:r.name, cost:parseFloat(r.cost)||0 })) }}
-          onClose={()=>setProposalOpen(false)}
-        />
-      )}
     </div>
   )
 }
