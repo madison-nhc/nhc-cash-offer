@@ -16,8 +16,10 @@ export function calcOffers(p, repairs) {
   // Since the cash offer depends on its own commission, solve the two simultaneously:
   //   cashOffer = arv - reno - (commOfferPct*cashOffer + commArvPct*arv) - cashHold - profit
   //   cashOffer*(1+commOfferPct) = arv*(1-commArvPct) - reno - cashHold - profit
-  const commOfferPct = (parseFloat(p.comm_cash_offer_pct)??3)/100
-  const commArvPct   = (parseFloat(p.comm_cash_arv_pct)??6)/100
+  // NOTE: parseFloat(null) is NaN, and NaN ?? fallback never triggers (?? only
+  // catches null/undefined) — so the null-check has to happen BEFORE parseFloat.
+  const commOfferPct = (p.comm_cash_offer_pct!=null && p.comm_cash_offer_pct!=='' ? parseFloat(p.comm_cash_offer_pct) : 3)/100
+  const commArvPct   = (p.comm_cash_arv_pct!=null && p.comm_cash_arv_pct!=='' ? parseFloat(p.comm_cash_arv_pct) : 6)/100
   const cashOffer = p.cash_offer_override
     ? parseFloat(p.cash_offer_override)
     : (arv*(1-commArvPct) - reno - cashHold - profit) / (1+commOfferPct)
