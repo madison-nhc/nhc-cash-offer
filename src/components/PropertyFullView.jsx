@@ -167,7 +167,7 @@ export default function PropertyFullView({ propertyId }) {
           {property.arv && (
             <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
               {[
-                { label:'Cash Offer', value:d.cashOffer, color:'#3B6D11', rows:[
+                { label:'Cash Offer', value:d.cashOffer, color:'#3B6D11', overridden:!!property.cash_offer_override, overrideField:'cash_offer_override', rows:[
                   { l:'ARV', v:fmt(d.arv) },
                   { l:'Repairs', v:`−${fmt(d.reno)}` },
                   { l:`Comm (${(d.commOfferPct*100).toFixed(1).replace(/\.0$/,'')}% of offer)`, v:`−${fmt(d.commOfferAmt)}` },
@@ -175,7 +175,7 @@ export default function PropertyFullView({ propertyId }) {
                   { l:`Holding (${d.cashHoldMo}mo)`, v:`−${fmt(d.cashHold)}` },
                   { l:'Profit margin', v:`−${fmt(d.profit)}` },
                 ]},
-                { label:'As-Is Net', value:d.opt2Net, color:'#2D6FAF', rows:[
+                { label:'As-Is Net', value:d.opt2Net, color:'#2D6FAF', overridden:!!property.asis_override, overrideField:'asis_override', rows:[
                   { l:'ARV', v:fmt(d.arv) },
                   { l:'As-Is Deduction', v:`−${fmt(d.asisDeduction)}` },
                   { l:'Listing Price', v:fmt(d.asisVal), strong:true },
@@ -194,6 +194,12 @@ export default function PropertyFullView({ propertyId }) {
                     <div style={{ fontSize:11, color:'#9ca3af', textTransform:'uppercase', letterSpacing:0.6 }}>{card.label}</div>
                     <div style={{ fontSize:16, fontWeight:700, fontFamily:'monospace', color:card.color }}>{fmt(card.value)}</div>
                   </div>
+                  {card.overridden && (
+                    <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:8, marginTop:4, background:'#FEF3C7', border:'1px solid #FDE68A', borderRadius:4, padding:'4px 8px' }}>
+                      <span style={{ fontSize:10, color:'#92400E', fontWeight:700 }}>🔒 Override active — edits below won't change this number</span>
+                      <button onClick={()=>set(card.overrideField)({ target:{ value:'' } })} style={{ fontSize:10, color:'#92400E', background:'none', border:'none', textDecoration:'underline', cursor:'pointer', fontFamily:'inherit', flexShrink:0 }}>Clear</button>
+                    </div>
+                  )}
                   <div style={{ marginTop:6, paddingTop:6, borderTop:'1px solid #F0EDE6', fontSize:10, color:'#6b7280', lineHeight:1.7 }}>
                     {card.rows.map(r=>(
                       <div key={r.l} style={{
