@@ -115,8 +115,18 @@ export default function PropertyFullView({ propertyId }) {
   // a missing key and an explicit null compare as equal.
   function normalizeForCompare(snap) {
     const out = {}
-    OFFER_FIELDS.forEach(k => { out[k] = (snap && snap[k] !== undefined) ? snap[k] : null })
-    out.repair_items = (snap && snap.repair_items) || []
+    OFFER_FIELDS.forEach(k => {
+      let v = (snap && snap[k] !== undefined) ? snap[k] : null
+      if (v === '') v = null
+      // Inputs write strings ("875000"), DB reloads give numbers (875000) — same value,
+      // different JS type, which made JSON.stringify see a "change" that was never made.
+      if (v !== null && k !== 'address') {
+        const n = Number(v)
+        if (!Number.isNaN(n)) v = n
+      }
+      out[k] = v
+    })
+    out.repair_items = ((snap && snap.repair_items) || []).map(r => ({ name: r.name||'', cost: Number(r.cost)||0 }))
     return out
   }
   async function regenerateOffer() {
@@ -301,14 +311,7 @@ export default function PropertyFullView({ propertyId }) {
               </div>
             ) : (
               <div>
-                {offerIsDirty ? (
-                  <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:10, background:'#FEF3C7', border:'1px solid #FDE68A', borderRadius:6, padding:'8px 12px', marginBottom:12 }}>
-                    <span style={{ fontSize:11, color:'#92400E', fontWeight:700 }}>⚠ Inputs have changed since this offer was generated{offerGeneratedAt?` (${new Date(offerGeneratedAt).toLocaleString()})`:''} — this preview is out of date.</span>
-                    <button onClick={regenerateOffer} style={{ background:'#B8892A', color:'#fff', border:'none', borderRadius:5, padding:'6px 14px', fontSize:11, fontWeight:700, cursor:'pointer', fontFamily:'inherit', flexShrink:0 }}>
-                      Re-Generate Offer
-                    </button>
-                  </div>
-                ) : offerGeneratedAt && (
+                {offerGeneratedAt && (
                   <div style={{ fontSize:10, color:'#9ca3af', marginBottom:8, textAlign:'right' }}>Generated {new Date(offerGeneratedAt).toLocaleString()}</div>
                 )}
                 <ProposalModal embedded property={offerSnapshot} />
