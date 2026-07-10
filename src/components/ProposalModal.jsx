@@ -2,29 +2,19 @@ import { useRef, useState } from 'react'
 import html2canvas from 'html2canvas'
 import { jsPDF } from 'jspdf'
 import { fmt } from './ui.jsx'
+import { calcOffers as sharedCalcOffers } from '../lib/valuation.js'
 
 // ── Calculations ────────────────────────────────────────────────────────────
+// Thin adapter over the shared calc (lib/valuation.js) so this PDF can never
+// drift from the drawer/full-view math the way it used to with its own copy.
 function calcOffers(p) {
-  const arv         = parseFloat(p.arv)||0
-  const reno        = (p.repair_items||[]).reduce((s,r)=>s+(parseFloat(r.cost)||0),0)
-  const commCashPct = (parseFloat(p.comm_cash_pct)||9)/100
-  const commListPct = (parseFloat(p.comm_list_pct)||6)/100
-  const profit      = p.profit_override ? parseFloat(p.profit_override) : arv*((parseFloat(p.profit_margin)||15)/100)
-  const asisValue   = p.asis_override   ? parseFloat(p.asis_override)   : arv-((parseFloat(p.asis_pct)||50)/100*reno)
-  const holdCashMo  = parseFloat(p.hold_cash_months)||6
-  const holdCashPct = (parseFloat(p.hold_cash_pct)||0.75)/100
-  const cashOffer   = p.cash_offer_override ? parseFloat(p.cash_offer_override) : arv-reno-(commCashPct*arv)-(holdCashPct*holdCashMo*arv)-profit
-  const holdOpt2Mo  = parseFloat(p.hold_opt2_months)||3
-  const holdOpt2Pct = (parseFloat(p.hold_opt2_pct)||0.5)/100
-  const opt2Comm    = commListPct*asisValue
-  const opt2Hold    = holdOpt2Pct*holdOpt2Mo*arv
-  const opt2Net     = asisValue-opt2Comm-opt2Hold
-  const holdOpt3Mo  = parseFloat(p.hold_opt3_months)||6
-  const holdOpt3Pct = (parseFloat(p.hold_opt3_pct)||0.5)/100
-  const opt3Comm    = commListPct*arv
-  const opt3Hold    = holdOpt3Pct*holdOpt3Mo*arv
-  const opt3Net     = arv-reno-opt3Comm-opt3Hold
-  return { arv, reno, cashOffer, asisValue, opt2Comm, opt2Hold, opt2Net, opt3Comm, opt3Hold, opt3Net, commListPct, holdOpt2Mo, holdOpt3Mo }
+  const shared = sharedCalcOffers(p, p.repair_items||[])
+  return {
+    arv: shared.arv, reno: shared.reno, cashOffer: shared.cashOffer,
+    asisValue: shared.asisVal, opt2Comm: shared.opt2Comm, opt2Hold: shared.opt2Hold, opt2Net: shared.opt2Net,
+    opt3Comm: shared.opt3Comm, opt3Hold: shared.opt3Hold, opt3Net: shared.opt3Net,
+    commListPct: shared.commListPct, holdOpt2Mo: shared.opt2HoldMo, holdOpt3Mo: shared.opt3HoldMo,
+  }
 }
 
 function d$(n)  { return '$'+Math.round(Math.abs(n)).toLocaleString('en-US') }
