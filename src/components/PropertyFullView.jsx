@@ -78,7 +78,7 @@ function DriveTab({ propertyId, link, onSaved }) {
 export default function PropertyFullView({ propertyId }) {
   const [property, setProperty] = useState(null)
   const [repairs, setRepairs] = useState([])
-  const [tab, setTab] = useState('tour')
+  const [tab, setTab] = useState('offer')
   const [savedAt, setSavedAt] = useState(null)
   const [offerSnapshot, setOfferSnapshot] = useState(null)
   const [offerGeneratedAt, setOfferGeneratedAt] = useState(null)
