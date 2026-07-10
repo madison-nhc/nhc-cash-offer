@@ -152,12 +152,6 @@ export default function PropertyFullView({ propertyId }) {
             <Field label="Cash Offer Override ($)"><input style={{ ...monoInp, minHeight:34 }} type="number" value={property.cash_offer_override??''} onChange={set('cash_offer_override')} /></Field>
           </FieldRow>
 
-          <div style={{ fontSize:10, fontWeight:700, color:'#3B6D11', textTransform:'uppercase', letterSpacing:0.6, marginTop:4 }}>Cash Offer Commission</div>
-          <FieldRow>
-            <Field label="% of Cash Offer"><input style={{ ...monoInp, minHeight:34 }} type="number" step="0.5" placeholder="3" value={property.comm_cash_offer_pct??''} onChange={set('comm_cash_offer_pct')} /></Field>
-            <Field label="% of ARV"><input style={{ ...monoInp, minHeight:34 }} type="number" step="0.5" placeholder="6" value={property.comm_cash_arv_pct??''} onChange={set('comm_cash_arv_pct')} /></Field>
-          </FieldRow>
-
           <div style={{ fontSize:10, fontWeight:700, color:'#2D6FAF', textTransform:'uppercase', letterSpacing:0.6, marginTop:4 }}>Holding Cost — As-Is Net</div>
           <FieldRow>
             <Field label="As-Is Holding % / mo"><input style={{ ...monoInp, minHeight:34 }} type="number" step="0.05" placeholder="0.5" value={property.hold_opt2_pct??''} onChange={set('hold_opt2_pct')} /></Field>
