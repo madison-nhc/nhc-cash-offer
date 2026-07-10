@@ -41,6 +41,24 @@ function zillowUrl(address) {
   return `https://www.zillow.com/homes/${address.trim().replace(/\s+/g,'-')}_rb/`
 }
 
+function ZillowTab({ address }) {
+  const url = zillowUrl(address)
+  if (!url) return <div style={{ fontSize:12, color:'#9ca3af' }}>Add an address to this property to search Zillow.</div>
+  return (
+    <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+        <div className="drawer-section" style={{ margin:0 }}>Zillow Listing</div>
+        <button onClick={()=>window.open(url, 'nhc_zillow', 'width=1400,height=950,noopener,noreferrer')}
+          style={{ background:'none', border:'1px solid #2D6FAF', color:'#2D6FAF', borderRadius:6, padding:'4px 10px', fontSize:11, fontWeight:700, cursor:'pointer', fontFamily:'inherit' }}>
+          Open in new window &#8599;
+        </button>
+      </div>
+      <iframe title="Zillow Listing" src={url} style={{ width:'100%', height:600, border:'0.5px solid #D6D2CA', borderRadius:8 }} loading="lazy" />
+      <div style={{ fontSize:11, color:'#9ca3af' }}>Zillow sometimes blocks its listing pages from loading inside another site — if this looks blank, use "Open in new window" above.</div>
+    </div>
+  )
+}
+
 function DriveTab({ propertyId, link, onSaved }) {
   const [editing, setEditing] = useState(!link)
   const [draft, setDraft] = useState(link || '')
@@ -250,20 +268,13 @@ export default function PropertyFullView({ propertyId }) {
         <div style={{ background:'#fff', borderRadius:10, border:'0.5px solid #D6D2CA', padding:20, position:'sticky', top:20, maxHeight:'calc(100vh - 40px)', overflowY:'auto' }}>
           <div style={{ display:'flex', gap:0, borderBottom:'2px solid #F0EDE6', marginBottom:16 }}>
             {TABS.map(t=>(
-              <button key={t.key} onClick={()=>{
-                if (t.key === 'zillow') {
-                  const url = zillowUrl(property.address)
-                  if (url) window.open(url, 'nhc_zillow', 'width=1400,height=950,noopener,noreferrer')
-                  return
-                }
-                setTab(t.key)
-              }} style={{
+              <button key={t.key} onClick={()=>setTab(t.key)} style={{
                 padding:'8px 18px', border:'none', background:'none', cursor:'pointer',
                 fontSize:12.5, fontWeight:tab===t.key?700:400, fontFamily:'inherit',
                 color:tab===t.key?'#B8892A':'#6b7280',
                 borderBottom:tab===t.key?'2px solid #B8892A':'2px solid transparent',
                 marginBottom:-2, letterSpacing:0.4,
-              }}>{t.key==='zillow' ? `${t.label} ↗` : t.label}</button>
+              }}>{t.label}</button>
             ))}
           </div>
 
@@ -273,6 +284,7 @@ export default function PropertyFullView({ propertyId }) {
               : <div style={{ fontSize:12, color:'#9ca3af', padding:'20px 0', textAlign:'center' }}>Set an ARV in Valuation to generate an offer.</div>
           )}
           {tab==='tour' && <TourSection propertyId={propertyId} tourUrl={property.zillow_tour_url} onSaved={load} />}
+          {tab==='zillow' && <ZillowTab address={property.address} />}
           {tab==='condition' && <ConditionRatings propertyId={propertyId} />}
           {tab==='notes' && (
             <div style={{ display:'flex', flexDirection:'column', gap:20 }}>
