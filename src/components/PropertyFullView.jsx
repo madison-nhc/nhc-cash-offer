@@ -80,6 +80,8 @@ export default function PropertyFullView({ propertyId }) {
   const [repairs, setRepairs] = useState([])
   const [tab, setTab] = useState('tour')
   const [savedAt, setSavedAt] = useState(null)
+  const [offerSnapshot, setOfferSnapshot] = useState(null)
+  const [offerGeneratedAt, setOfferGeneratedAt] = useState(null)
   const saveTimer = useRef(null)
   const loadedRef = useRef(false)
 
@@ -90,8 +92,31 @@ export default function PropertyFullView({ propertyId }) {
     if (!data) return
     setProperty(data)
     setRepairs(data.repair_items?.length ? data.repair_items.map((r,i)=>({...r,id:i})) : DEFAULT_REPAIRS.map((r,i)=>({...r,id:i})))
+    setOfferSnapshot(data.offer_snapshot || null)
+    setOfferGeneratedAt(data.offer_generated_at || null)
     loadedRef.current = true
   }
+
+  // Only these fields actually change what the offer looks like — comparing the
+  // whole property object would falsely flag "changed" for things like notes or
+  // the Drive link, which have nothing to do with the offer.
+  const OFFER_FIELDS = ['address','beds','baths','sqft','arv','asis_pct','asis_override','profit_margin','profit_override',
+    'cash_offer_override','hold_cash_pct','hold_cash_months','hold_opt2_pct','hold_opt2_months','hold_opt3_pct','hold_opt3_months',
+    'comm_cash_offer_pct','comm_cash_arv_pct','comm_list_pct']
+  function pickOfferFields(prop, reps) {
+    const picked = {}
+    OFFER_FIELDS.forEach(k => { picked[k] = prop[k] })
+    picked.repair_items = reps.filter(r=>r.name||r.cost).map(r=>({ name:r.name, cost:parseFloat(r.cost)||0 }))
+    return picked
+  }
+  async function regenerateOffer() {
+    const snap = pickOfferFields(property, repairs)
+    const now = new Date().toISOString()
+    setOfferSnapshot(snap)
+    setOfferGeneratedAt(now)
+    await supabase.from('cashoffer_properties').update({ offer_snapshot: snap, offer_generated_at: now }).eq('id', propertyId)
+  }
+  const offerIsDirty = offerSnapshot && JSON.stringify(pickOfferFields(property||{}, repairs)) !== JSON.stringify(offerSnapshot)
 
   // Debounced autosave: any change to valuation fields or repairs writes back after a short pause.
   useEffect(() => {
@@ -255,9 +280,30 @@ export default function PropertyFullView({ propertyId }) {
           </div>
 
           {tab==='offer' && (
-            property.arv
-              ? <ProposalModal embedded property={{ ...property, repair_items: repairs.filter(r=>r.name||r.cost).map(r=>({ name:r.name, cost:parseFloat(r.cost)||0 })) }} />
-              : <div style={{ fontSize:12, color:'#9ca3af', padding:'20px 0', textAlign:'center' }}>Set an ARV in Valuation to generate an offer.</div>
+            !property.arv ? (
+              <div style={{ fontSize:12, color:'#9ca3af', padding:'20px 0', textAlign:'center' }}>Set an ARV in Valuation to generate an offer.</div>
+            ) : !offerSnapshot ? (
+              <div style={{ textAlign:'center', padding:'40px 0' }}>
+                <div style={{ fontSize:13, color:'#9ca3af', marginBottom:14 }}>No offer generated yet.</div>
+                <button onClick={regenerateOffer} style={{ background:'#2D6FAF', color:'#fff', border:'none', borderRadius:6, padding:'10px 20px', fontSize:13, fontWeight:700, cursor:'pointer', fontFamily:'inherit' }}>
+                  Generate Offer
+                </button>
+              </div>
+            ) : (
+              <div>
+                {offerIsDirty ? (
+                  <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:10, background:'#FEF3C7', border:'1px solid #FDE68A', borderRadius:6, padding:'8px 12px', marginBottom:12 }}>
+                    <span style={{ fontSize:11, color:'#92400E', fontWeight:700 }}>⚠ Inputs have changed since this offer was generated{offerGeneratedAt?` (${new Date(offerGeneratedAt).toLocaleString()})`:''} — this preview is out of date.</span>
+                    <button onClick={regenerateOffer} style={{ background:'#B8892A', color:'#fff', border:'none', borderRadius:5, padding:'6px 14px', fontSize:11, fontWeight:700, cursor:'pointer', fontFamily:'inherit', flexShrink:0 }}>
+                      Re-Generate Offer
+                    </button>
+                  </div>
+                ) : offerGeneratedAt && (
+                  <div style={{ fontSize:10, color:'#9ca3af', marginBottom:8, textAlign:'right' }}>Generated {new Date(offerGeneratedAt).toLocaleString()}</div>
+                )}
+                <ProposalModal embedded property={offerSnapshot} />
+              </div>
+            )
           )}
           {tab==='tour' && <TourSection propertyId={propertyId} tourUrl={property.zillow_tour_url} onSaved={load} />}
           {tab==='condition' && <ConditionRatings propertyId={propertyId} />}
@@ -275,9 +321,9 @@ export default function PropertyFullView({ propertyId }) {
       </div>
 
       <div style={{ position:'fixed', bottom:0, left:0, right:0, background:'#fff', borderTop:'2px solid #B8892A', padding:'12px 24px', display:'flex', justifyContent:'flex-end', boxShadow:'0 -4px 14px rgba(0,0,0,0.06)' }}>
-        <button onClick={()=>setTab('offer')} disabled={!property.arv}
+        <button onClick={()=>{ regenerateOffer(); setTab('offer') }} disabled={!property.arv}
           style={{ background: property.arv ? '#2D6FAF' : '#D6D2CA', color:'#fff', border:'none', borderRadius:6, padding:'11px 24px', cursor: property.arv ? 'pointer' : 'not-allowed', fontSize:13, fontWeight:700, fontFamily:'inherit' }}>
-          Generate Offer
+          {offerSnapshot ? 'Re-Generate Offer' : 'Generate Offer'}
         </button>
       </div>
     </div>
