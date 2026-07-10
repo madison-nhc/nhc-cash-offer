@@ -99,7 +99,10 @@ export default function PropertyFullView({ propertyId }) {
     clearTimeout(saveTimer.current)
     saveTimer.current = setTimeout(async () => {
       const repair_items = repairs.filter(r=>r.name||r.cost).map(r=>({ name:r.name, sqft:r.sqft, pricePerSqft:r.pricePerSqft, cost:r.cost }))
-      const { id, ...patch } = property
+      const { id, ...rest } = property
+      // Cleared number inputs land here as '' — Postgres numeric columns reject that, so
+      // treat blank as "use the calc default" (null) rather than erroring the save.
+      const patch = Object.fromEntries(Object.entries(rest).map(([k,v]) => [k, v==='' ? null : v]))
       await supabase.from('cashoffer_properties').update({ ...patch, repair_items }).eq('id', propertyId)
       setSavedAt(new Date())
     }, 700)
@@ -138,31 +141,68 @@ export default function PropertyFullView({ propertyId }) {
         <div style={{ background:'#fff', borderRadius:10, border:'0.5px solid #D6D2CA', padding:20, position:'sticky', top:20, display:'flex', flexDirection:'column', gap:14 }}>
           <div className="drawer-section">Valuation</div>
           <Field label="After Renovation Value ($)">
-            <input style={{ ...monoInp, borderLeft:'3px solid #D97825' }} type="number" value={property.arv||''} onChange={set('arv')} />
+            <input style={{ ...monoInp, borderLeft:'3px solid #D97825' }} type="number" value={property.arv??''} onChange={set('arv')} />
           </Field>
           <FieldRow>
-            <Field label="As-Is Deduction %"><input style={monoInp} type="number" value={property.asis_pct||50} onChange={set('asis_pct')} /></Field>
-            <Field label="As-Is Listing Price Override ($)"><input style={monoInp} type="number" value={property.asis_override||''} onChange={set('asis_override')} /></Field>
+            <Field label="As-Is Deduction %"><input style={{ ...monoInp, minHeight:34 }} type="number" placeholder="50" value={property.asis_pct??''} onChange={set('asis_pct')} /></Field>
+            <Field label="As-Is Override ($)"><input style={{ ...monoInp, minHeight:34 }} type="number" value={property.asis_override??''} onChange={set('asis_override')} /></Field>
           </FieldRow>
           <FieldRow>
-            <Field label="Profit Margin %"><input style={monoInp} type="number" value={property.profit_margin||15} onChange={set('profit_margin')} /></Field>
-            <Field label="Cash Offer Override ($)"><input style={monoInp} type="number" value={property.cash_offer_override||''} onChange={set('cash_offer_override')} /></Field>
+            <Field label="Profit Margin %"><input style={{ ...monoInp, minHeight:34 }} type="number" placeholder="15" value={property.profit_margin??''} onChange={set('profit_margin')} /></Field>
+            <Field label="Cash Offer Override ($)"><input style={{ ...monoInp, minHeight:34 }} type="number" value={property.cash_offer_override??''} onChange={set('cash_offer_override')} /></Field>
           </FieldRow>
+
+          <div style={{ fontSize:10, fontWeight:700, color:'#2D6FAF', textTransform:'uppercase', letterSpacing:0.6, marginTop:4 }}>Holding Cost — As-Is Net</div>
           <FieldRow>
-            <Field label="Holding % / mo"><input style={monoInp} type="number" step="0.05" value={property.hold_opt3_pct||0.5} onChange={set('hold_opt3_pct')} /></Field>
-            <Field label="Holding Months"><input style={monoInp} type="number" value={property.hold_opt3_months||6} onChange={set('hold_opt3_months')} /></Field>
+            <Field label="As-Is Holding % / mo"><input style={{ ...monoInp, minHeight:34 }} type="number" step="0.05" placeholder="0.5" value={property.hold_opt2_pct??''} onChange={set('hold_opt2_pct')} /></Field>
+            <Field label="As-Is Holding Months"><input style={{ ...monoInp, minHeight:34 }} type="number" placeholder="3" value={property.hold_opt2_months??''} onChange={set('hold_opt2_months')} /></Field>
+          </FieldRow>
+
+          <div style={{ fontSize:10, fontWeight:700, color:'#D97825', textTransform:'uppercase', letterSpacing:0.6, marginTop:4 }}>Holding Cost — Full Retail</div>
+          <FieldRow>
+            <Field label="Full Retail Holding % / mo"><input style={{ ...monoInp, minHeight:34 }} type="number" step="0.05" placeholder="0.5" value={property.hold_opt3_pct??''} onChange={set('hold_opt3_pct')} /></Field>
+            <Field label="Full Retail Holding Months"><input style={{ ...monoInp, minHeight:34 }} type="number" placeholder="6" value={property.hold_opt3_months??''} onChange={set('hold_opt3_months')} /></Field>
           </FieldRow>
 
           {property.arv && (
             <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
               {[
-                { label:'Cash Offer', value:d.cashOffer, color:'#3B6D11' },
-                { label:'As-Is Net', value:d.opt2Net, color:'#2D6FAF' },
-                { label:'Full Retail', value:d.opt3Net, color:'#D97825' },
+                { label:'Cash Offer', value:d.cashOffer, color:'#3B6D11', rows:[
+                  { l:'ARV', v:fmt(d.arv) },
+                  { l:'Repairs', v:`−${fmt(d.reno)}` },
+                  { l:`Comm (${(d.commCashPct*100).toFixed(1).replace(/\.0$/,'')}%)`, v:`−${fmt(d.commCashPct*d.arv)}` },
+                  { l:`Holding (${d.cashHoldMo}mo)`, v:`−${fmt(d.cashHold)}` },
+                  { l:'Profit margin', v:`−${fmt(d.profit)}` },
+                ]},
+                { label:'As-Is Net', value:d.opt2Net, color:'#2D6FAF', rows:[
+                  { l:'ARV', v:fmt(d.arv) },
+                  { l:'As-Is Deduction', v:`−${fmt(d.asisDeduction)}` },
+                  { l:'Listing Price', v:fmt(d.asisVal), strong:true },
+                  { l:`Comm (${(d.commListPct*100).toFixed(1).replace(/\.0$/,'')}%)`, v:`−${fmt(d.opt2Comm)}` },
+                  { l:`Holding (${d.opt2HoldMo}mo)`, v:`−${fmt(d.opt2Hold)}` },
+                ]},
+                { label:'Full Retail', value:d.opt3Net, color:'#D97825', rows:[
+                  { l:'ARV', v:fmt(d.arv) },
+                  { l:'Repairs', v:`−${fmt(d.reno)}` },
+                  { l:`Comm (${(d.commListPct*100).toFixed(1).replace(/\.0$/,'')}%)`, v:`−${fmt(d.opt3Comm)}` },
+                  { l:`Holding (${d.opt3HoldMo}mo)`, v:`−${fmt(d.opt3Hold)}` },
+                ]},
               ].map(card=>(
-                <div key={card.label} style={{ background:'#FAFAF8', borderRadius:6, padding:'8px 12px', borderTop:`3px solid ${card.color}`, display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-                  <div style={{ fontSize:11, color:'#9ca3af', textTransform:'uppercase', letterSpacing:0.6 }}>{card.label}</div>
-                  <div style={{ fontSize:16, fontWeight:700, fontFamily:'monospace', color:card.color }}>{fmt(card.value)}</div>
+                <div key={card.label} style={{ background:'#FAFAF8', borderRadius:6, padding:'8px 12px', borderTop:`3px solid ${card.color}` }}>
+                  <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+                    <div style={{ fontSize:11, color:'#9ca3af', textTransform:'uppercase', letterSpacing:0.6 }}>{card.label}</div>
+                    <div style={{ fontSize:16, fontWeight:700, fontFamily:'monospace', color:card.color }}>{fmt(card.value)}</div>
+                  </div>
+                  <div style={{ marginTop:6, paddingTop:6, borderTop:'1px solid #F0EDE6', fontSize:10, color:'#6b7280', lineHeight:1.7 }}>
+                    {card.rows.map(r=>(
+                      <div key={r.l} style={{
+                        display:'flex', justifyContent:'space-between',
+                        ...(r.strong ? { borderTop:'1px solid #E5E1DB', marginTop:2, paddingTop:2, color:'#2C2C2C', fontWeight:700 } : {}),
+                      }}>
+                        <span>{r.l}</span><span style={{ fontFamily:'monospace' }}>{r.v}</span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               ))}
             </div>

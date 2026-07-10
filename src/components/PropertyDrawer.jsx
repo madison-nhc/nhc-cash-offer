@@ -775,23 +775,22 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
             </div>
           )}
 
-          {form.arv && (
-            <button onClick={()=>onViewOffer&&onViewOffer({...form, repair_items:repairs.filter(r=>r.name||r.cost).map(r=>({name:r.name,cost:parseFloat(r.cost)||0}))})}
-              style={{ background:'#2D6FAF', color:'#fff', border:'none', borderRadius:6, padding:'10px 16px', cursor:'pointer', fontSize:13, fontWeight:700, fontFamily:'inherit', width:'100%', marginTop:4 }}>
-              View Offer PDF
-            </button>
-          )}
-          <Field label="Notes"><textarea style={{ ...inp, minHeight:56, resize:'vertical' }} value={form.nhc_notes||''} onChange={set('nhc_notes')} /></Field>
-
           {form.id && (
             <button
               onClick={() => window.open(`${window.location.origin}/?propertyView=${form.id}`, 'nhc_property_view', 'width=1500,height=980,noopener,noreferrer')}
-              style={{ background:'#6b21a8', color:'#fff', border:'none', borderRadius:8, padding:'11px 16px', cursor:'pointer', fontSize:13, fontWeight:700, fontFamily:'inherit', width:'100%', display:'flex', alignItems:'center', justifyContent:'center', gap:8 }}
+              style={{ background:'#6b21a8', color:'#fff', border:'none', borderRadius:8, padding:'11px 16px', cursor:'pointer', fontSize:13, fontWeight:700, fontFamily:'inherit', width:'100%', display:'flex', alignItems:'center', justifyContent:'center', gap:8, marginTop:4 }}
             >
               <span>Open Full Property View (Edit Offer)</span>
               <span style={{ fontSize:16 }}>&#8599;</span>
             </button>
           )}
+          {form.arv && (
+            <button onClick={()=>onViewOffer&&onViewOffer({...form, repair_items:repairs.filter(r=>r.name||r.cost).map(r=>({name:r.name,cost:parseFloat(r.cost)||0}))})}
+              style={{ background:'#2D6FAF', color:'#fff', border:'none', borderRadius:6, padding:'10px 16px', cursor:'pointer', fontSize:13, fontWeight:700, fontFamily:'inherit', width:'100%' }}>
+              View Offer PDF
+            </button>
+          )}
+          <Field label="Notes"><textarea style={{ ...inp, minHeight:56, resize:'vertical' }} value={form.nhc_notes||''} onChange={set('nhc_notes')} /></Field>
         </div>
       )}
 
