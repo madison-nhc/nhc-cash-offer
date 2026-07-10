@@ -114,7 +114,7 @@ export default function PropertyFullView({ propertyId }) {
       if (field === 'sqft' || field === 'pricePerSqft') {
         const sqft = parseFloat(field==='sqft'?value:next.sqft) || 0
         const price = parseFloat(field==='pricePerSqft'?value:next.pricePerSqft) || 0
-        if (sqft && price) next.cost = String(Math.round(sqft*price))
+        next.cost = (sqft && price) ? String(Math.round(sqft*price)) : ''
       }
       return next
     }))
