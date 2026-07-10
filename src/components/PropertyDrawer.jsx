@@ -596,7 +596,7 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
   const innerContent = (
     <>
       {/* ── Tab bar ── */}
-      <div style={{ display:'flex', gap:0, borderBottom:'2px solid #F0EDE6', marginBottom:16, marginTop:8 }}>
+      <div style={{ display:'flex', gap:0, borderBottom:'2px solid #F0EDE6', marginBottom:16, marginTop:8, position:'sticky', top:0, background:'#fff', zIndex:5 }}>
         {TABS.map(t=>{
           const disabledReason = disabledTabReasons[t.key]
           return (
