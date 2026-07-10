@@ -109,6 +109,16 @@ export default function PropertyFullView({ propertyId }) {
     picked.repair_items = reps.filter(r=>r.name||r.cost).map(r=>({ name:r.name, cost:parseFloat(r.cost)||0 }))
     return picked
   }
+  // Snapshots taken before a field existed (e.g. comm_cash_offer_pct) simply lack that
+  // key, which isn't the same as it being null in JSON.stringify's output — that alone
+  // was making every old offer look permanently "out of date". Normalize both sides so
+  // a missing key and an explicit null compare as equal.
+  function normalizeForCompare(snap) {
+    const out = {}
+    OFFER_FIELDS.forEach(k => { out[k] = (snap && snap[k] !== undefined) ? snap[k] : null })
+    out.repair_items = (snap && snap.repair_items) || []
+    return out
+  }
   async function regenerateOffer() {
     const snap = pickOfferFields(property, repairs)
     const now = new Date().toISOString()
@@ -116,7 +126,7 @@ export default function PropertyFullView({ propertyId }) {
     setOfferGeneratedAt(now)
     await supabase.from('cashoffer_properties').update({ offer_snapshot: snap, offer_generated_at: now }).eq('id', propertyId)
   }
-  const offerIsDirty = offerSnapshot && JSON.stringify(pickOfferFields(property||{}, repairs)) !== JSON.stringify(offerSnapshot)
+  const offerIsDirty = offerSnapshot && JSON.stringify(normalizeForCompare(pickOfferFields(property||{}, repairs))) !== JSON.stringify(normalizeForCompare(offerSnapshot))
 
   // Debounced autosave: any change to valuation fields or repairs writes back after a short pause.
   useEffect(() => {
@@ -320,9 +330,12 @@ export default function PropertyFullView({ propertyId }) {
         </div>
       </div>
 
-      <div style={{ position:'fixed', bottom:0, left:0, right:0, background:'#fff', borderTop:'2px solid #B8892A', padding:'12px 24px', display:'flex', justifyContent:'flex-end', boxShadow:'0 -4px 14px rgba(0,0,0,0.06)' }}>
+      <div style={{ position:'fixed', bottom:0, left:0, right:0, background:'#fff', borderTop:'2px solid #B8892A', padding:'12px 24px', display:'flex', justifyContent:'flex-end', alignItems:'center', gap:12, boxShadow:'0 -4px 14px rgba(0,0,0,0.06)' }}>
+        {offerIsDirty && (
+          <span style={{ fontSize:11, color:'#92400E', fontWeight:700 }}>⚠ Offer is out of date</span>
+        )}
         <button onClick={()=>{ regenerateOffer(); setTab('offer') }} disabled={!property.arv}
-          style={{ background: property.arv ? '#2D6FAF' : '#D6D2CA', color:'#fff', border:'none', borderRadius:6, padding:'11px 24px', cursor: property.arv ? 'pointer' : 'not-allowed', fontSize:13, fontWeight:700, fontFamily:'inherit' }}>
+          style={{ background: !property.arv ? '#D6D2CA' : offerIsDirty ? '#B8892A' : '#2D6FAF', color:'#fff', border:'none', borderRadius:6, padding:'11px 24px', cursor: property.arv ? 'pointer' : 'not-allowed', fontSize:13, fontWeight:700, fontFamily:'inherit' }}>
           {offerSnapshot ? 'Re-Generate Offer' : 'Generate Offer'}
         </button>
       </div>
