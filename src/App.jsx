@@ -16,6 +16,7 @@ import Inventory from './pages/Inventory.jsx'
 import OpsLog from './pages/OpsLog.jsx'
 import PropertyFullView from './components/PropertyFullView.jsx'
 import LoginPage from './pages/LoginPage.jsx'
+import Users from './pages/Users.jsx'
 
 function GlobalSearch({ onSelect, mobile }) {
   const [query, setQuery] = useState('')
@@ -105,6 +106,7 @@ const OPS_TABS = [
   { id:'supplies',   label:'Supplies',         short:'Supplies',  path:'/supplies' },
   { id:'inventory',  label:'Inventory',        short:'Inventory', path:'/inventory' },
   { id:'opslog',     label:'Improvements',     short:'Improvements', path:'/ops-log' },
+  { id:'users',      label:'Users',            short:'Users',     path:'/users' },
 ]
 const TABS = [...MARKETING_TABS, ...PIPELINE_TABS, ...OPS_TABS]
 const ALL_ROUTES = TABS
@@ -211,6 +213,8 @@ function AuthedApp({ isAdmin, userEmail }) {
     navigate('analyzer')
   }, [navigate])
 
+  const visibleOpsTabs = OPS_TABS.filter(t => t.id !== 'users' || isAdmin)
+
   const pages = {
     analyzer:  <Analyzer openPropertyId={targetProperty?.id} openInPackage={!!targetProperty?.package_id} onOpenedTarget={() => setTargetProperty(null)} onOpenNew={() => setNewPropertyOpen(true)} />,
     rehabs:    <Rehabs onOpenSupplies={() => navigate('supplies')} />,
@@ -224,6 +228,7 @@ function AuthedApp({ isAdmin, userEmail }) {
     vendors:   <Vendors />,
     inventory: <Inventory />,
     opslog:    <OpsLog />,
+    users:     <Users isAdmin={isAdmin} userEmail={userEmail} />,
   }
 
   return (
@@ -264,7 +269,7 @@ function AuthedApp({ isAdmin, userEmail }) {
                 </button>
               ))}
               <div style={{ width:1, height:20, background:'#D6D2CA', margin:'0 8px' }} />
-              {OPS_TABS.map(t => (
+              {visibleOpsTabs.map(t => (
                 <button key={t.id} onClick={() => navigate(t.id)} style={{
                   background: active === t.id ? '#B8892A' : 'transparent',
                   color: active === t.id ? '#fff' : '#6b7280',
@@ -355,7 +360,7 @@ function AuthedApp({ isAdmin, userEmail }) {
               }}>{t.short}</button>
             ))}
             <div style={{ width:1, height:20, background:'#D6D2CA', margin:'0 4px', flexShrink:0 }} />
-            {OPS_TABS.map(t => (
+            {visibleOpsTabs.map(t => (
               <button key={t.id} onClick={() => navigate(t.id)} style={{
                 background: active === t.id ? '#B8892A' : '#F0EDE6',
                 color: active === t.id ? '#fff' : '#6b7280',
