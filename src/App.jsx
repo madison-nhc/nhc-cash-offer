@@ -15,6 +15,7 @@ import Vendors from './pages/Vendors.jsx'
 import Inventory from './pages/Inventory.jsx'
 import OpsLog from './pages/OpsLog.jsx'
 import PropertyFullView from './components/PropertyFullView.jsx'
+import LoginPage from './pages/LoginPage.jsx'
 
 function GlobalSearch({ onSelect, mobile }) {
   const [query, setQuery] = useState('')
@@ -122,11 +123,46 @@ function initialTab() {
 }
 
 export default function App() {
+  // ── Auth gate — checked before anything else renders. Any Google account
+  // can attempt sign-in (no @nhcnow.com domain restriction, since outside
+  // parties like the lender need access), but only emails on the
+  // cashoffer_users allowlist table actually get into the app. ──
+  const [session, setSession] = useState(undefined)
+  const [access, setAccess] = useState(undefined) // undefined = loading, null = not on allowlist, {role,...} = allowed
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => setSession(session))
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => setSession(session))
+    return () => subscription.unsubscribe()
+  }, [])
+
+  useEffect(() => {
+    if (session === undefined) return
+    if (!session) { setAccess(undefined); return }
+    let cancelled = false
+    supabase.from('cashoffer_users').select('*').eq('email', session.user.email).maybeSingle()
+      .then(({ data }) => { if (!cancelled) setAccess(data || null) })
+    return () => { cancelled = true }
+  }, [session])
+
   // Popup route: window.open(`${origin}/?propertyView=<id>`) from the drawer opens a
   // standalone full-page view — no nav chrome, own data loading, own autosave.
   const popupPropertyId = new URLSearchParams(window.location.search).get('propertyView')
+
+  if (session === undefined) return null
+  if (!session) return <LoginPage />
+  if (access === undefined) return null
+  if (!access) return <LoginPage unauthorized email={session.user.email} onSignOut={() => supabase.auth.signOut()} />
+
+  const isAdmin = access.role === 'admin'
+  const userEmail = session.user.email
+
   if (popupPropertyId) return <PropertyFullView propertyId={popupPropertyId} />
 
+  return <AuthedApp popupPropertyId={popupPropertyId} isAdmin={isAdmin} userEmail={userEmail} />
+}
+
+function AuthedApp({ isAdmin, userEmail }) {
   const [active, setActive] = useState(initialTab)
   const [targetProperty, setTargetProperty] = useState(null)
   const [newPropertyOpen, setNewPropertyOpen] = useState(false)
@@ -244,6 +280,18 @@ export default function App() {
 
           {!mobile && <GlobalSearch onSelect={handleSearchSelect} mobile={false} />}
 
+          {!mobile && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginLeft: 4 }}>
+              <span style={{ fontSize: 11, color: '#9ca3af', whiteSpace: 'nowrap' }}>{userEmail}</span>
+              <button
+                onClick={() => supabase.auth.signOut()}
+                style={{ background: 'none', border: '1px solid #D6D2CA', color: '#6b7280', borderRadius: 6, padding: '4px 10px', fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}
+              >
+                Sign Out
+              </button>
+            </div>
+          )}
+
           {/* Global Add Property button */}
           <button
             onClick={() => setNewPropertyOpen(true)}
@@ -269,6 +317,18 @@ export default function App() {
                 fontSize:11, fontWeight:700, fontFamily:'inherit', flexShrink:0,
               }}>
               +
+            </button>
+          )}
+          {mobile && (
+            <button
+              onClick={() => supabase.auth.signOut()}
+              title="Sign out"
+              style={{
+                background:'none', color:'#9ca3af', border:'1px solid #D6D2CA',
+                borderRadius:6, padding:'5px 8px', cursor:'pointer',
+                fontSize:11, fontWeight:600, fontFamily:'inherit', flexShrink:0,
+              }}>
+              ⏻
             </button>
           )}
         </div>
