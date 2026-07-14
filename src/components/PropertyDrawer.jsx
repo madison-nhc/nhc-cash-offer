@@ -408,6 +408,40 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
       .then(({ data }) => setAgentList(data || []))
   }, [])
 
+  const [units, setUnits] = useState([])
+  useEffect(() => {
+    if (!form.id) { setUnits([]); return }
+    supabase.from('cashoffer_units').select('*').eq('property_id', form.id).order('sort_order', { ascending:true })
+      .then(({ data }) => setUnits(data || []))
+  }, [form.id])
+
+  const unitCount = parseInt(form.unit_count) || 1
+  const isMultiUnit = unitCount > 1
+  function unitTypeLabelFor(n) {
+    if (n <= 1) return 'Single'
+    if (n === 2) return 'Duplex'
+    if (n === 3) return 'Triplex'
+    if (n === 4) return 'Quadplex'
+    return '5+'
+  }
+  function setUnitCountAndSync(n) {
+    const count = Math.max(1, n)
+    setForm(f => ({ ...f, unit_count: count }))
+    setUnits(us => {
+      const next = [...us]
+      while (next.length < count) next.push({ id:`new-${Date.now()}-${next.length}`, unit_label:`Unit ${next.length+1}`, beds:'', baths:'', sqft:'', market_rent:'' })
+      while (next.length > count) next.pop()
+      return next
+    })
+  }
+  function updateUnit(id, k, v) { setUnits(us => us.map(u => u.id===id ? { ...u, [k]:v } : u)) }
+  const unitTotals = units.reduce((acc,u) => ({
+    beds: acc.beds + (parseFloat(u.beds)||0),
+    baths: acc.baths + (parseFloat(u.baths)||0),
+    sqft: acc.sqft + (parseFloat(u.sqft)||0),
+    rent: acc.rent + (parseFloat(u.market_rent)||0),
+  }), { beds:0, baths:0, sqft:0, rent:0 })
+
   const isNew   = !form.id
   // An agent editing an existing deal only gets the Analyzer tab and can't touch
   // Owner/Type/Stage classification or delete — everything else stays admin/viewer-only.
@@ -487,10 +521,12 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
     if (!form.address) return
     const rehab = rehabCost !== null ? rehabCost : (form.rehab_cost||null)
     const payload = {
-      address:form.address, beds:form.beds||null, baths:form.baths||null,
+      address:form.address,
+      beds: isMultiUnit ? (unitTotals.beds||null) : (form.beds||null),
+      baths: isMultiUnit ? (unitTotals.baths||null) : (form.baths||null),
       seller_name:form.seller_name||null, seller_fub_link:form.seller_fub_link||null,
       photos_drive_link:form.photos_drive_link||null,
-      sqft:form.sqft||null, unit_count:parseInt(form.unit_count)||null, unit_names:form.unit_names||null,
+      sqft: isMultiUnit ? (unitTotals.sqft||null) : (form.sqft||null), unit_count:parseInt(form.unit_count)||null, unit_names:form.unit_names||null,
       arv:form.arv||null, asis_pct:form.asis_pct||50, asis_override:form.asis_override||null,
       profit_margin:form.profit_margin||15, profit_override:form.profit_override||null,
       cash_offer_override:form.cash_offer_override||null,
@@ -542,13 +578,41 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
       conversion_date:form.conversion_date||null,
       conversion_disposition:form.conversion_disposition||null,
     }
-    const { error } = isNew
-      ? await supabase.from('cashoffer_properties').insert(payload)
-      : await supabase.from('cashoffer_properties').update(payload).eq('id',form.id)
-    if (error) {
-      alert(`Couldn't save this property.\n\n${error.message}\n\nYour changes are still in the form — please try again or let Madison know if this keeps happening.`)
-      return false
+    let savedId = form.id
+    if (isNew) {
+      const { data, error } = await supabase.from('cashoffer_properties').insert(payload).select('id').single()
+      if (error) {
+        alert(`Couldn't save this property.\n\n${error.message}\n\nYour changes are still in the form — please try again or let Madison know if this keeps happening.`)
+        return false
+      }
+      savedId = data.id
+    } else {
+      const { error } = await supabase.from('cashoffer_properties').update(payload).eq('id',form.id)
+      if (error) {
+        alert(`Couldn't save this property.\n\n${error.message}\n\nYour changes are still in the form — please try again or let Madison know if this keeps happening.`)
+        return false
+      }
     }
+
+    // Sync the unit breakdown: simplest consistent approach is replace-all —
+    // clear existing rows for this property, then re-insert the current set.
+    await supabase.from('cashoffer_units').delete().eq('property_id', savedId)
+    if (isMultiUnit && units.length) {
+      const unitRows = units.map((u,i) => ({
+        property_id: savedId,
+        unit_label: u.unit_label || `Unit ${i+1}`,
+        beds: u.beds ? parseFloat(u.beds) : null,
+        baths: u.baths ? parseFloat(u.baths) : null,
+        sqft: u.sqft ? parseFloat(u.sqft) : null,
+        market_rent: u.market_rent ? parseFloat(u.market_rent) : null,
+        sort_order: i,
+      }))
+      const { error: unitError } = await supabase.from('cashoffer_units').insert(unitRows)
+      if (unitError) {
+        alert(`Property saved, but the unit breakdown couldn't be saved.\n\n${unitError.message}`)
+      }
+    }
+
     onSave()
     return true
   }
@@ -646,11 +710,77 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
             </button>
           )}
 
+          <Field label="Unit Type">
+            <div style={{ display:'flex', gap:8, alignItems:'center' }}>
+              <select
+                value={unitTypeLabelFor(unitCount)}
+                onChange={e => {
+                  const v = e.target.value
+                  if (v==='Single') setUnitCountAndSync(1)
+                  else if (v==='Duplex') setUnitCountAndSync(2)
+                  else if (v==='Triplex') setUnitCountAndSync(3)
+                  else if (v==='Quadplex') setUnitCountAndSync(4)
+                  else setUnitCountAndSync(Math.max(5, unitCount))
+                }}
+                style={{ ...inp, maxWidth:150 }}>
+                {['Single','Duplex','Triplex','Quadplex','5+'].map(o=><option key={o}>{o}</option>)}
+              </select>
+              {unitCount>=5 && (
+                <input
+                  type="number" min={5} value={unitCount}
+                  onChange={e=>setUnitCountAndSync(parseInt(e.target.value)||5)}
+                  style={{ ...monoInp, width:70 }}
+                />
+              )}
+            </div>
+          </Field>
+
           <FieldRow>
-            <Field label="Beds"><input style={monoInp} type="number" value={form.beds||''} onChange={set('beds')} /></Field>
-            <Field label="Baths"><input style={monoInp} type="number" value={form.baths||''} onChange={set('baths')} /></Field>
-            <Field label="Sq Ft"><input style={monoInp} type="number" value={form.sqft||''} onChange={set('sqft')} /></Field>
+            <Field label="Beds">
+              {isMultiUnit
+                ? <div style={{ ...monoInp, background:'#FAFAF8', color:'#6b7280', display:'flex', alignItems:'center' }}>{unitTotals.beds || '—'}</div>
+                : <input style={monoInp} type="number" value={form.beds||''} onChange={set('beds')} />}
+            </Field>
+            <Field label="Baths">
+              {isMultiUnit
+                ? <div style={{ ...monoInp, background:'#FAFAF8', color:'#6b7280', display:'flex', alignItems:'center' }}>{unitTotals.baths || '—'}</div>
+                : <input style={monoInp} type="number" value={form.baths||''} onChange={set('baths')} />}
+            </Field>
+            <Field label="Sq Ft">
+              {isMultiUnit
+                ? <div style={{ ...monoInp, background:'#FAFAF8', color:'#6b7280', display:'flex', alignItems:'center' }}>{unitTotals.sqft || '—'}</div>
+                : <input style={monoInp} type="number" value={form.sqft||''} onChange={set('sqft')} />}
+            </Field>
           </FieldRow>
+
+          {isMultiUnit && (
+            <div>
+              <div className="drawer-section">Units ({unitCount})</div>
+              <table style={{ width:'100%', borderCollapse:'collapse' }}>
+                <thead>
+                  <tr>
+                    {['Unit','Beds','Baths','Sq Ft','Market Rent'].map((h,i)=>(
+                      <th key={h} style={{ textAlign:i===0?'left':'center', fontSize:10, color:'#9ca3af', fontWeight:600, textTransform:'uppercase', letterSpacing:0.5, paddingBottom:4 }}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {units.map(u => (
+                    <tr key={u.id}>
+                      <td style={{ paddingBottom:6, paddingRight:6 }}><input style={{ ...inp, fontSize:12 }} value={u.unit_label||''} onChange={e=>updateUnit(u.id,'unit_label',e.target.value)} /></td>
+                      <td style={{ paddingBottom:6, paddingRight:6 }}><input style={{ ...monoInp, fontSize:12, textAlign:'center' }} type="number" value={u.beds||''} onChange={e=>updateUnit(u.id,'beds',e.target.value)} /></td>
+                      <td style={{ paddingBottom:6, paddingRight:6 }}><input style={{ ...monoInp, fontSize:12, textAlign:'center' }} type="number" value={u.baths||''} onChange={e=>updateUnit(u.id,'baths',e.target.value)} /></td>
+                      <td style={{ paddingBottom:6, paddingRight:6 }}><input style={{ ...monoInp, fontSize:12, textAlign:'center' }} type="number" value={u.sqft||''} onChange={e=>updateUnit(u.id,'sqft',e.target.value)} /></td>
+                      <td style={{ paddingBottom:6 }}><input style={{ ...monoInp, fontSize:12, textAlign:'center' }} type="number" value={u.market_rent||''} onChange={e=>updateUnit(u.id,'market_rent',e.target.value)} /></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              <div style={{ fontSize:11, color:'#9ca3af', marginTop:6, textAlign:'right' }}>
+                Total Market Rent: <strong style={{ color:'#2C2C2C' }}>{fmt(unitTotals.rent)}</strong> / mo
+              </div>
+            </div>
+          )}
           <div className="drawer-section">Owner / Seller</div>
           <FieldRow>
             <Field label="Name"><input style={inp} value={form.seller_name||''} onChange={set('seller_name')} /></Field>
