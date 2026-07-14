@@ -95,6 +95,7 @@ export function ConditionRatings({ propertyId }) {
   const [rows, setRows] = useState([])
   const [loading, setLoading] = useState(true)
   const [reviewer, setReviewer] = useState(getReviewerName())
+  const [viewPhoto, setViewPhoto] = useState(null)
   const fileInputRef = useRef(null)
   const photoTargetRef = useRef(null)
 
@@ -199,7 +200,7 @@ export function ConditionRatings({ propertyId }) {
                 <div style={{ display:'flex', gap:4, alignItems:'center' }}>
                   {r?.photo && (
                     <div style={{ position:'relative' }}>
-                      <img src={r.photo} alt={cat} style={{ width:32, height:32, objectFit:'cover', borderRadius:5, border:'1px solid #D6D2CA' }} />
+                      <img src={r.photo} alt={cat} onClick={()=>setViewPhoto({ photo:r.photo, label:cat })} style={{ width:32, height:32, objectFit:'cover', borderRadius:5, border:'1px solid #D6D2CA', cursor:'pointer' }} />
                       <button onClick={()=>removePhoto(r)} style={{ position:'absolute', top:-6, right:-6, width:14, height:14, borderRadius:'50%', background:'#fff', border:'1px solid #D6D2CA', fontSize:8, padding:0, cursor:'pointer', color:'#9ca3af' }}>&times;</button>
                     </div>
                   )}
@@ -220,7 +221,7 @@ export function ConditionRatings({ propertyId }) {
               <div style={{ display:'flex', gap:4, alignItems:'center' }}>
                 {r.photo && (
                   <div style={{ position:'relative' }}>
-                    <img src={r.photo} alt={r.label} style={{ width:32, height:32, objectFit:'cover', borderRadius:5, border:'1px solid #D6D2CA' }} />
+                    <img src={r.photo} alt={r.label} onClick={()=>setViewPhoto({ photo:r.photo, label:r.label||'Custom item' })} style={{ width:32, height:32, objectFit:'cover', borderRadius:5, border:'1px solid #D6D2CA', cursor:'pointer' }} />
                     <button onClick={()=>removePhoto(r)} style={{ position:'absolute', top:-6, right:-6, width:14, height:14, borderRadius:'50%', background:'#fff', border:'1px solid #D6D2CA', fontSize:8, padding:0, cursor:'pointer', color:'#9ca3af' }}>&times;</button>
                   </div>
                 )}
@@ -239,6 +240,11 @@ export function ConditionRatings({ propertyId }) {
       )}
       <button onClick={addCustom} style={{ background:'transparent', border:'1px dashed #D6D2CA', borderRadius:6, padding:'7px', color:'#9ca3af', fontSize:12, cursor:'pointer', fontFamily:'inherit' }}>+ Add Custom Item</button>
       <div style={{ borderRadius:8, padding:'10px 14px', textAlign:'center', fontWeight:700, fontSize:13, color:overall.color, background:overall.color+'12', border:`1px solid ${overall.color}40` }}>{overall.label}</div>
+      {viewPhoto && (
+        <Modal title={viewPhoto.label} onClose={()=>setViewPhoto(null)} width={640}>
+          <img src={viewPhoto.photo} alt={viewPhoto.label} style={{ width:'100%', borderRadius:8, display:'block' }} />
+        </Modal>
+      )}
     </div>
   )
 }
@@ -446,3 +452,4 @@ export default function PropertyTour({ propertyId, tourUrl, onSaved }) {
     </div>
   )
 }
+
