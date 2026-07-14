@@ -6,7 +6,6 @@ import Drawer from '../components/Drawer.jsx'
 import PropertyDrawer from '../components/PropertyDrawer.jsx'
 import ProposalModal from '../components/ProposalModal.jsx'
 import PropertyMapModal from '../components/PropertyMapModal.jsx'
-import AddressInput from '../components/AddressInput.jsx'
 
 // ── Package form drawer ──────────────────────────────────────────────────────
 function PackageFormDrawer({ pkg, open, onClose, onSave }) {
@@ -77,39 +76,6 @@ function PackageFormDrawer({ pkg, open, onClose, onSave }) {
   )
 }
 
-// ── Add property to package drawer ───────────────────────────────────────────
-function AddPropertyDrawer({ packageId, open, onClose, onSave }) {
-  const [address, setAddress] = useState('')
-  const [saving, setSaving] = useState(false)
-
-  async function save() {
-    if (!address || !packageId) return
-    setSaving(true)
-    const { error } = await supabase.from('cashoffer_properties').insert({
-      address, package_id: packageId,
-      type: 'Analyzing',
-    })
-    setSaving(false)
-    if (error) { alert(`Couldn't add this property.\n\n${error.message}`); return }
-    setAddress('')
-    onSave()
-  }
-
-  return (
-    <Drawer open={open} onClose={onClose} title="Add Property to Package" width={420}>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-        <Field label="Address">
-          <AddressInput value={address} onChange={v => setAddress(v)} />
-        </Field>
-        <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-          <Btn variant="outline" onClick={onClose} style={{ flex: 1 }}>Cancel</Btn>
-          <Btn onClick={save} disabled={saving || !address} style={{ flex: 1 }}>{saving ? 'Adding…' : 'Add Property'}</Btn>
-        </div>
-      </div>
-    </Drawer>
-  )
-}
-
 // ── Main component ────────────────────────────────────────────────────────────
 export default function PackageDeals({ openPropertyId, onOpenedTarget, isAgentRole=false, currentUserEmail=null } = {}) {
   const mobile = useIsMobile()
@@ -118,7 +84,6 @@ export default function PackageDeals({ openPropertyId, onOpenedTarget, isAgentRo
   const [loading, setLoading] = useState(true)
   const [pkgDrawer, setPkgDrawer] = useState(null)          // edit package metadata
   const [propDrawer, setPropDrawer] = useState(null)        // edit individual property (from outside the overlay, e.g. global search)
-  const [addPropPkg, setAddPropPkg] = useState(null)        // add property to package
   const [proposal, setProposal] = useState(null)
   const [openPkg, setOpenPkg] = useState(null)  // package currently open in the list/map overlay
 
@@ -236,13 +201,6 @@ export default function PackageDeals({ openPropertyId, onOpenedTarget, isAgentRo
         onSave={() => { load(); setPkgDrawer(null) }}
       />
 
-      <AddPropertyDrawer
-        packageId={addPropPkg}
-        open={!!addPropPkg}
-        onClose={() => setAddPropPkg(null)}
-        onSave={() => { load(false); setAddPropPkg(null) }}
-      />
-
       {/* Shared property drawer — used for the global-search deep link case */}
       <PropertyDrawer
         property={propDrawer}
@@ -276,7 +234,13 @@ export default function PackageDeals({ openPropertyId, onOpenedTarget, isAgentRo
             setOpenPkg(null)
             await load(false)
           }}
-          onAddProperty={() => setAddPropPkg(openPkg.id)}
+          onAddProperty={async (address) => {
+            const { error } = await supabase.from('cashoffer_properties').insert({
+              address, package_id: openPkg.id, type: 'Analyzing',
+            })
+            if (error) { alert(`Couldn't add this property.\n\n${error.message}`); return }
+            await load(false)
+          }}
           isAgentRole={isAgentRole}
           currentUserEmail={currentUserEmail}
         />
