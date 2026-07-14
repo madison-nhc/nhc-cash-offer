@@ -69,7 +69,7 @@ export default function Users({ isAdmin, userEmail }) {
     <div style={{ maxWidth: 720, margin: '0 auto', padding: '32px 24px' }}>
       <h2 style={{ fontSize: 18, fontWeight: 700, color: CHARCOAL, marginBottom: 4 }}>Users</h2>
       <p style={{ fontSize: 13, color: '#888', marginBottom: 24 }}>
-        Only people listed here can sign into Cash Offer Hub. Admins can edit everything; Viewers can only look.
+        Only people listed here can sign into Cash Offer Hub. Admins can edit everything; Agents only see and edit their own assigned deals; Viewers can only look.
       </p>
 
       {error && (
@@ -102,12 +102,13 @@ export default function Users({ isAdmin, userEmail }) {
                     onChange={e => updateRole(u.email, e.target.value)}
                     style={{
                       fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5,
-                      color: u.role === 'admin' ? GREEN : '#6b7280',
-                      background: u.role === 'admin' ? '#EAF2EA' : '#F0EDE6',
+                      color: u.role === 'admin' ? GREEN : u.role === 'agent' ? '#2D6FAF' : '#6b7280',
+                      background: u.role === 'admin' ? '#EAF2EA' : u.role === 'agent' ? '#E8F0FA' : '#F0EDE6',
                       border: 'none', borderRadius: 6, padding: '5px 10px', cursor: 'pointer', fontFamily: 'inherit',
                     }}
                   >
                     <option value="admin">Admin</option>
+                    <option value="agent">Agent</option>
                     <option value="viewer">Viewer</option>
                   </select>
                 </td>
@@ -138,6 +139,7 @@ export default function Users({ isAdmin, userEmail }) {
           <input value={newName} onChange={e => setNewName(e.target.value)} placeholder="Full name (optional)" style={{ ...inputStyle, flex: '1 1 160px' }} />
           <select value={newRole} onChange={e => setNewRole(e.target.value)} style={{ ...inputStyle, flex: '0 0 120px' }}>
             <option value="viewer">Viewer</option>
+            <option value="agent">Agent</option>
             <option value="admin">Admin</option>
           </select>
           <button

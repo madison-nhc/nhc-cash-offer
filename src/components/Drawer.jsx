@@ -51,9 +51,9 @@ export default function Drawer({ open, onClose, title, subtitle, children, width
         `}</style>
 
         {/* Header */}
-        <div style={{ padding: '18px 24px 14px', borderBottom: '1px solid #F0EDE6', flexShrink: 0 }}>
+        <div style={{ padding: '18px 24px 14px', borderBottom: '1px solid #F0EDE6', flexShrink: 0, overflowX: 'hidden' }}>
           <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
-            <div>
+            <div style={{ minWidth: 0, flex: '1 1 auto' }}>
               <div style={{ fontSize: 16, fontWeight: 700, color: '#2C2C2C', lineHeight: 1.3 }}>{title}</div>
               {subtitle && <div style={{ fontSize: 12, color: '#6b7280', marginTop: 3 }}>{subtitle}</div>}
             </div>

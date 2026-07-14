@@ -1267,7 +1267,7 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
                 border:'1.5px solid #D6D2CA', borderRadius:6, padding:'3px 8px',
                 fontSize:11, fontWeight:600, fontFamily:'inherit', color:'#6b7280', background:'#fff',
                 cursor: restrictedAgent ? 'not-allowed' : 'pointer', outline:'none',
-                opacity: restrictedAgent ? 0.6 : 1,
+                opacity: restrictedAgent ? 0.6 : 1, maxWidth:130,
               }}>
               <option value="">— Unassigned —</option>
               {agentList.map(a=><option key={a.email} value={a.email}>{a.full_name||a.email}</option>)}
