@@ -531,6 +531,7 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
       // Stage 1 fields
       acquisition_type:form.acquisition_type||'Purchased',
       owner:form.owner||'BPV', managed_by_bpv:form.managed_by_bpv||false,
+      agent_email:form.agent_email||null,
       rehab_active: type==='Renovation'
         ? !['Not Started','Complete'].includes(form.rehab_stage||'Not Started')
         : stage==='Renovation', // keep in sync
