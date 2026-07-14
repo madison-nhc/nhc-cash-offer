@@ -7,6 +7,14 @@ import { fmt, useSort, SortTh } from './ui.jsx'
 const DISP_COLORS = { listing:'#3B6D11', wholesale:'#6b21a8', flip:'#D97825', hold:'#2D6FAF', lost:'#9ca3af' }
 const DISP_LABELS = { listing:'Listing', wholesale:'Wholesale', flip:'Flip', hold:'Hold', lost:'Lost' }
 
+// Splits "123 Main St, Lexington, KY 40503" into { street:"123 Main St", rest:"Lexington, KY 40503" }
+function splitAddress(address) {
+  if (!address) return { street: '', rest: '' }
+  const idx = address.indexOf(',')
+  if (idx === -1) return { street: address, rest: '' }
+  return { street: address.slice(0, idx).trim(), rest: address.slice(idx + 1).trim() }
+}
+
 function calcCashOffer(p) {
   const arv = parseFloat(p.arv)||0
   if (!arv) return null
@@ -52,7 +60,12 @@ function PackagePropertiesTable({ pkgProps, onOpenProperty }) {
               onMouseLeave={e => e.currentTarget.style.background = i % 2 === 0 ? '#fff' : '#FAFAF8'}
             >
               <td style={{ padding: '9px 14px', fontSize: 13, fontWeight: 600 }}>
-                <div>{p.address}</div>
+                {(() => { const { street, rest } = splitAddress(p.address); return (
+                  <>
+                    <div>{street}</div>
+                    {rest && <div style={{ fontSize: 11, fontWeight: 400, color: '#9ca3af', marginTop: 1 }}>{rest}</div>}
+                  </>
+                )})()}
                 {p.unit_count > 1 && <div style={{ fontSize: 10, color: '#9ca3af', marginTop: 2 }}>{p.unit_count} units</div>}
               </td>
               <td style={{ padding: '9px 14px', fontSize: 12, fontFamily: 'monospace', color: '#3B6D11', fontWeight: 600 }}>{cashOffer ? fmt(cashOffer) : '—'}</td>
@@ -239,6 +252,15 @@ export default function PropertyMapModal({ properties: initialProperties, packag
         mapInstanceRef.current = map
 
         const infoWindow = new google.maps.InfoWindow({ maxWidth: 320 })
+        // Google's InfoWindow wraps content in a scrollable div that often shows a
+        // sliver of unnecessary scrollbar even when content fits — this is a well-known
+        // quirk, fixed by forcing that inner wrapper to not scroll.
+        if (!document.getElementById('nhc-gm-iw-fix')) {
+          const style = document.createElement('style')
+          style.id = 'nhc-gm-iw-fix'
+          style.textContent = `.gm-style-iw-d { overflow: hidden !important; } .gm-style-iw-c { padding-bottom: 12px !important; }`
+          document.head.appendChild(style)
+        }
         infoWindowRef.current = infoWindow
 
         setLoading(false)
@@ -287,6 +309,7 @@ export default function PropertyMapModal({ properties: initialProperties, packag
           marker.addListener('click', () => {
             const svStaticUrl = streetViewUrl(prop.address)
             const svLiveUrl = `https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${latlng.lat()},${latlng.lng()}`
+            const { street, rest } = splitAddress(prop.address)
             const content = `
               <div style="font-family:Helvetica Neue,sans-serif;width:300px;">
                 <div style="position:relative;width:100%;height:160px;background:#f0ede6;border-radius:6px;overflow:hidden;margin-bottom:10px;">
@@ -305,8 +328,8 @@ export default function PropertyMapModal({ properties: initialProperties, packag
                     Open Street View ↗
                   </a>
                 </div>
-                <div style="font-size:13px;font-weight:700;color:#2C2C2C;margin-bottom:3px;line-height:1.3">${prop.address}</div>
-                <div style="font-size:11px;color:${color};font-weight:600;margin-bottom:${isMulti ? 3 : 8}px">${city}</div>
+                <div style="font-size:13px;font-weight:700;color:#2C2C2C;line-height:1.3">${street}</div>
+                <div style="font-size:11px;color:${color};font-weight:600;margin-bottom:${isMulti ? 3 : 8}px">${rest}</div>
                 ${isMulti ? `<div style="font-size:11px;color:#6b7280;margin-bottom:8px">★ Package — ${prop.unit_count} units</div>` : ''}
                 <button onclick="window.__nhcOpenProp('${prop.id}')"
                   style="width:100%;background:#B8892A;color:#fff;border:none;border-radius:5px;padding:7px 0;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;">
