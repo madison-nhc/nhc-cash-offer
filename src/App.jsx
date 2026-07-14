@@ -159,7 +159,7 @@ export default function App() {
   const isAdmin = access.role === 'admin'
   const userEmail = session.user.email
 
-  if (popupPropertyId) return <PropertyFullView propertyId={popupPropertyId} />
+  if (popupPropertyId) return <div style={{ height:'100vh' }}><PropertyFullView propertyId={popupPropertyId} /></div>
 
   return <AuthedApp popupPropertyId={popupPropertyId} isAdmin={isAdmin} userEmail={userEmail} />
 }

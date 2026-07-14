@@ -182,7 +182,7 @@ function DriveTab({ propertyId, link, onSaved }) {
   )
 }
 
-export default function PropertyFullView({ propertyId }) {
+export default function PropertyFullView({ propertyId, onClose }) {
   const [property, setProperty] = useState(null)
   const [repairs, setRepairs] = useState([])
   const [tab, setTab] = useState('offer')
@@ -282,15 +282,16 @@ export default function PropertyFullView({ propertyId }) {
   const d = calcOffers(property, repairs)
 
   return (
-    <div style={{ minHeight:'100vh', background:'#FAFAF8', fontFamily:'inherit', paddingBottom:76 }}>
-      <div style={{ background:'#fff', borderBottom:'2px solid #B8892A', padding:'14px 24px', display:'flex', alignItems:'center', gap:12, position:'sticky', top:0, zIndex:10 }}>
+    <div style={{ display:'flex', flexDirection:'column', height:'100%', background:'#FAFAF8', fontFamily:'inherit' }}>
+      <div style={{ background:'#fff', borderBottom:'2px solid #B8892A', padding:'14px 24px', display:'flex', alignItems:'center', gap:12, flexShrink:0 }}>
         <img src="/nhc-logo.svg" alt="NHC" style={{ width:26, height:26 }} />
         <div style={{ fontSize:16, fontWeight:700, color:'#2C2C2C' }}>{property.address || 'Property'}</div>
-        <span style={{ marginLeft:'auto', fontSize:11, color:'#9ca3af' }}>{savedAt ? `Saved ${savedAt.toLocaleTimeString()}` : ''}</span>
+        <span style={{ marginLeft:'auto', fontSize:11, color:'#9ca3af', marginRight: onClose ? 36 : 0 }}>{savedAt ? `Saved ${savedAt.toLocaleTimeString()}` : ''}</span>
       </div>
 
-      <div style={{ display:'grid', gridTemplateColumns:'minmax(380px, 460px) 1fr', gap:20, padding:20, alignItems:'start' }}>
-        <div style={{ background:'#fff', borderRadius:10, border:'0.5px solid #D6D2CA', padding:20, position:'sticky', top:20, display:'flex', flexDirection:'column', gap:14 }}>
+      <div style={{ flex:1, overflowY:'auto' }}>
+        <div style={{ display:'grid', gridTemplateColumns:'minmax(380px, 460px) 1fr', gap:20, padding:20, alignItems:'start' }}>
+          <div style={{ background:'#fff', borderRadius:10, border:'0.5px solid #D6D2CA', padding:20, position:'sticky', top:20, display:'flex', flexDirection:'column', gap:14 }}>
           <div className="drawer-section">Valuation</div>
           <Field label="After Renovation Value ($)">
             <input style={{ ...monoInp, borderLeft:'3px solid #D97825' }} type="number" value={property.arv??''} onChange={set('arv')} />
@@ -439,8 +440,9 @@ export default function PropertyFullView({ propertyId }) {
           {tab==='drive' && <DriveTab propertyId={propertyId} link={property.photos_drive_link} onSaved={load} />}
         </div>
       </div>
+      </div>
 
-      <div style={{ position:'fixed', bottom:0, left:0, right:0, background:'#fff', borderTop:'2px solid #B8892A', padding:'12px 24px', display:'flex', justifyContent:'flex-end', alignItems:'center', gap:12, boxShadow:'0 -4px 14px rgba(0,0,0,0.06)' }}>
+      <div style={{ flexShrink:0, background:'#fff', borderTop:'2px solid #B8892A', padding:'12px 24px', display:'flex', justifyContent:'flex-end', alignItems:'center', gap:12, boxShadow:'0 -4px 14px rgba(0,0,0,0.06)' }}>
         {offerIsDirty && (
           <span style={{ fontSize:11, color:'#92400E', fontWeight:700 }}>⚠ Offer is out of date</span>
         )}

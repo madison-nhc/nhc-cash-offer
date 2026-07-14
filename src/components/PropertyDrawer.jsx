@@ -11,6 +11,7 @@ import RentTracker from './RentTracker.jsx'
 import LoanOverview from './LoanOverview.jsx'
 import RentOverview from './RentOverview.jsx'
 import PartnerLedgerModal from './PartnerLedgerModal.jsx'
+import PropertyFullView from './PropertyFullView.jsx'
 
 // ── Type options (primary) ────────────────────────────────────────────────────
 const TYPE_OPTIONS = [
@@ -399,6 +400,7 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
   const [loanPayoffTotal, setLoanPayoffTotal] = useState(0)
   const [partnerPaybackTotal, setPartnerPaybackTotal] = useState(0)
   const [editingPhotosLink, setEditingPhotosLink] = useState(false)
+  const [fullViewOpen, setFullViewOpen] = useState(false)
 
   const isNew   = !form.id
   const type       = form.type || 'Analyzing'
@@ -717,7 +719,7 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
 
           {form.id && (
             <button
-              onClick={() => window.open(`${window.location.origin}/?propertyView=${form.id}`, 'nhc_property_view', 'width=1500,height=980,noopener,noreferrer')}
+              onClick={() => setFullViewOpen(true)}
               style={{ background:'#6b21a8', color:'#fff', border:'none', borderRadius:8, padding:'11px 16px', cursor:'pointer', fontSize:13, fontWeight:700, fontFamily:'inherit', width:'100%', display:'flex', alignItems:'center', justifyContent:'center', gap:8, marginTop:4 }}
             >
               <span>Open Full Property View (Edit Offer)</span>
@@ -1219,6 +1221,7 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
   if (inlineMode) return <div style={{ padding:'0 16px 24px' }}>{innerContent}<div style={{ marginTop:20, paddingTop:16, borderTop:'1px solid #F0EDE6' }}>{footerContent}</div></div>
 
   return (
+    <>
     <Drawer open={open} onClose={guardedClose} hideCloseButton width={580} footer={footerContent}
       title={form.address || 'New Property'}
       headerActions={null}
@@ -1316,6 +1319,34 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
       }>
       {innerContent}
     </Drawer>
+
+    {fullViewOpen && form.id && (
+      <div
+        onClick={e => e.target === e.currentTarget && setFullViewOpen(false)}
+        style={{
+          position:'fixed', inset:0, background:'rgba(0,0,0,0.55)',
+          zIndex:300, display:'flex', alignItems:'center', justifyContent:'center', padding:20,
+        }}
+      >
+        <div style={{
+          background:'#FAFAF8', borderRadius:12, width:'100%', maxWidth:1400, height:'92vh',
+          display:'flex', flexDirection:'column', overflow:'hidden',
+          boxShadow:'0 24px 70px rgba(0,0,0,0.35)', position:'relative',
+        }}>
+          <button
+            onClick={() => setFullViewOpen(false)}
+            title="Close"
+            style={{
+              position:'absolute', top:14, right:16, width:32, height:32, borderRadius:'50%',
+              background:'#fff', border:'1px solid #D6D2CA', fontSize:16, cursor:'pointer',
+              color:'#6b7280', zIndex:20, display:'flex', alignItems:'center', justifyContent:'center',
+            }}
+          >&times;</button>
+          <PropertyFullView propertyId={form.id} onClose={()=>setFullViewOpen(false)} />
+        </div>
+      </div>
+    )}
+    </>
   )
 }
 
