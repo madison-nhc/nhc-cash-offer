@@ -555,6 +555,8 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
       seller_name:form.seller_name||null, seller_fub_link:form.seller_fub_link||null,
       photos_drive_link:form.photos_drive_link||null,
       sqft: isMultiUnit ? (unitTotals.sqft||null) : (form.sqft||null), unit_count:parseInt(form.unit_count)||null, unit_names:form.unit_names||null,
+      market_rent: isMultiUnit ? (unitTotals.rent||null) : (form.market_rent||null),
+      current_rent: isMultiUnit ? (unitTotals.currentRent||null) : (form.current_rent||null),
       arv:form.arv||null, asis_pct:form.asis_pct||50, asis_override:form.asis_override||null,
       profit_margin:form.profit_margin||15, profit_override:form.profit_override||null,
       cash_offer_override:form.cash_offer_override||null,
@@ -781,6 +783,17 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
                 : <input style={monoInp} type="number" value={form.sqft||''} onChange={set('sqft')} />}
             </Field>
           </FieldRow>
+
+          {!isMultiUnit && (
+            <FieldRow>
+              <Field label="Market Rent">
+                <input style={monoInp} type="number" value={form.market_rent||''} onChange={set('market_rent')} placeholder="0" />
+              </Field>
+              <Field label="Current Rent">
+                <input style={monoInp} type="number" value={form.current_rent||''} onChange={set('current_rent')} placeholder="0" />
+              </Field>
+            </FieldRow>
+          )}
 
           {isMultiUnit && (
             <div>
