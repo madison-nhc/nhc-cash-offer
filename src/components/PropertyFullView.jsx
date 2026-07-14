@@ -182,11 +182,12 @@ function DriveTab({ propertyId, link, onSaved }) {
   )
 }
 
-export default function PropertyFullView({ propertyId, onClose }) {
+export default function PropertyFullView({ propertyId, onClose, isAgentRole=false }) {
   const [property, setProperty] = useState(null)
   const [repairs, setRepairs] = useState([])
   const [tab, setTab] = useState('offer')
   const [savedAt, setSavedAt] = useState(null)
+  const [notifying, setNotifying] = useState(false)
   const [offerSnapshot, setOfferSnapshot] = useState(null)
   const [offerGeneratedAt, setOfferGeneratedAt] = useState(null)
   const saveTimer = useRef(null)
@@ -245,6 +246,20 @@ export default function PropertyFullView({ propertyId, onClose }) {
   }
   const offerIsDirty = offerSnapshot && JSON.stringify(normalizeForCompare(pickOfferFields(property||{}, repairs))) !== JSON.stringify(normalizeForCompare(offerSnapshot))
 
+  async function notifyAgent() {
+    if (!property.agent_email || notifying) return
+    const { data: { session } } = await supabase.auth.getSession()
+    const { error } = await supabase.from('cashoffer_notifications').insert({
+      property_id: propertyId,
+      recipient_email: property.agent_email,
+      sender_email: session?.user?.email || null,
+      message: `Your offer for ${property.address || 'this property'} is ready to review.`,
+    })
+    if (error) { alert(`Could not send notification: ${error.message}`); return }
+    setNotifying(true)
+    setTimeout(() => setNotifying(false), 2500)
+  }
+
   // Debounced autosave: any change to valuation fields or repairs writes back after a short pause.
   useEffect(() => {
     if (!loadedRef.current || !property) return
@@ -293,27 +308,27 @@ export default function PropertyFullView({ propertyId, onClose }) {
         <div style={{ background:'#fff', borderRadius:10, border:'0.5px solid #D6D2CA', padding:20, height:'100%', overflowY:'auto', display:'flex', flexDirection:'column', gap:14 }}>
           <div className="drawer-section">Valuation</div>
           <Field label="After Renovation Value ($)">
-            <input style={{ ...monoInp, borderLeft:'3px solid #D97825' }} type="number" value={property.arv??''} onChange={set('arv')} />
+            <input style={{ ...monoInp, borderLeft:'3px solid #D97825', opacity: isAgentRole ? 0.6 : 1 }} type="number" value={property.arv??''} onChange={set('arv')} disabled={isAgentRole} />
           </Field>
           <FieldRow>
-            <Field label="As-Is Deduction %"><input style={{ ...monoInp, minHeight:34 }} type="number" placeholder="50" value={property.asis_pct??''} onChange={set('asis_pct')} /></Field>
-            <Field label="As-Is Override ($)"><input style={{ ...monoInp, minHeight:34 }} type="number" value={property.asis_override??''} onChange={set('asis_override')} /></Field>
+            <Field label="As-Is Deduction %"><input style={{ ...monoInp, minHeight:34, opacity: isAgentRole ? 0.6 : 1 }} type="number" placeholder="50" value={property.asis_pct??''} onChange={set('asis_pct')} disabled={isAgentRole} /></Field>
+            <Field label="As-Is Override ($)"><input style={{ ...monoInp, minHeight:34, opacity: isAgentRole ? 0.6 : 1 }} type="number" value={property.asis_override??''} onChange={set('asis_override')} disabled={isAgentRole} /></Field>
           </FieldRow>
           <FieldRow>
-            <Field label="Profit Margin %"><input style={{ ...monoInp, minHeight:34 }} type="number" placeholder="15" value={property.profit_margin??''} onChange={set('profit_margin')} /></Field>
-            <Field label="Cash Offer Override ($)"><input style={{ ...monoInp, minHeight:34 }} type="number" value={property.cash_offer_override??''} onChange={set('cash_offer_override')} /></Field>
+            <Field label="Profit Margin %"><input style={{ ...monoInp, minHeight:34, opacity: isAgentRole ? 0.6 : 1 }} type="number" placeholder="15" value={property.profit_margin??''} onChange={set('profit_margin')} disabled={isAgentRole} /></Field>
+            <Field label="Cash Offer Override ($)"><input style={{ ...monoInp, minHeight:34, opacity: isAgentRole ? 0.6 : 1 }} type="number" value={property.cash_offer_override??''} onChange={set('cash_offer_override')} disabled={isAgentRole} /></Field>
           </FieldRow>
 
           <div style={{ fontSize:10, fontWeight:700, color:'#2D6FAF', textTransform:'uppercase', letterSpacing:0.6, marginTop:4 }}>Holding Cost — As-Is Net</div>
           <FieldRow>
-            <Field label="As-Is Holding % / mo"><input style={{ ...monoInp, minHeight:34 }} type="number" step="0.05" placeholder="0.5" value={property.hold_opt2_pct??''} onChange={set('hold_opt2_pct')} /></Field>
-            <Field label="As-Is Holding Months"><input style={{ ...monoInp, minHeight:34 }} type="number" placeholder="3" value={property.hold_opt2_months??''} onChange={set('hold_opt2_months')} /></Field>
+            <Field label="As-Is Holding % / mo"><input style={{ ...monoInp, minHeight:34, opacity: isAgentRole ? 0.6 : 1 }} type="number" step="0.05" placeholder="0.5" value={property.hold_opt2_pct??''} onChange={set('hold_opt2_pct')} disabled={isAgentRole} /></Field>
+            <Field label="As-Is Holding Months"><input style={{ ...monoInp, minHeight:34, opacity: isAgentRole ? 0.6 : 1 }} type="number" placeholder="3" value={property.hold_opt2_months??''} onChange={set('hold_opt2_months')} disabled={isAgentRole} /></Field>
           </FieldRow>
 
           <div style={{ fontSize:10, fontWeight:700, color:'#D97825', textTransform:'uppercase', letterSpacing:0.6, marginTop:4 }}>Holding Cost — Full Retail</div>
           <FieldRow>
-            <Field label="Full Retail Holding % / mo"><input style={{ ...monoInp, minHeight:34 }} type="number" step="0.05" placeholder="0.5" value={property.hold_opt3_pct??''} onChange={set('hold_opt3_pct')} /></Field>
-            <Field label="Full Retail Holding Months"><input style={{ ...monoInp, minHeight:34 }} type="number" placeholder="6" value={property.hold_opt3_months??''} onChange={set('hold_opt3_months')} /></Field>
+            <Field label="Full Retail Holding % / mo"><input style={{ ...monoInp, minHeight:34, opacity: isAgentRole ? 0.6 : 1 }} type="number" step="0.05" placeholder="0.5" value={property.hold_opt3_pct??''} onChange={set('hold_opt3_pct')} disabled={isAgentRole} /></Field>
+            <Field label="Full Retail Holding Months"><input style={{ ...monoInp, minHeight:34, opacity: isAgentRole ? 0.6 : 1 }} type="number" placeholder="6" value={property.hold_opt3_months??''} onChange={set('hold_opt3_months')} disabled={isAgentRole} /></Field>
           </FieldRow>
 
           {property.arv && (
@@ -349,7 +364,7 @@ export default function PropertyFullView({ propertyId, onClose }) {
                   {card.overridden && (
                     <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:8, marginTop:4, background:'#FEF3C7', border:'1px solid #FDE68A', borderRadius:4, padding:'4px 8px' }}>
                       <span style={{ fontSize:10, color:'#92400E', fontWeight:700 }}>🔒 Override active — edits below won't change this number</span>
-                      <button onClick={()=>set(card.overrideField)({ target:{ value:'' } })} style={{ fontSize:10, color:'#92400E', background:'none', border:'none', textDecoration:'underline', cursor:'pointer', fontFamily:'inherit', flexShrink:0 }}>Clear</button>
+                      <button onClick={()=>set(card.overrideField)({ target:{ value:'' } })} disabled={isAgentRole} style={{ fontSize:10, color:'#92400E', background:'none', border:'none', textDecoration:'underline', cursor: isAgentRole ? 'not-allowed' : 'pointer', fontFamily:'inherit', flexShrink:0, opacity: isAgentRole ? 0.6 : 1 }}>Clear</button>
                     </div>
                   )}
                   <div style={{ marginTop:6, paddingTop:6, borderTop:'1px solid #F0EDE6', fontSize:10, color:'#6b7280', lineHeight:1.7 }}>
@@ -379,18 +394,18 @@ export default function PropertyFullView({ propertyId, onClose }) {
             <tbody>
               {repairs.map(r=>(
                 <tr key={r.id}>
-                  <td style={{ paddingBottom:6, paddingRight:6 }}><input style={{ ...inp, fontSize:12 }} value={r.name||''} onChange={e=>updateRepair(r.id,'name',e.target.value)} /></td>
-                  <td style={{ paddingBottom:6, paddingRight:6 }}><input style={{ ...monoInp, fontSize:12, textAlign:'center' }} type="number" value={r.sqft||''} onChange={e=>updateRepair(r.id,'sqft',e.target.value)} /></td>
-                  <td style={{ paddingBottom:6, paddingRight:6 }}><input style={{ ...monoInp, fontSize:12, textAlign:'center' }} type="number" step="0.01" value={r.pricePerSqft||''} onChange={e=>updateRepair(r.id,'pricePerSqft',e.target.value)} /></td>
+                  <td style={{ paddingBottom:6, paddingRight:6 }}><input style={{ ...inp, fontSize:12, opacity: isAgentRole ? 0.6 : 1 }} value={r.name||''} onChange={e=>updateRepair(r.id,'name',e.target.value)} disabled={isAgentRole} /></td>
+                  <td style={{ paddingBottom:6, paddingRight:6 }}><input style={{ ...monoInp, fontSize:12, textAlign:'center', opacity: isAgentRole ? 0.6 : 1 }} type="number" value={r.sqft||''} onChange={e=>updateRepair(r.id,'sqft',e.target.value)} disabled={isAgentRole} /></td>
+                  <td style={{ paddingBottom:6, paddingRight:6 }}><input style={{ ...monoInp, fontSize:12, textAlign:'center', opacity: isAgentRole ? 0.6 : 1 }} type="number" step="0.01" value={r.pricePerSqft||''} onChange={e=>updateRepair(r.id,'pricePerSqft',e.target.value)} disabled={isAgentRole} /></td>
                   <td style={{ paddingBottom:6, paddingRight:6 }}>
                     <div style={{ ...monoInp, fontSize:12, textAlign:'center', background:'#FAFAF8', color:'#2C2C2C', fontWeight:600, display:'flex', alignItems:'center', justifyContent:'center' }}>{r.cost?fmt(r.cost):'—'}</div>
                   </td>
-                  <td style={{ paddingBottom:6, textAlign:'center' }}><button onClick={()=>removeRepair(r.id)} style={{ background:'none', border:'none', color:'#D6D2CA', cursor:'pointer', fontSize:16, padding:0 }}>×</button></td>
+                  <td style={{ paddingBottom:6, textAlign:'center' }}><button onClick={()=>removeRepair(r.id)} disabled={isAgentRole} style={{ background:'none', border:'none', color:'#D6D2CA', cursor: isAgentRole ? 'not-allowed' : 'pointer', fontSize:16, padding:0 }}>×</button></td>
                 </tr>
               ))}
             </tbody>
           </table>
-          <button onClick={addRepair} style={{ background:'transparent', border:'1px dashed #D6D2CA', borderRadius:6, padding:'6px', color:'#9ca3af', fontSize:12, cursor:'pointer', fontFamily:'inherit', width:'100%' }}>+ Add Line Item</button>
+          <button onClick={addRepair} disabled={isAgentRole} style={{ background:'transparent', border:'1px dashed #D6D2CA', borderRadius:6, padding:'6px', color:'#9ca3af', fontSize:12, cursor: isAgentRole ? 'not-allowed' : 'pointer', fontFamily:'inherit', width:'100%', opacity: isAgentRole ? 0.6 : 1 }}>+ Add Line Item</button>
         </div>
 
         <div style={{ background:'#fff', borderRadius:10, border:'0.5px solid #D6D2CA', padding:20, height:'100%', overflowY:'auto' }}>
@@ -441,6 +456,18 @@ export default function PropertyFullView({ propertyId, onClose }) {
       </div>
 
       <div style={{ flexShrink:0, background:'#fff', borderTop:'2px solid #B8892A', padding:'12px 24px', display:'flex', justifyContent:'flex-end', alignItems:'center', gap:12, boxShadow:'0 -4px 14px rgba(0,0,0,0.06)' }}>
+        {!isAgentRole && property.agent_email && (
+          <button
+            onClick={notifyAgent}
+            disabled={notifying}
+            style={{
+              marginRight:'auto', background:'#fff', border:'1.5px solid #B8892A', color:'#B8892A',
+              borderRadius:6, padding:'10px 16px', cursor: notifying ? 'default' : 'pointer',
+              fontSize:12.5, fontWeight:700, fontFamily:'inherit', display:'flex', alignItems:'center', gap:6,
+            }}>
+            🔔 {notifying ? 'Sent!' : 'Notify Agent'}
+          </button>
+        )}
         {offerIsDirty && (
           <span style={{ fontSize:11, color:'#92400E', fontWeight:700 }}>⚠ Offer is out of date</span>
         )}

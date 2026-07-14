@@ -89,6 +89,21 @@ function GlobalSearch({ onSelect, mobile }) {
   )
 }
 
+function relTime(iso) {
+  if (!iso) return ''
+  const ms = new Date(iso).getTime()
+  const diff = Date.now() - ms
+  const m = Math.floor(diff / 60000)
+  if (m < 1) return 'just now'
+  if (m < 60) return m + (m === 1 ? ' minute ago' : ' minutes ago')
+  const h = Math.floor(m / 60)
+  if (h < 24) return h + (h === 1 ? ' hour ago' : ' hours ago')
+  const d = Math.floor(h / 24)
+  if (d === 1) return 'yesterday'
+  if (d < 30) return d + ' days ago'
+  return new Date(ms).toLocaleDateString()
+}
+
 const MARKETING_TABS = [
   { id:'mailings',   label:'Mailing Tracker',  short:'Mailers',   path:'/mailings' },
 ]
@@ -217,6 +232,37 @@ function AuthedApp({ isAdmin, isAgentRole, userEmail }) {
     navigate('analyzer')
   }, [navigate])
 
+  // ── Notifications ("pings") ──────────────────────────────────────────
+  const [notifications, setNotifications] = useState([])
+  const [notifMenuOpen, setNotifMenuOpen] = useState(false)
+  const unreadCount = notifications.filter(n => !n.read_at).length
+
+  const loadNotifications = useCallback(() => {
+    supabase.from('cashoffer_notifications').select('*')
+      .eq('recipient_email', userEmail)
+      .order('created_at', { ascending: false })
+      .limit(30)
+      .then(({ data }) => setNotifications(data || []))
+  }, [userEmail])
+
+  useEffect(() => {
+    loadNotifications()
+    const t = setInterval(loadNotifications, 30000)
+    return () => clearInterval(t)
+  }, [loadNotifications])
+
+  async function openNotification(n) {
+    setNotifMenuOpen(false)
+    if (!n.read_at) {
+      await supabase.from('cashoffer_notifications').update({ read_at: new Date().toISOString() }).eq('id', n.id)
+      setNotifications(prev => prev.map(x => x.id === n.id ? { ...x, read_at: new Date().toISOString() } : x))
+    }
+    if (n.property_id) {
+      setTargetProperty({ id: n.property_id })
+      navigate('analyzer')
+    }
+  }
+
   const visibleOpsTabs = OPS_TABS.filter(t => t.id !== 'users' || isAdmin)
 
   const pages = {
@@ -331,6 +377,51 @@ function AuthedApp({ isAdmin, isAgentRole, userEmail }) {
           )}
 
           {!mobile && <GlobalSearch onSelect={handleSearchSelect} mobile={false} />}
+
+          <div style={{ position:'relative', flexShrink:0 }}>
+            <button
+              onClick={() => setNotifMenuOpen(o => !o)}
+              title="Notifications"
+              style={{
+                position:'relative', background:'none', border:'1px solid #D6D2CA', borderRadius:6,
+                padding:'5px 9px', cursor:'pointer', fontSize:14, lineHeight:1, color:'#6b7280',
+              }}
+            >
+              🔔
+              {unreadCount > 0 && (
+                <span style={{
+                  position:'absolute', top:-5, right:-5, background:'#B91C1C', color:'#fff',
+                  fontSize:9, fontWeight:700, borderRadius:10, minWidth:15, height:15,
+                  display:'flex', alignItems:'center', justifyContent:'center', padding:'0 3px',
+                }}>{unreadCount > 9 ? '9+' : unreadCount}</span>
+              )}
+            </button>
+            {notifMenuOpen && (
+              <>
+                <div onClick={() => setNotifMenuOpen(false)} style={{ position:'fixed', inset:0, zIndex:150 }} />
+                <div style={{
+                  position:'absolute', top:'calc(100% + 6px)', right:0, background:'#fff',
+                  border:'1px solid #E8E5DE', borderRadius:8, boxShadow:'0 8px 24px rgba(0,0,0,0.12)',
+                  zIndex:151, width:300, maxHeight:'70vh', overflowY:'auto',
+                }}>
+                  <div style={{ padding:'10px 14px', borderBottom:'1px solid #F0EDE6', fontSize:11, fontWeight:700, color:'#9ca3af', textTransform:'uppercase', letterSpacing:0.5 }}>
+                    Notifications
+                  </div>
+                  {notifications.length === 0 ? (
+                    <div style={{ padding:'20px 14px', textAlign:'center', color:'#bbb', fontSize:12 }}>Nothing yet.</div>
+                  ) : notifications.map(n => (
+                    <button key={n.id} onClick={() => openNotification(n)} style={{
+                      display:'block', width:'100%', textAlign:'left', background: n.read_at ? 'transparent' : '#FEF9EC',
+                      border:'none', borderBottom:'1px solid #F0EDE6', padding:'10px 14px', cursor:'pointer', fontFamily:'inherit',
+                    }}>
+                      <div style={{ fontSize:12.5, color:'#2C2C2C', fontWeight: n.read_at ? 400 : 700, lineHeight:1.4 }}>{n.message}</div>
+                      <div style={{ fontSize:10, color:'#9ca3af', marginTop:3 }}>{relTime(n.created_at)}{n.sender_email ? ` · from ${n.sender_email}` : ''}</div>
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
 
           {!mobile && (
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginLeft: 4, flexShrink:0 }}>

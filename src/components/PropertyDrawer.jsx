@@ -1377,7 +1377,7 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
               color:'#6b7280', zIndex:20, display:'flex', alignItems:'center', justifyContent:'center',
             }}
           >&times;</button>
-          <PropertyFullView propertyId={form.id} onClose={()=>setFullViewOpen(false)} />
+          <PropertyFullView propertyId={form.id} onClose={()=>setFullViewOpen(false)} isAgentRole={isAgentRole} />
         </div>
       </div>
     )}
