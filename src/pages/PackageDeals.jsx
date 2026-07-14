@@ -20,7 +20,7 @@ function PackageFormDrawer({ pkg, open, onClose, onSave }) {
   async function save() {
     if (!form.deal_name) return
     setSaving(true)
-    const payload = { deal_name: form.deal_name, notes: form.notes || null, status: form.status || 'analyzing', entity: 'BPV' }
+    const payload = { deal_name: form.deal_name, notes: form.notes || null, fub_link: form.fub_link || null, status: form.status || 'analyzing', entity: 'BPV' }
     const { error } = isNew
       ? await supabase.from('cashoffer_package_deals').insert(payload)
       : await supabase.from('cashoffer_package_deals').update(payload).eq('id', form.id)
@@ -53,6 +53,17 @@ function PackageFormDrawer({ pkg, open, onClose, onSave }) {
         </Field>
         <Field label="Notes">
           <textarea style={{ ...inp, minHeight: 72, resize: 'vertical' }} value={form.notes || ''} onChange={set('notes')} placeholder="Seller context, deal overview..." />
+        </Field>
+        <Field label="FUB Link">
+          <div style={{ display:'flex', gap:6 }}>
+            <input style={inp} placeholder="https://app.followupboss.com/people/view/…" value={form.fub_link || ''} onChange={set('fub_link')} />
+            {form.fub_link && (
+              <button
+                onClick={() => window.open(form.fub_link, 'nhc_fub', 'width=1400,height=950,noopener,noreferrer')}
+                style={{ background:'#E0A526', border:'none', borderRadius:8, padding:'0 14px', cursor:'pointer', color:'#fff', fontSize:13, fontWeight:700, flexShrink:0 }}
+              >Open ↗</button>
+            )}
+          </div>
         </Field>
         <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 12, paddingTop: 12, borderTop: '1px solid #F0EDE6' }}>
           {!isNew && <Btn variant="danger" onClick={del}>Delete Package</Btn>}
@@ -251,6 +262,7 @@ export default function PackageDeals({ openPropertyId, onOpenedTarget, isAgentRo
         <PropertyMapModal
           properties={propertiesForPackage(openPkg.id)}
           packageName={openPkg.deal_name}
+          fubLink={openPkg.fub_link}
           onClose={() => setOpenPkg(null)}
           onSaveProperty={() => load()}
           onEditPackage={() => setPkgDrawer(openPkg)}

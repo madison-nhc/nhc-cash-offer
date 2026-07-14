@@ -96,6 +96,110 @@ function PackagePropertiesTable({ pkgProps, onOpenProperty }) {
 
 const GMAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_KEY
 
+// Read-only Follow Up Boss preview — pulls contact info on demand from our
+// serverless /api/fub-contact endpoint (server holds the real FUB API key).
+// Pulls the person id out of a stored FUB link like ".../people/view/4105".
+function FubPreviewPanel({ fubLink }) {
+  const [data, setData] = useState(null)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState(null)
+  const [open, setOpen] = useState(false)
+
+  const personId = (fubLink || '').match(/(\d+)\/?$/)?.[1] || null
+
+  async function load() {
+    setOpen(true)
+    setLoading(true)
+    setError(null)
+    try {
+      const res = await fetch(`/api/fub-contact?id=${personId}`)
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error || 'Lookup failed')
+      setData(json)
+    } catch (e) {
+      setError(e.message)
+    }
+    setLoading(false)
+  }
+
+  useEffect(() => {
+    if (personId) load()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [personId])
+
+  if (!personId) return null
+
+  const initials = (data?.person?.name || '')
+    .split(' ').filter(Boolean).slice(0, 2).map(w => w[0]).join('').toUpperCase()
+
+  return (
+    <div style={{ width: 260, flexShrink: 0 }}>
+      {!open ? (
+        <button onClick={load} style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, background: 'none', border: '1px dashed #D6D2CA', borderRadius: 8, padding: '9px 12px', fontSize: 12, fontWeight: 600, color: '#888', cursor: 'pointer', fontFamily: 'inherit' }}>
+          ↓ Pull Contact Info from FUB
+        </button>
+      ) : (
+        <div style={{ background: '#fff', border: '1px solid #E8E5DE', borderRadius: 10, overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+          <div style={{ background: '#B8892A', height: 3 }} />
+          <div style={{ padding: '10px 12px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+              <span style={{ fontSize: 10, fontWeight: 700, color: '#B8892A', textTransform: 'uppercase', letterSpacing: 0.6 }}>Follow Up Boss</span>
+              <button onClick={load} disabled={loading} title="Refresh" style={{ background: 'none', border: 'none', cursor: loading ? 'default' : 'pointer', color: '#9ca3af', fontSize: 13 }}>{loading ? '…' : '↻'}</button>
+            </div>
+            {loading && <div style={{ fontSize: 12, color: '#9ca3af' }}>Loading…</div>}
+            {error && <div style={{ fontSize: 11.5, color: '#B22020', fontWeight: 600 }}>⚠ {error}</div>}
+            {data?.person && (
+              <>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                  <div style={{ width: 30, height: 30, borderRadius: '50%', background: '#F7F5F0', border: '1px solid #E8E5DE', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, color: '#B8892A', flexShrink: 0 }}>
+                    {initials || '?'}
+                  </div>
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontSize: 12.5, fontWeight: 700, color: '#2C2C2C', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {data.person.name || 'No name on file'}
+                    </div>
+                    {data.person.phone && <div style={{ fontSize: 10.5, color: '#888' }}>{data.person.phone}</div>}
+                    {data.person.email && <div style={{ fontSize: 10.5, color: '#888', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{data.person.email}</div>}
+                  </div>
+                </div>
+                {(data.person.stage || data.person.source) && (
+                  <div style={{ fontSize: 10.5, color: '#666', lineHeight: 1.6, marginBottom: data.activity?.length ? 8 : 0 }}>
+                    {data.person.stage && <div>Stage: <span style={{ fontWeight: 600, color: '#2C2C2C' }}>{data.person.stage}</span></div>}
+                    {data.person.source && <div>Source: <span style={{ fontWeight: 600, color: '#2C2C2C' }}>{data.person.source}</span></div>}
+                  </div>
+                )}
+              </>
+            )}
+            {data?.activity?.length > 0 && (() => {
+              const last = data.activity[0]
+              return (
+                <div style={{ borderTop: '0.5px solid #F0EDE6', paddingTop: 6 }}>
+                  <div style={{ fontSize: 9, fontWeight: 700, color: '#bbb', textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 3 }}>Last Contact</div>
+                  <div style={{ fontSize: 10.5, color: '#666' }}>
+                    <span style={{ color: '#999' }}>
+                      {new Date(last.date).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
+                    </span>
+                    {last.text && <span> — {String(last.text).slice(0, 70)}</span>}
+                  </div>
+                </div>
+              )
+            })()}
+            {data && !data.person && !error && <div style={{ fontSize: 12, color: '#9ca3af' }}>No contact info found for this link.</div>}
+            {(data?.person || data?.activity?.length > 0) && (
+              <div style={{ marginTop: 8 }}>
+                <button
+                  onClick={() => window.open(fubLink, 'nhc_fub', 'width=1400,height=950,noopener,noreferrer')}
+                  style={{ width: '100%', background: '#E0A526', color: '#fff', border: 'none', borderRadius: 6, padding: '7px 0', fontSize: 11.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}
+                >↗ Open in FUB</button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 const CITY_COLORS = {
   'Lancaster':     '#E63946',
   'Nicholasville': '#2D6FAF',
@@ -167,7 +271,7 @@ function loadGoogleMaps() {
   return mapsLoading
 }
 
-export default function PropertyMapModal({ properties: initialProperties, packageName, onClose, onSaveProperty, onEditPackage, onAddProperty, isAgentRole, currentUserEmail, defaultView='list' }) {
+export default function PropertyMapModal({ properties: initialProperties, packageName, fubLink, onClose, onSaveProperty, onEditPackage, onAddProperty, isAgentRole, currentUserEmail, defaultView='list' }) {
   const mapRef = useRef(null)
   const mapInstanceRef = useRef(null)
   const markersRef = useRef([])
@@ -405,6 +509,7 @@ export default function PropertyMapModal({ properties: initialProperties, packag
             </div>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
+            {fubLink && <FubPreviewPanel fubLink={fubLink} />}
             {/* List / Map segmented toggle */}
             <div style={{ display: 'flex', border: '1.5px solid #D6D2CA', borderRadius: 7, overflow: 'hidden' }}>
               {['list','map'].map(v => (
