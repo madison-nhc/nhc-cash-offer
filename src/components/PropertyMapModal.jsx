@@ -2,6 +2,84 @@ import { useEffect, useRef, useState, useCallback } from 'react'
 import PropertyDrawer from './PropertyDrawer.jsx'
 import ProposalModal from './ProposalModal.jsx'
 import { supabase } from '../lib/supabase.js'
+import { fmt, useSort, SortTh } from './ui.jsx'
+
+const DISP_COLORS = { listing:'#3B6D11', wholesale:'#6b21a8', flip:'#D97825', hold:'#2D6FAF', lost:'#9ca3af' }
+const DISP_LABELS = { listing:'Listing', wholesale:'Wholesale', flip:'Flip', hold:'Hold', lost:'Lost' }
+
+function calcCashOffer(p) {
+  const arv = parseFloat(p.arv)||0
+  if (!arv) return null
+  const reno = (p.repair_items||[]).reduce((s,r)=>s+(parseFloat(r.cost)||0),0)
+  const commCash = (parseFloat(p.comm_cash_pct)||9)/100
+  const profitPct = (parseFloat(p.profit_margin)||15)/100
+  const profit = p.profit_override ? parseFloat(p.profit_override) : arv*profitPct
+  const cashHold = (parseFloat(p.hold_cash_pct)||0.75)/100*(parseFloat(p.hold_cash_months)||6)*arv
+  return p.cash_offer_override ? parseFloat(p.cash_offer_override) : arv-reno-(commCash*arv)-cashHold-profit
+}
+
+// Properties table for the List view — its own component (not inline JSX)
+// because useSort is a hook and needs a stable component instance.
+function PackagePropertiesTable({ pkgProps, onOpenProperty }) {
+  const { sorted, sortKey, sortDir, toggleSort } = useSort(pkgProps, 'updated_at', 'desc', {
+    cash_offer: p => calcCashOffer(p),
+    disposition: p => DISP_LABELS[p.disposition] || (p.disposition ? p.disposition : ''),
+  })
+
+  return (
+    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+      <thead>
+        <tr style={{ background: '#F0EDE6', position:'sticky', top:0 }}>
+          <SortTh sortKeyName="address" {...{sortKey,sortDir,toggleSort}}>Address</SortTh>
+          <SortTh sortKeyName="cash_offer" {...{sortKey,sortDir,toggleSort}}>Cash Offer</SortTh>
+          <SortTh sortKeyName="rehab_cost" {...{sortKey,sortDir,toggleSort}}>Rehab</SortTh>
+          <SortTh sortKeyName="arv" {...{sortKey,sortDir,toggleSort}}>ARV</SortTh>
+          <SortTh sortKeyName="disposition" {...{sortKey,sortDir,toggleSort}}>Disposition</SortTh>
+          <SortTh sortKeyName="updated_at" {...{sortKey,sortDir,toggleSort}}>Updated</SortTh>
+        </tr>
+      </thead>
+      <tbody>
+        {sorted.map((p, i) => {
+          const dispColor = DISP_COLORS[p.disposition] || '#9ca3af'
+          const dispLabel = DISP_LABELS[p.disposition]
+          const cashOffer = calcCashOffer(p)
+          return (
+            <tr
+              key={p.id}
+              onClick={() => onOpenProperty(p)}
+              style={{ background: i % 2 === 0 ? '#fff' : '#FAFAF8', borderTop: '0.5px solid #F0EDE6', cursor: 'pointer' }}
+              onMouseEnter={e => e.currentTarget.style.background = '#fef9f0'}
+              onMouseLeave={e => e.currentTarget.style.background = i % 2 === 0 ? '#fff' : '#FAFAF8'}
+            >
+              <td style={{ padding: '9px 14px', fontSize: 13, fontWeight: 600 }}>
+                <div>{p.address}</div>
+                {p.unit_count > 1 && <div style={{ fontSize: 10, color: '#9ca3af', marginTop: 2 }}>{p.unit_count} units</div>}
+              </td>
+              <td style={{ padding: '9px 14px', fontSize: 12, fontFamily: 'monospace', color: '#3B6D11', fontWeight: 600 }}>{cashOffer ? fmt(cashOffer) : '—'}</td>
+              <td style={{ padding: '9px 14px', fontSize: 12, fontFamily: 'monospace', color: '#6b7280' }}>{fmt(p.rehab_cost)||'—'}</td>
+              <td style={{ padding: '9px 14px', fontSize: 12, fontFamily: 'monospace', fontWeight: 700 }}>{fmt(p.arv)||'—'}</td>
+              <td style={{ padding: '9px 14px' }}>
+                {dispLabel ? (
+                  <span style={{ background: dispColor + '20', color: dispColor, border: `1px solid ${dispColor}40`, borderRadius: 4, padding: '2px 7px', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.8 }}>
+                    {dispLabel}
+                  </span>
+                ) : (
+                  <span style={{ fontSize: 11, color: '#9ca3af' }}>Analyzing</span>
+                )}
+              </td>
+              <td style={{ padding: '9px 14px', fontSize: 11, color: '#9ca3af' }}>
+                {p.updated_at ? new Date(p.updated_at).toLocaleDateString() : '—'}
+              </td>
+            </tr>
+          )
+        })}
+        {sorted.length === 0 && (
+          <tr><td colSpan={6} style={{ padding: '24px 14px', textAlign:'center', color:'#bbb', fontSize:12 }}>No properties in this package yet.</td></tr>
+        )}
+      </tbody>
+    </table>
+  )
+}
 
 const GMAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_KEY
 
@@ -76,14 +154,18 @@ function loadGoogleMaps() {
   return mapsLoading
 }
 
-export default function PropertyMapModal({ properties: initialProperties, packageName, onClose, onSaveProperty }) {
+export default function PropertyMapModal({ properties: initialProperties, packageName, onClose, onSaveProperty, onEditPackage, onAddProperty, isAgentRole, currentUserEmail, defaultView='list' }) {
   const mapRef = useRef(null)
   const mapInstanceRef = useRef(null)
   const markersRef = useRef([])
   const infoWindowRef = useRef(null)
   const geocacheRef = useRef({})
+  const mapInitedRef = useRef(false)
 
-  const [loading, setLoading] = useState(true)
+  const [view, setView] = useState(defaultView) // 'list' | 'map'
+  const [mapEverOpened, setMapEverOpened] = useState(defaultView === 'map')
+  useEffect(() => { if (view === 'map') setMapEverOpened(true) }, [view])
+  const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
   // Live property list — updated after saves so re-opened pins show fresh data
   const [properties, setProperties] = useState(initialProperties)
@@ -135,10 +217,13 @@ export default function PropertyMapModal({ properties: initialProperties, packag
   }, [properties])
 
   useEffect(() => {
+    if (!mapEverOpened || mapInitedRef.current) return
+    mapInitedRef.current = true
     let cancelled = false
 
     async function init() {
       try {
+        setLoading(true)
         await loadGoogleMaps()
         if (cancelled) return
 
@@ -197,6 +282,7 @@ export default function PropertyMapModal({ properties: initialProperties, packag
             optimized: false,
           })
           marker._propId = prop.id
+          markersRef.current.push(marker)
 
           marker.addListener('click', () => {
             const svStaticUrl = streetViewUrl(prop.address)
@@ -250,7 +336,21 @@ export default function PropertyMapModal({ properties: initialProperties, packag
       markersRef.current.forEach(m => m.setMap(null))
       markersRef.current = []
     }
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [mapEverOpened]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Google Maps renders blank if resized while its container was display:none —
+  // nudge it back into shape whenever the user switches back to Map view.
+  useEffect(() => {
+    if (view !== 'map' || !mapInstanceRef.current) return
+    const map = mapInstanceRef.current
+    setTimeout(() => {
+      window.google?.maps.event.trigger(map, 'resize')
+      const bounds = new window.google.maps.LatLngBounds()
+      let any = false
+      markersRef.current.forEach(m => { bounds.extend(m.getPosition()); any = true })
+      if (any) map.fitBounds(bounds)
+    }, 0)
+  }, [view])
 
   const cities = [...new Set(properties.map(p => cityFromAddress(p.address)).filter(c => c !== 'Unknown'))]
 
@@ -272,27 +372,51 @@ export default function PropertyMapModal({ properties: initialProperties, packag
         {/* Header */}
         <div style={{
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          padding: '12px 20px', borderBottom: '1px solid #F0EDE6', flexShrink: 0,
+          padding: '12px 20px', borderBottom: '1px solid #F0EDE6', flexShrink: 0, gap: 12, flexWrap: 'wrap',
         }}>
-          <div>
+          <div style={{ minWidth: 0 }}>
             <div style={{ fontSize: 15, fontWeight: 700, color: '#2C2C2C' }}>{packageName}</div>
             <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 2 }}>
-              {properties.length} properties · click a pin for Street View + details
+              {properties.length} propert{properties.length===1?'y':'ies'}
+              {view==='map' ? ' · click a pin for Street View + details' : ' · click a row to open it'}
             </div>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-              {cities.map(city => (
-                <div key={city} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                  <div style={{ width: 9, height: 9, borderRadius: 2, background: cityColor(city), flexShrink: 0 }} />
-                  <span style={{ fontSize: 10, color: '#6b7280' }}>{city}</span>
-                </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
+            {/* List / Map segmented toggle */}
+            <div style={{ display: 'flex', border: '1.5px solid #D6D2CA', borderRadius: 7, overflow: 'hidden' }}>
+              {['list','map'].map(v => (
+                <button key={v} onClick={() => setView(v)} style={{
+                  padding: '6px 14px', border: 'none', cursor: 'pointer', fontFamily: 'inherit',
+                  fontSize: 12, fontWeight: 700, textTransform: 'capitalize',
+                  background: view===v ? '#B8892A' : '#fff',
+                  color: view===v ? '#fff' : '#6b7280',
+                }}>{v}</button>
               ))}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                <span style={{ fontSize: 11 }}>★</span>
-                <span style={{ fontSize: 10, color: '#6b7280' }}>Multi-unit</span>
-              </div>
             </div>
+            {view==='map' && (
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                {cities.map(city => (
+                  <div key={city} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <div style={{ width: 9, height: 9, borderRadius: 2, background: cityColor(city), flexShrink: 0 }} />
+                    <span style={{ fontSize: 10, color: '#6b7280' }}>{city}</span>
+                  </div>
+                ))}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <span style={{ fontSize: 11 }}>★</span>
+                  <span style={{ fontSize: 10, color: '#6b7280' }}>Multi-unit</span>
+                </div>
+              </div>
+            )}
+            {onAddProperty && (
+              <button onClick={onAddProperty} style={{ background:'#B8892A', border:'none', borderRadius:6, padding:'6px 12px', fontSize:11.5, fontWeight:700, color:'#fff', cursor:'pointer', fontFamily:'inherit', whiteSpace:'nowrap' }}>
+                + Property
+              </button>
+            )}
+            {onEditPackage && (
+              <button onClick={onEditPackage} style={{ background:'#F0EDE6', border:'none', borderRadius:6, padding:'6px 12px', fontSize:11.5, fontWeight:600, color:'#6b7280', cursor:'pointer', fontFamily:'inherit', whiteSpace:'nowrap' }}>
+                Edit
+              </button>
+            )}
             <button onClick={onClose} style={{
               background: 'none', border: 'none', fontSize: 20, cursor: 'pointer',
               color: '#9ca3af', lineHeight: 1, padding: 4, flexShrink: 0,
@@ -300,10 +424,10 @@ export default function PropertyMapModal({ properties: initialProperties, packag
           </div>
         </div>
 
-        {/* Map + drawer row */}
+        {/* Body + drawer row */}
         <div style={{ flex: 1, position: 'relative', display: 'flex', overflow: 'hidden' }}>
-          {/* Loading overlay */}
-          {loading && (
+          {/* Loading overlay (map only) */}
+          {view==='map' && loading && (
             <div style={{
               position: 'absolute', inset: 0, display: 'flex', alignItems: 'center',
               justifyContent: 'center', flexDirection: 'column', gap: 10,
@@ -313,21 +437,28 @@ export default function PropertyMapModal({ properties: initialProperties, packag
               <div style={{ fontSize: 11, color: '#9ca3af' }}>This may take a moment for large packages</div>
             </div>
           )}
-          {error && (
+          {view==='map' && error && (
             <div style={{
               position: 'absolute', inset: 0, display: 'flex', alignItems: 'center',
               justifyContent: 'center', color: '#B91C1C', fontSize: 13, zIndex: 10,
             }}>{error}</div>
           )}
 
-          {/* Map — always rendered, shrinks when drawer is open */}
+          {/* List view */}
+          {view==='list' && (
+            <div style={{ flex: 1, minWidth: 0, overflowY: 'auto' }}>
+              <PackagePropertiesTable pkgProps={properties} onOpenProperty={setDrawerProp} />
+            </div>
+          )}
+
+          {/* Map — kept mounted once opened (hidden via display, not unmounted) so markers survive toggling */}
           <div ref={mapRef} style={{
             flex: 1,
-            transition: 'flex 0.25s ease',
             minWidth: 0,
+            display: view==='map' ? 'block' : 'none',
           }} />
 
-          {/* Property drawer panel — slides in from the right, overlays the map */}
+          {/* Property drawer panel — slides in from the right, overlays the map or list */}
           {drawerProp && (
             <div style={{
               width: 480,
@@ -376,6 +507,8 @@ export default function PropertyMapModal({ properties: initialProperties, packag
                   mailings={[]}
                   onViewOffer={p => setProposal(p)}
                   inlineMode={true}
+                  isAgentRole={isAgentRole}
+                  currentUserEmail={currentUserEmail}
                 />
               </div>
             </div>
