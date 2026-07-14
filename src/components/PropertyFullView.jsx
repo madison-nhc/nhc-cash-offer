@@ -39,7 +39,8 @@ function DrivePhotoGrid({ folderId }) {
   const [photos, setPhotos] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
-  const [viewPhoto, setViewPhoto] = useState(null)
+  const [viewIndex, setViewIndex] = useState(null)
+  const [playing, setPlaying] = useState(false)
 
   useEffect(() => { if (folderId) load() }, [folderId]) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -64,24 +65,74 @@ function DrivePhotoGrid({ folderId }) {
     return (thumbnailLink || '').replace(/=s\d+/, '=s1600')
   }
 
+  function openAt(i) { setViewIndex(i); setPlaying(false) }
+  function close() { setViewIndex(null); setPlaying(false) }
+  function next() { setViewIndex(i => (i + 1) % photos.length) }
+  function prev() { setViewIndex(i => (i - 1 + photos.length) % photos.length) }
+
+  // Slideshow autoplay
+  useEffect(() => {
+    if (!playing) return
+    const t = setInterval(next, 3000)
+    return () => clearInterval(t)
+  }, [playing, photos.length]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Keyboard navigation while viewer is open
+  useEffect(() => {
+    if (viewIndex == null) return
+    function onKey(e) {
+      if (e.key === 'ArrowRight') next()
+      else if (e.key === 'ArrowLeft') prev()
+      else if (e.key === 'Escape') close()
+      else if (e.key === ' ') { e.preventDefault(); setPlaying(p => !p) }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [viewIndex, photos.length]) // eslint-disable-line react-hooks/exhaustive-deps
+
   if (loading) return <div style={{ textAlign:'center', padding:16, color:'#9ca3af', fontSize:12 }}>Loading photos...</div>
   if (error) return <div style={{ fontSize:11.5, color:'#B91C1C', padding:'8px 2px' }}>{error}</div>
   if (!photos.length) return <div style={{ fontSize:12, color:'#9ca3af', padding:'8px 2px' }}>No photos found in this folder.</div>
 
+  const current = viewIndex != null ? photos[viewIndex] : null
+
   return (
     <>
+      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+        <div style={{ fontSize:11, color:'#9ca3af' }}>{photos.length} photo{photos.length===1?'':'s'}</div>
+        <button
+          onClick={()=>{ setPlaying(true); setViewIndex(0) }}
+          style={{ background:'#fff', border:'1px solid #D6D2CA', borderRadius:6, padding:'5px 12px', fontSize:11.5, fontWeight:700, color:'#B8892A', cursor:'pointer', fontFamily:'inherit' }}
+        >&#9654; Slideshow</button>
+      </div>
       <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(90px, 1fr))', gap:6 }}>
-        {photos.map(p => (
+        {photos.map((p, i) => (
           <img
             key={p.id} src={p.thumbnailLink} alt={p.name}
-            onClick={()=>setViewPhoto(p)}
+            onClick={()=>openAt(i)}
             style={{ width:'100%', aspectRatio:'1', objectFit:'cover', borderRadius:6, border:'1px solid #D6D2CA', cursor:'pointer' }}
           />
         ))}
       </div>
-      {viewPhoto && (
-        <Modal title={viewPhoto.name} onClose={()=>setViewPhoto(null)} width={720}>
-          <img src={bigUrl(viewPhoto.thumbnailLink)} alt={viewPhoto.name} style={{ width:'100%', borderRadius:8, display:'block' }} />
+      {current && (
+        <Modal title={`${current.name}  (${viewIndex+1} / ${photos.length})`} onClose={close} width={860}>
+          <div style={{ position:'relative', display:'flex', alignItems:'center', justifyContent:'center', minHeight:400 }}>
+            <button onClick={prev} title="Previous (\u2190)" style={{
+              position:'absolute', left:0, width:36, height:36, borderRadius:'50%', background:'#fff',
+              border:'1px solid #D6D2CA', fontSize:16, cursor:'pointer', color:'#6b7280', zIndex:1,
+            }}>&#8249;</button>
+            <img src={bigUrl(current.thumbnailLink)} alt={current.name} style={{ maxWidth:'100%', maxHeight:'70vh', borderRadius:8, display:'block' }} />
+            <button onClick={next} title="Next (\u2192)" style={{
+              position:'absolute', right:0, width:36, height:36, borderRadius:'50%', background:'#fff',
+              border:'1px solid #D6D2CA', fontSize:16, cursor:'pointer', color:'#6b7280', zIndex:1,
+            }}>&#8250;</button>
+          </div>
+          <div style={{ display:'flex', justifyContent:'center', marginTop:12 }}>
+            <button
+              onClick={()=>setPlaying(p=>!p)}
+              style={{ background: playing?'#B8892A':'#fff', color: playing?'#fff':'#B8892A', border:'1px solid #B8892A', borderRadius:6, padding:'6px 16px', fontSize:12, fontWeight:700, cursor:'pointer', fontFamily:'inherit' }}
+            >{playing ? '\u23F8 Pause Slideshow' : '\u25B6 Play Slideshow'}</button>
+          </div>
         </Modal>
       )}
     </>
