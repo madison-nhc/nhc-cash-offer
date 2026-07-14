@@ -1,6 +1,7 @@
-import { useEffect, useRef, useState, useCallback } from 'react'
+import { useEffect, useRef, useState, useCallback, Fragment } from 'react'
 import PropertyDrawer from './PropertyDrawer.jsx'
 import ProposalModal from './ProposalModal.jsx'
+import AddressInput from './AddressInput.jsx'
 import { supabase } from '../lib/supabase.js'
 import { fmt, useSort, SortTh } from './ui.jsx'
 
@@ -26,6 +27,16 @@ function calcCashOffer(p) {
   return p.cash_offer_override ? parseFloat(p.cash_offer_override) : arv-reno-(commCash*arv)-cashHold-profit
 }
 
+function unitTypeLabel(count) {
+  const n = parseInt(count) || 1
+  if (n <= 1) return 'Single'
+  if (n === 2) return 'Duplex'
+  if (n === 3) return 'Triplex'
+  if (n === 4) return 'Quadplex'
+  return 'Custom'
+}
+const UNIT_TYPE_ORDER = ['Single', 'Duplex', 'Triplex', 'Quadplex', 'Custom']
+
 // Properties table for the List view — its own component (not inline JSX)
 // because useSort is a hook and needs a stable component instance.
 function PackagePropertiesTable({ pkgProps, onOpenProperty, rentByProperty }) {
@@ -35,6 +46,11 @@ function PackagePropertiesTable({ pkgProps, onOpenProperty, rentByProperty }) {
     rent_current: p => rentByProperty?.[p.id]?.current || 0,
     market_rent: p => rentByProperty?.[p.id]?.market || 0,
   })
+
+  // Group the already-sorted rows by unit type, preserving sort order within each group
+  const groups = UNIT_TYPE_ORDER
+    .map(label => ({ label, rows: sorted.filter(p => unitTypeLabel(p.unit_count) === label) }))
+    .filter(g => g.rows.length > 0)
 
   return (
     <table style={{ width: '100%', borderCollapse: 'collapse' }}>
@@ -50,45 +66,54 @@ function PackagePropertiesTable({ pkgProps, onOpenProperty, rentByProperty }) {
         </tr>
       </thead>
       <tbody>
-        {sorted.map((p, i) => {
-          const dispColor = DISP_COLORS[p.disposition] || '#9ca3af'
-          const dispLabel = DISP_LABELS[p.disposition]
-          const cashOffer = calcCashOffer(p)
-          const rent = rentByProperty?.[p.id]
-          return (
-            <tr
-              key={p.id}
-              onClick={() => onOpenProperty(p)}
-              style={{ background: i % 2 === 0 ? '#fff' : '#FAFAF8', borderTop: '0.5px solid #F0EDE6', cursor: 'pointer' }}
-              onMouseEnter={e => e.currentTarget.style.background = '#fef9f0'}
-              onMouseLeave={e => e.currentTarget.style.background = i % 2 === 0 ? '#fff' : '#FAFAF8'}
-            >
-              <td style={{ padding: '9px 14px', fontSize: 13, fontWeight: 600 }}>
-                {(() => { const { street, rest } = splitAddress(p.address); return (
-                  <>
-                    <div>{street}</div>
-                    {rest && <div style={{ fontSize: 11, fontWeight: 400, color: '#9ca3af', marginTop: 1 }}>{rest}</div>}
-                  </>
-                )})()}
-                {p.unit_count > 1 && <div style={{ fontSize: 10, color: '#9ca3af', marginTop: 2 }}>{p.unit_count} units</div>}
+        {groups.map(group => (
+          <Fragment key={group.label}>
+            <tr>
+              <td colSpan={7} style={{ padding: '10px 14px 6px', fontSize: 11, fontWeight: 700, color: '#B8892A', textTransform: 'uppercase', letterSpacing: 0.6, background: '#FAF7F0', borderTop: '1px solid #F0EDE6' }}>
+                {group.label} <span style={{ color: '#9ca3af', fontWeight: 600 }}>({group.rows.length})</span>
               </td>
-              <td style={{ padding: '9px 14px', fontSize: 12, fontFamily: 'monospace', color: '#3B6D11', fontWeight: 600 }}>{cashOffer ? fmt(cashOffer) : '—'}</td>
-              <td style={{ padding: '9px 14px', fontSize: 12, fontFamily: 'monospace', color: '#6b7280' }}>{fmt(p.rehab_cost)||'—'}</td>
-              <td style={{ padding: '9px 14px', fontSize: 12, fontFamily: 'monospace', fontWeight: 700 }}>{fmt(p.arv)||'—'}</td>
-              <td style={{ padding: '9px 14px' }}>
-                {dispLabel ? (
-                  <span style={{ background: dispColor + '20', color: dispColor, border: `1px solid ${dispColor}40`, borderRadius: 4, padding: '2px 7px', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.8 }}>
-                    {dispLabel}
-                  </span>
-                ) : (
-                  <span style={{ fontSize: 11, color: '#9ca3af' }}>Analyzing</span>
-                )}
-              </td>
-              <td style={{ padding: '9px 14px', fontSize: 12, fontFamily: 'monospace', color: '#3B6D11', fontWeight: 600 }}>{rent?.current ? fmt(rent.current) : '—'}</td>
-              <td style={{ padding: '9px 14px', fontSize: 12, fontFamily: 'monospace', color: '#6b7280' }}>{rent?.market ? fmt(rent.market) : '—'}</td>
             </tr>
-          )
-        })}
+            {group.rows.map((p, i) => {
+              const dispColor = DISP_COLORS[p.disposition] || '#9ca3af'
+              const dispLabel = DISP_LABELS[p.disposition]
+              const cashOffer = calcCashOffer(p)
+              const rent = rentByProperty?.[p.id]
+              return (
+                <tr
+                  key={p.id}
+                  onClick={() => onOpenProperty(p)}
+                  style={{ background: i % 2 === 0 ? '#fff' : '#FAFAF8', borderTop: '0.5px solid #F0EDE6', cursor: 'pointer' }}
+                  onMouseEnter={e => e.currentTarget.style.background = '#fef9f0'}
+                  onMouseLeave={e => e.currentTarget.style.background = i % 2 === 0 ? '#fff' : '#FAFAF8'}
+                >
+                  <td style={{ padding: '9px 14px', fontSize: 13, fontWeight: 600 }}>
+                    {(() => { const { street, rest } = splitAddress(p.address); return (
+                      <>
+                        <div>{street}</div>
+                        {rest && <div style={{ fontSize: 11, fontWeight: 400, color: '#9ca3af', marginTop: 1 }}>{rest}</div>}
+                      </>
+                    )})()}
+                    {p.unit_count > 1 && <div style={{ fontSize: 10, color: '#9ca3af', marginTop: 2 }}>{p.unit_count} units</div>}
+                  </td>
+                  <td style={{ padding: '9px 14px', fontSize: 12, fontFamily: 'monospace', color: '#3B6D11', fontWeight: 600 }}>{cashOffer ? fmt(cashOffer) : '—'}</td>
+                  <td style={{ padding: '9px 14px', fontSize: 12, fontFamily: 'monospace', color: '#6b7280' }}>{fmt(p.rehab_cost)||'—'}</td>
+                  <td style={{ padding: '9px 14px', fontSize: 12, fontFamily: 'monospace', fontWeight: 700 }}>{fmt(p.arv)||'—'}</td>
+                  <td style={{ padding: '9px 14px' }}>
+                    {dispLabel ? (
+                      <span style={{ background: dispColor + '20', color: dispColor, border: `1px solid ${dispColor}40`, borderRadius: 4, padding: '2px 7px', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.8 }}>
+                        {dispLabel}
+                      </span>
+                    ) : (
+                      <span style={{ fontSize: 11, color: '#9ca3af' }}>Analyzing</span>
+                    )}
+                  </td>
+                  <td style={{ padding: '9px 14px', fontSize: 12, fontFamily: 'monospace', color: '#3B6D11', fontWeight: 600 }}>{rent?.current ? fmt(rent.current) : '—'}</td>
+                  <td style={{ padding: '9px 14px', fontSize: 12, fontFamily: 'monospace', color: '#6b7280' }}>{rent?.market ? fmt(rent.market) : '—'}</td>
+                </tr>
+              )
+            })}
+          </Fragment>
+        ))}
         {sorted.length === 0 && (
           <tr><td colSpan={7} style={{ padding: '24px 14px', textAlign:'center', color:'#bbb', fontSize:12 }}>No properties in this package yet.</td></tr>
         )}
@@ -344,6 +369,25 @@ export default function PropertyMapModal({ properties: initialProperties, packag
     await onDeletePackage()
   }
 
+  // Add-property panel — rendered inline (same overlay), same pattern as the package metadata panel
+  const [addingProperty, setAddingProperty] = useState(false)
+  const [newAddress, setNewAddress] = useState('')
+  const [addSaving, setAddSaving] = useState(false)
+
+  function openAddProperty() {
+    setNewAddress('')
+    setAddingProperty(true)
+  }
+
+  async function saveNewProperty() {
+    if (!newAddress) return
+    setAddSaving(true)
+    await onAddProperty(newAddress)
+    setAddSaving(false)
+    setAddingProperty(false)
+    setNewAddress('')
+  }
+
   // Refresh property data from DB after a save (keeps drawer open)
   const handleSave = useCallback(async () => {
     if (!drawerProp) return
@@ -400,6 +444,15 @@ export default function PropertyMapModal({ properties: initialProperties, packag
       for (const u of (units || [])) {
         if (!byProp[u.property_id]) byProp[u.property_id] = { current: 0, market: 0 }
         byProp[u.property_id].market += parseFloat(u.market_rent) || 0
+      }
+      // Fallback to the property-level market_rent/current_rent fields — this is the
+      // only source for single-unit properties (no cashoffer_units rows), and a safety
+      // net for any property without an active lease or unit rows yet.
+      for (const p of properties) {
+        const entry = byProp[p.id] || { current: 0, market: 0 }
+        if (!entry.market) entry.market = parseFloat(p.market_rent) || 0
+        if (!entry.current) entry.current = parseFloat(p.current_rent) || 0
+        byProp[p.id] = entry
       }
       setRentByProperty(byProp)
     }
@@ -634,7 +687,7 @@ export default function PropertyMapModal({ properties: initialProperties, packag
               ))}
             </div>
             {onAddProperty && (
-              <button onClick={onAddProperty} style={{ background:'#B8892A', border:'none', borderRadius:6, padding:'6px 12px', fontSize:11.5, fontWeight:700, color:'#fff', cursor:'pointer', fontFamily:'inherit', whiteSpace:'nowrap', flexShrink:0 }}>
+              <button onClick={openAddProperty} style={{ background:'#B8892A', border:'none', borderRadius:6, padding:'6px 12px', fontSize:11.5, fontWeight:700, color:'#fff', cursor:'pointer', fontFamily:'inherit', whiteSpace:'nowrap', flexShrink:0 }}>
                 + Property
               </button>
             )}
@@ -755,6 +808,52 @@ export default function PropertyMapModal({ properties: initialProperties, packag
                       {metaSaving ? 'Saving…' : 'Save'}
                     </button>
                   </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Add-property panel — inline, same overlay (matches the package-edit pattern) */}
+          {addingProperty && (
+            <div style={{
+              width: 420,
+              flexShrink: 0,
+              borderLeft: '1px solid #F0EDE6',
+              background: '#fff',
+              overflowY: 'auto',
+              display: 'flex',
+              flexDirection: 'column',
+              animation: 'slideInRight 0.2s ease',
+            }}>
+              <style>{`
+                @keyframes slideInRight {
+                  from { transform: translateX(100%); opacity: 0; }
+                  to   { transform: translateX(0);    opacity: 1; }
+                }
+              `}</style>
+              <div style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                padding: '12px 16px', borderBottom: '1px solid #F0EDE6',
+                background: '#FAFAF8', flexShrink: 0, position: 'sticky', top: 0, zIndex: 5,
+              }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: '#2C2C2C' }}>Add Property to Package</div>
+                <button
+                  onClick={() => setAddingProperty(false)}
+                  style={{ background: 'none', border: 'none', fontSize: 18, cursor: 'pointer', color: '#9ca3af', padding: 4 }}
+                >✕</button>
+              </div>
+              <div style={{ flex: 1, padding: 16, display: 'flex', flexDirection: 'column', gap: 14 }}>
+                <div>
+                  <label style={{ fontSize: 11, fontWeight: 600, color: '#6b7280', display: 'block', marginBottom: 4 }}>Address</label>
+                  <AddressInput value={newAddress} onChange={v => setNewAddress(v)} />
+                </div>
+                <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                  <button onClick={() => setAddingProperty(false)} style={{ flex: 1, background: 'none', border: '1px solid #D6D2CA', borderRadius: 6, padding: '8px 14px', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', color: '#6b7280' }}>
+                    Cancel
+                  </button>
+                  <button onClick={saveNewProperty} disabled={addSaving || !newAddress} style={{ flex: 1, background: '#B8892A', border: 'none', borderRadius: 6, padding: '8px 14px', fontSize: 12, fontWeight: 700, cursor: addSaving ? 'default' : 'pointer', fontFamily: 'inherit', color: '#fff', opacity: (addSaving || !newAddress) ? 0.6 : 1 }}>
+                    {addSaving ? 'Adding…' : 'Add Property'}
+                  </button>
                 </div>
               </div>
             </div>
