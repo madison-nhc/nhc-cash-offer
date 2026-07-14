@@ -28,10 +28,12 @@ function calcCashOffer(p) {
 
 // Properties table for the List view — its own component (not inline JSX)
 // because useSort is a hook and needs a stable component instance.
-function PackagePropertiesTable({ pkgProps, onOpenProperty }) {
-  const { sorted, sortKey, sortDir, toggleSort } = useSort(pkgProps, 'updated_at', 'desc', {
+function PackagePropertiesTable({ pkgProps, onOpenProperty, rentByProperty }) {
+  const { sorted, sortKey, sortDir, toggleSort } = useSort(pkgProps, 'address', 'asc', {
     cash_offer: p => calcCashOffer(p),
     disposition: p => DISP_LABELS[p.disposition] || (p.disposition ? p.disposition : ''),
+    rent_current: p => rentByProperty?.[p.id]?.current || 0,
+    market_rent: p => rentByProperty?.[p.id]?.market || 0,
   })
 
   return (
@@ -43,7 +45,8 @@ function PackagePropertiesTable({ pkgProps, onOpenProperty }) {
           <SortTh sortKeyName="rehab_cost" {...{sortKey,sortDir,toggleSort}}>Rehab</SortTh>
           <SortTh sortKeyName="arv" {...{sortKey,sortDir,toggleSort}}>ARV</SortTh>
           <SortTh sortKeyName="disposition" {...{sortKey,sortDir,toggleSort}}>Disposition</SortTh>
-          <SortTh sortKeyName="updated_at" {...{sortKey,sortDir,toggleSort}}>Updated</SortTh>
+          <SortTh sortKeyName="rent_current" {...{sortKey,sortDir,toggleSort}}>Total Rent Current</SortTh>
+          <SortTh sortKeyName="market_rent" {...{sortKey,sortDir,toggleSort}}>Total Market Rent</SortTh>
         </tr>
       </thead>
       <tbody>
@@ -51,6 +54,7 @@ function PackagePropertiesTable({ pkgProps, onOpenProperty }) {
           const dispColor = DISP_COLORS[p.disposition] || '#9ca3af'
           const dispLabel = DISP_LABELS[p.disposition]
           const cashOffer = calcCashOffer(p)
+          const rent = rentByProperty?.[p.id]
           return (
             <tr
               key={p.id}
@@ -80,14 +84,13 @@ function PackagePropertiesTable({ pkgProps, onOpenProperty }) {
                   <span style={{ fontSize: 11, color: '#9ca3af' }}>Analyzing</span>
                 )}
               </td>
-              <td style={{ padding: '9px 14px', fontSize: 11, color: '#9ca3af' }}>
-                {p.updated_at ? new Date(p.updated_at).toLocaleDateString() : '—'}
-              </td>
+              <td style={{ padding: '9px 14px', fontSize: 12, fontFamily: 'monospace', color: '#3B6D11', fontWeight: 600 }}>{rent?.current ? fmt(rent.current) : '—'}</td>
+              <td style={{ padding: '9px 14px', fontSize: 12, fontFamily: 'monospace', color: '#6b7280' }}>{rent?.market ? fmt(rent.market) : '—'}</td>
             </tr>
           )
         })}
         {sorted.length === 0 && (
-          <tr><td colSpan={6} style={{ padding: '24px 14px', textAlign:'center', color:'#bbb', fontSize:12 }}>No properties in this package yet.</td></tr>
+          <tr><td colSpan={7} style={{ padding: '24px 14px', textAlign:'center', color:'#bbb', fontSize:12 }}>No properties in this package yet.</td></tr>
         )}
       </tbody>
     </table>
@@ -316,6 +319,8 @@ export default function PropertyMapModal({ properties: initialProperties, packag
   // Property currently open in the side drawer (null = drawer closed)
   const [drawerProp, setDrawerProp] = useState(null)
   const [proposal, setProposal] = useState(null)
+  // Aggregated per-property rent figures for the list table: { [property_id]: { current, market } }
+  const [rentByProperty, setRentByProperty] = useState({})
   // Package metadata edit panel — rendered inline (same overlay) instead of a separate Drawer
   const [editingMeta, setEditingMeta] = useState(false)
   const [metaForm, setMetaForm] = useState({})
@@ -371,7 +376,39 @@ export default function PropertyMapModal({ properties: initialProperties, packag
     setDrawerProp(null)
   }, [drawerProp, onSaveProperty])
 
-  // Wire __nhcOpenProp so info-window buttons can open the drawer
+  // Fetch + aggregate rent totals (active lease rent, and unit market rent) per property.
+  // Keyed on the actual set of ids so it doesn't refire on every unrelated property refresh.
+  const propIdsKey = properties.map(p => p.id).sort().join(',')
+  useEffect(() => {
+    const ids = properties.map(p => p.id)
+    if (ids.length === 0) { setRentByProperty({}); return }
+    let cancelled = false
+    async function loadRent() {
+      const [{ data: leases }, { data: units }] = await Promise.all([
+        supabase.from('cashoffer_leases').select('property_id, rent_amount, status').in('property_id', ids),
+        supabase.from('cashoffer_units').select('property_id, market_rent').in('property_id', ids),
+      ])
+      if (cancelled) return
+      const byProp = {}
+      for (const id of ids) byProp[id] = { current: 0, market: 0 }
+      for (const l of (leases || [])) {
+        if (l.status === 'Active' || l.status === 'Month-to-Month') {
+          if (!byProp[l.property_id]) byProp[l.property_id] = { current: 0, market: 0 }
+          byProp[l.property_id].current += parseFloat(l.rent_amount) || 0
+        }
+      }
+      for (const u of (units || [])) {
+        if (!byProp[u.property_id]) byProp[u.property_id] = { current: 0, market: 0 }
+        byProp[u.property_id].market += parseFloat(u.market_rent) || 0
+      }
+      setRentByProperty(byProp)
+    }
+    loadRent()
+    return () => { cancelled = true }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [propIdsKey])
+
+
   // Re-run whenever the live properties list changes so drawer gets fresh data
   useEffect(() => {
     window.__nhcOpenProp = (id) => {
@@ -636,7 +673,7 @@ export default function PropertyMapModal({ properties: initialProperties, packag
           {/* List view */}
           {view==='list' && (
             <div style={{ flex: 1, minWidth: 0, overflowY: 'auto' }}>
-              <PackagePropertiesTable pkgProps={properties} onOpenProperty={setDrawerProp} />
+              <PackagePropertiesTable pkgProps={properties} onOpenProperty={setDrawerProp} rentByProperty={rentByProperty} />
             </div>
           )}
 
