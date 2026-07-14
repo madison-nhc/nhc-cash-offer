@@ -418,7 +418,7 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
           // Multi-unit property with no per-unit rows yet (e.g. unit_count was set
           // before this feature existed, or imported directly) — seed blank editable rows.
           setUnits(Array.from({ length: count }, (_, i) => ({
-            id: `new-${Date.now()}-${i}`, unit_label: `Unit ${i+1}`, beds:'', baths:'', sqft:'', market_rent:'',
+            id: `new-${Date.now()}-${i}`, unit_label: `Unit ${i+1}`, beds:'', baths:'', sqft:'', market_rent:'', current_rent:'',
           })))
         } else {
           setUnits(data || [])
@@ -454,9 +454,9 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
       const next = [...us]
       if (next.length === 0) {
         // First time going multi-unit: seed unit 1 with the prior single-family values.
-        next.push({ id:`new-${Date.now()}-0`, unit_label:'Unit 1', beds: form.beds||'', baths: form.baths||'', sqft: form.sqft||'', market_rent:'' })
+        next.push({ id:`new-${Date.now()}-0`, unit_label:'Unit 1', beds: form.beds||'', baths: form.baths||'', sqft: form.sqft||'', market_rent:'', current_rent:'' })
       }
-      while (next.length < count) next.push({ id:`new-${Date.now()}-${next.length}`, unit_label:`Unit ${next.length+1}`, beds:'', baths:'', sqft:'', market_rent:'' })
+      while (next.length < count) next.push({ id:`new-${Date.now()}-${next.length}`, unit_label:`Unit ${next.length+1}`, beds:'', baths:'', sqft:'', market_rent:'', current_rent:'' })
       while (next.length > count) next.pop()
       return next
     })
@@ -467,7 +467,8 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
     baths: acc.baths + (parseFloat(u.baths)||0),
     sqft: acc.sqft + (parseFloat(u.sqft)||0),
     rent: acc.rent + (parseFloat(u.market_rent)||0),
-  }), { beds:0, baths:0, sqft:0, rent:0 })
+    currentRent: acc.currentRent + (parseFloat(u.current_rent)||0),
+  }), { beds:0, baths:0, sqft:0, rent:0, currentRent:0 })
 
   const isNew   = !form.id
   // An agent editing an existing deal only gets the Analyzer tab and can't touch
@@ -632,6 +633,7 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
         baths: u.baths ? parseFloat(u.baths) : null,
         sqft: u.sqft ? parseFloat(u.sqft) : null,
         market_rent: u.market_rent ? parseFloat(u.market_rent) : null,
+        current_rent: u.current_rent ? parseFloat(u.current_rent) : null,
         sort_order: i,
       }))
       const { error: unitError } = await supabase.from('cashoffer_units').insert(unitRows)
@@ -786,7 +788,7 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
               <table style={{ width:'100%', borderCollapse:'collapse' }}>
                 <thead>
                   <tr>
-                    {['Unit','Beds','Baths','Sq Ft','Market Rent'].map((h,i)=>(
+                    {['Unit','Beds','Baths','Sq Ft','Market Rent','Current Rent'].map((h,i)=>(
                       <th key={h} style={{ textAlign:i===0?'left':'center', fontSize:10, color:'#9ca3af', fontWeight:600, textTransform:'uppercase', letterSpacing:0.5, paddingBottom:4 }}>{h}</th>
                     ))}
                   </tr>
@@ -798,13 +800,15 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
                       <td style={{ paddingBottom:6, paddingRight:6 }}><input style={{ ...monoInp, fontSize:12, textAlign:'center' }} type="number" value={u.beds||''} onChange={e=>updateUnit(u.id,'beds',e.target.value)} /></td>
                       <td style={{ paddingBottom:6, paddingRight:6 }}><input style={{ ...monoInp, fontSize:12, textAlign:'center' }} type="number" value={u.baths||''} onChange={e=>updateUnit(u.id,'baths',e.target.value)} /></td>
                       <td style={{ paddingBottom:6, paddingRight:6 }}><input style={{ ...monoInp, fontSize:12, textAlign:'center' }} type="number" value={u.sqft||''} onChange={e=>updateUnit(u.id,'sqft',e.target.value)} /></td>
-                      <td style={{ paddingBottom:6 }}><input style={{ ...monoInp, fontSize:12, textAlign:'center' }} type="number" value={u.market_rent||''} onChange={e=>updateUnit(u.id,'market_rent',e.target.value)} /></td>
+                      <td style={{ paddingBottom:6, paddingRight:6 }}><input style={{ ...monoInp, fontSize:12, textAlign:'center' }} type="number" value={u.market_rent||''} onChange={e=>updateUnit(u.id,'market_rent',e.target.value)} /></td>
+                      <td style={{ paddingBottom:6 }}><input style={{ ...monoInp, fontSize:12, textAlign:'center' }} type="number" value={u.current_rent||''} onChange={e=>updateUnit(u.id,'current_rent',e.target.value)} /></td>
                     </tr>
                   ))}
                 </tbody>
               </table>
               <div style={{ fontSize:11, color:'#9ca3af', marginTop:6, textAlign:'right' }}>
                 Total Market Rent: <strong style={{ color:'#2C2C2C' }}>{fmt(unitTotals.rent)}</strong> / mo
+                <span style={{ marginLeft:14 }}>Total Current Rent: <strong style={{ color:'#2C2C2C' }}>{fmt(unitTotals.currentRent)}</strong> / mo</span>
               </div>
             </div>
           )}
