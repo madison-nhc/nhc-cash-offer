@@ -150,7 +150,7 @@ function AnalyzerBoard({ properties, onOpen, onMoved, onPromoted, onViewOffer })
   )
 }
 
-export default function Analyzer({ openPropertyId, openInPackage, onOpenedTarget, onOpenNew } = {}) {
+export default function Analyzer({ openPropertyId, openInPackage, onOpenedTarget, onOpenNew, isAgentRole=false, currentUserEmail=null } = {}) {
   const [tab, setTab] = useState('properties')
   const [view, setView] = useState('board')
   const [properties, setProperties] = useState([])
@@ -174,8 +174,9 @@ export default function Analyzer({ openPropertyId, openInPackage, onOpenedTarget
       const match = properties.find(p => p.id === openPropertyId)
       if (match) setDrawer(match)
       else {
-        supabase.from('cashoffer_properties').select('*').eq('id', openPropertyId).single()
-          .then(({ data }) => { if (data) setDrawer(data) })
+        let q = supabase.from('cashoffer_properties').select('*').eq('id', openPropertyId)
+        if (isAgentRole) q = q.eq('agent_email', currentUserEmail)
+        q.single().then(({ data }) => { if (data) setDrawer(data) })
       }
     }
     onOpenedTarget && onOpenedTarget()
@@ -183,15 +184,18 @@ export default function Analyzer({ openPropertyId, openInPackage, onOpenedTarget
 
   async function load() {
     setLoading(true)
-    const [{ data: p }, { data: m }] = await Promise.all([
+    let propQuery = supabase.from('cashoffer_properties').select('*')
       // Analyzer is purely pre-purchase: active Analyzing deals only.
       // Dead deals (stage='Lost') live exclusively on the Dead Deals page now.
       // (Legacy type='Lost' rows — zero exist — would also be excluded here.)
-      supabase.from('cashoffer_properties').select('*')
-        .is('package_id', null)
-        .eq('type', 'Analyzing')
-        .neq('stage', 'Lost')
-        .order('updated_at', { ascending: false }),
+      .is('package_id', null)
+      .eq('type', 'Analyzing')
+      .neq('stage', 'Lost')
+    if (isAgentRole) propQuery = propQuery.eq('agent_email', currentUserEmail)
+    propQuery = propQuery.order('updated_at', { ascending: false })
+
+    const [{ data: p }, { data: m }] = await Promise.all([
+      propQuery,
       supabase.from('cashoffer_mailings').select('id,campaign_name,drop_date').order('drop_date', { ascending: false }),
     ])
     setProperties(p || [])
@@ -234,7 +238,7 @@ export default function Analyzer({ openPropertyId, openInPackage, onOpenedTarget
         ))}
       </div>
 
-      {tab === 'packages' && <PackageDeals embedded openPropertyId={packageTargetId} onOpenedTarget={() => setPackageTargetId(null)} />}
+      {tab === 'packages' && <PackageDeals embedded openPropertyId={packageTargetId} onOpenedTarget={() => setPackageTargetId(null)} isAgentRole={isAgentRole} currentUserEmail={currentUserEmail} />}
 
       {tab === 'properties' && (
         <>
@@ -350,7 +354,7 @@ export default function Analyzer({ openPropertyId, openInPackage, onOpenedTarget
         </>
       )}
 
-      <PropertyDrawer property={drawer} open={!!drawer} onClose={() => setDrawer(null)} onSave={() => load()} mailings={mailings} onViewOffer={p => setProposal(p)} initialTab={drawerTab} />
+      <PropertyDrawer property={drawer} open={!!drawer} onClose={() => setDrawer(null)} onSave={() => load()} mailings={mailings} onViewOffer={p => setProposal(p)} initialTab={drawerTab} isAgentRole={isAgentRole} currentUserEmail={currentUserEmail} />
       {proposal && <ProposalModal property={proposal} onClose={() => setProposal(null)} />}
     </PageWrap>
   )

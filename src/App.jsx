@@ -157,14 +157,15 @@ export default function App() {
   if (!access) return <LoginPage unauthorized email={session.user.email} onSignOut={() => supabase.auth.signOut()} />
 
   const isAdmin = access.role === 'admin'
+  const isAgentRole = access.role === 'agent'
   const userEmail = session.user.email
 
   if (popupPropertyId) return <div style={{ height:'100vh' }}><PropertyFullView propertyId={popupPropertyId} /></div>
 
-  return <AuthedApp popupPropertyId={popupPropertyId} isAdmin={isAdmin} userEmail={userEmail} />
+  return <AuthedApp popupPropertyId={popupPropertyId} isAdmin={isAdmin} isAgentRole={isAgentRole} userEmail={userEmail} />
 }
 
-function AuthedApp({ isAdmin, userEmail }) {
+function AuthedApp({ isAdmin, isAgentRole, userEmail }) {
   const [active, setActive] = useState(initialTab)
   const [targetProperty, setTargetProperty] = useState(null)
   const [newPropertyOpen, setNewPropertyOpen] = useState(false)
@@ -216,14 +217,14 @@ function AuthedApp({ isAdmin, userEmail }) {
   const visibleOpsTabs = OPS_TABS.filter(t => t.id !== 'users' || isAdmin)
 
   const pages = {
-    analyzer:  <Analyzer openPropertyId={targetProperty?.id} openInPackage={!!targetProperty?.package_id} onOpenedTarget={() => setTargetProperty(null)} onOpenNew={() => setNewPropertyOpen(true)} />,
-    rehabs:    <Rehabs onOpenSupplies={() => navigate('supplies')} />,
+    analyzer:  <Analyzer openPropertyId={targetProperty?.id} openInPackage={!!targetProperty?.package_id} onOpenedTarget={() => setTargetProperty(null)} onOpenNew={() => setNewPropertyOpen(true)} isAgentRole={isAgentRole} currentUserEmail={userEmail} />,
+    rehabs:    <Rehabs onOpenSupplies={() => navigate('supplies')} isAgentRole={isAgentRole} currentUserEmail={userEmail} />,
     supplies:  <Supplies onBack={() => navigate('rehabs')} />,
-    listings:  <Listings />,
-    holds:     <Holds />,
-    wholesale: <Wholesale />,
-    sold:      <Sold />,
-    deaddeals: <DeadDeals />,
+    listings:  <Listings isAgentRole={isAgentRole} currentUserEmail={userEmail} />,
+    holds:     <Holds isAgentRole={isAgentRole} currentUserEmail={userEmail} />,
+    wholesale: <Wholesale isAgentRole={isAgentRole} currentUserEmail={userEmail} />,
+    sold:      <Sold isAgentRole={isAgentRole} currentUserEmail={userEmail} />,
+    deaddeals: <DeadDeals isAgentRole={isAgentRole} currentUserEmail={userEmail} />,
     mailings:  <MailingTracker />,
     vendors:   <Vendors />,
     inventory: <Inventory />,
@@ -390,6 +391,7 @@ function AuthedApp({ isAdmin, userEmail }) {
           comm_cash_pct:9, comm_list_pct:6, hold_cash_pct:0.75, hold_cash_months:6,
           hold_opt2_pct:0.5, hold_opt2_months:3, hold_opt3_pct:0.5, hold_opt3_months:6,
           repair_items:[], stage:'Analyzing', acquisition_type:'Purchased', owner:'BPV',
+          agent_email: isAgentRole ? userEmail : null,
         } : null}
         open={newPropertyOpen}
         onClose={() => setNewPropertyOpen(false)}
@@ -401,6 +403,8 @@ function AuthedApp({ isAdmin, userEmail }) {
           setTimeout(() => setActive(cur), 50)
         }}
         mailings={[]}
+        isAgentRole={isAgentRole}
+        currentUserEmail={userEmail}
       />
     </div>
   )

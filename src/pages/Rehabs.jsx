@@ -32,7 +32,7 @@ const PROMO_ZONES = [
 const DISP_LABEL = { renovation:'Renovation', listing:'Listing', wholesale:'Wholesale', flip:'Flip', hold:'Hold' }
 const DISP_COLOR = { renovation:'#6b21a8', listing:'#3B6D11', wholesale:'#6b21a8', flip:'#D97825', hold:'#B8892A' }
 
-export default function Rehabs({ onOpenSupplies }) {
+export default function Rehabs({ onOpenSupplies, isAgentRole=false, currentUserEmail=null }) {
   const mobile = useIsMobile()
   const [properties, setProperties] = useState([])
   const [rehabItems, setRehabItems] = useState([])
@@ -49,8 +49,10 @@ export default function Rehabs({ onOpenSupplies }) {
 
   async function load() {
     setLoading(true)
+    let propQuery = supabase.from('cashoffer_properties').select('*').in('stage', ['Purchased','Renovation','Reno In Progress','Reno Completed']).order('rehab_start_date', { ascending: false })
+    if (isAgentRole) propQuery = propQuery.eq('agent_email', currentUserEmail)
     const [{ data: p }, { data: ri }, { data: m }] = await Promise.all([
-      supabase.from('cashoffer_properties').select('*').in('stage', ['Purchased','Renovation','Reno In Progress','Reno Completed']).order('rehab_start_date', { ascending: false }),
+      propQuery,
       supabase.from('cashoffer_rehab_items').select('property_id,estimated_cost,actual_cost,status,paid_by'),
       supabase.from('cashoffer_mailings').select('id,campaign_name,drop_date'),
     ])
@@ -365,7 +367,7 @@ export default function Rehabs({ onOpenSupplies }) {
       </>
       )}
 
-      <PropertyDrawer property={drawer} open={!!drawer} onClose={()=>setDrawer(null)} onSave={()=>load()} mailings={mailings} initialTab={drawerTab} onViewOffer={p => setProposal(p)} />
+      <PropertyDrawer property={drawer} open={!!drawer} onClose={()=>setDrawer(null)} onSave={()=>load()} mailings={mailings} initialTab={drawerTab} onViewOffer={p => setProposal(p)} isAgentRole={isAgentRole} currentUserEmail={currentUserEmail} />
       <RehabRoundTracker property={dashboard} repairItems={dashboard?.repair_items || []} onChange={()=>{}} open={!!dashboard} onClose={()=>{ setDashboard(null); load() }} />
       {proposal && <ProposalModal property={proposal} onClose={() => setProposal(null)} />}
     </PageWrap>

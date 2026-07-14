@@ -20,7 +20,7 @@ const BOARD_COLUMNS = [
   { key:'Closed',         color:'#3B6D11' },  // drop opens drawer on Disposition; closed deals stay visible here
 ]
 
-export default function Wholesale() {
+export default function Wholesale({ isAgentRole=false, currentUserEmail=null }) {
   const mobile = useIsMobile()
   const [properties, setProperties] = useState([])
   const [mailings, setMailings] = useState([])
@@ -35,8 +35,11 @@ export default function Wholesale() {
 
   async function load() {
     setLoading(true)
+    let propQuery = supabase.from('cashoffer_properties').select('*').eq('type', 'Wholesale').neq('stage', 'Cancelled')
+    if (isAgentRole) propQuery = propQuery.eq('agent_email', currentUserEmail)
+    propQuery = propQuery.order('disposition_date', { ascending: false })
     const [{ data: p }, { data: m }] = await Promise.all([
-      supabase.from('cashoffer_properties').select('*').eq('type', 'Wholesale').neq('stage', 'Cancelled').order('disposition_date', { ascending: false }),
+      propQuery,
       supabase.from('cashoffer_mailings').select('id,campaign_name,drop_date').order('drop_date', { ascending: false }),
     ])
     setProperties(p || [])
@@ -219,7 +222,7 @@ export default function Wholesale() {
       </>
       )}
 
-      <PropertyDrawer property={drawer} open={!!drawer} onClose={() => setDrawer(null)} onSave={() => load()} mailings={mailings} onViewOffer={p => setProposal(p)} initialTab={drawerTab} />
+      <PropertyDrawer property={drawer} open={!!drawer} onClose={() => setDrawer(null)} onSave={() => load()} mailings={mailings} onViewOffer={p => setProposal(p)} initialTab={drawerTab} isAgentRole={isAgentRole} currentUserEmail={currentUserEmail} />
       {proposal && <ProposalModal property={proposal} onClose={() => setProposal(null)} />}
     </PageWrap>
   )

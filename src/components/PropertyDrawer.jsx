@@ -387,7 +387,7 @@ function Toggle({ on, onToggle, label, sub }) {
   )
 }
 
-export default function PropertyDrawer({ property, open, onClose, onSave, mailings=[], onViewOffer, inlineMode=false, initialTab='analyzer', openRentTracker=false }) {
+export default function PropertyDrawer({ property, open, onClose, onSave, mailings=[], onViewOffer, inlineMode=false, initialTab='analyzer', openRentTracker=false, currentUserEmail=null, isAgentRole=false }) {
   const [form, setForm]           = useState({})
   const [repairs, setRepairs]     = useState([])
   const [tab, setTab]             = useState('analyzer')
@@ -401,8 +401,17 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
   const [partnerPaybackTotal, setPartnerPaybackTotal] = useState(0)
   const [editingPhotosLink, setEditingPhotosLink] = useState(false)
   const [fullViewOpen, setFullViewOpen] = useState(false)
+  const [agentList, setAgentList] = useState([])
+
+  useEffect(() => {
+    supabase.from('cashoffer_users').select('email,full_name').eq('role','agent').order('full_name')
+      .then(({ data }) => setAgentList(data || []))
+  }, [])
 
   const isNew   = !form.id
+  // An agent editing an existing deal only gets the Analyzer tab and can't touch
+  // Owner/Type/Stage classification or delete — everything else stays admin/viewer-only.
+  const restrictedAgent = isAgentRole && !isNew
   const type       = form.type || 'Analyzing'
   const listingType = form.listing_type || 'As-Is'
   const disp    = form.stage === 'Lost' ? 'lost' : TYPE_TO_DISP[type] // derived — kept in sync for Sold/Rehabs/PackageDeals pages
@@ -570,9 +579,10 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
   useEffect(() => {
     if (tab==='loan' && !showLoanTab) setTab('analyzer')
     if (tab==='rent' && !showRentTab) setTab('analyzer')
-  }, [showLoanTab, showRentTab]) // eslint-disable-line react-hooks/exhaustive-deps
+    if (restrictedAgent && tab!=='analyzer') setTab('analyzer')
+  }, [showLoanTab, showRentTab, restrictedAgent]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const TABS = [
+  const TABS = restrictedAgent ? [{ key:'analyzer', label:'Analyzer' }] : [
     { key:'analyzer',    label:'Analyzer' },
     { key:'acquisition', label:'Acquisition' },
     ...(showLoanTab ? [{ key:'loan', label:'Loan' }] : []),
@@ -1206,7 +1216,7 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
 
   const footerContent = (
     <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-      {!isNew ? (
+      {!isNew && !isAgentRole ? (
         <button onClick={del} style={{ background:'#B91C1C', border:'1px solid #B91C1C', color:'#fff', fontSize:11, fontWeight:700, cursor:'pointer', fontFamily:'inherit', borderRadius:6, padding:'6px 12px' }}>
           Delete Property
         </button>
@@ -1234,12 +1244,33 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
               value={form.owner||'BPV'}
               onChange={set('owner')}
               onClick={e=>e.stopPropagation()}
+              disabled={restrictedAgent}
               style={{
                 border:'1.5px solid #D6D2CA', borderRadius:6, padding:'3px 8px',
                 fontSize:11, fontWeight:600, fontFamily:'inherit', color:'#6b7280', background:'#fff',
-                cursor:'pointer', outline:'none',
+                cursor: restrictedAgent ? 'not-allowed' : 'pointer', outline:'none',
+                opacity: restrictedAgent ? 0.6 : 1,
               }}>
               {['BPV','Bob Sophiea','Eric Kimble','Other'].map(o=><option key={o}>{o}</option>)}
+            </select>
+          </div>
+
+          {/* Agent dropdown — who's working this deal */}
+          <div style={{ display:'flex', flexDirection:'column', gap:2 }}>
+            <span style={{ fontSize:9, fontWeight:700, color:'#9ca3af', textTransform:'uppercase', letterSpacing:0.6 }}>Agent</span>
+            <select
+              value={form.agent_email||''}
+              onChange={set('agent_email')}
+              onClick={e=>e.stopPropagation()}
+              disabled={restrictedAgent}
+              style={{
+                border:'1.5px solid #D6D2CA', borderRadius:6, padding:'3px 8px',
+                fontSize:11, fontWeight:600, fontFamily:'inherit', color:'#6b7280', background:'#fff',
+                cursor: restrictedAgent ? 'not-allowed' : 'pointer', outline:'none',
+                opacity: restrictedAgent ? 0.6 : 1,
+              }}>
+              <option value="">— Unassigned —</option>
+              {agentList.map(a=><option key={a.email} value={a.email}>{a.full_name||a.email}</option>)}
             </select>
           </div>
 
@@ -1250,10 +1281,12 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
               value={type}
               onChange={e=>setType(e.target.value)}
               onClick={e=>e.stopPropagation()}
+              disabled={restrictedAgent}
               style={{
                 border:`1.5px solid ${typeColor}`, borderRadius:6, padding:'3px 8px',
                 fontSize:11, fontWeight:700, fontFamily:'inherit',
-                color:typeColor, background:typeColor+'12', cursor:'pointer', outline:'none',
+                color:typeColor, background:typeColor+'12', cursor: restrictedAgent ? 'not-allowed' : 'pointer', outline:'none',
+                opacity: restrictedAgent ? 0.6 : 1,
               }}>
               {TYPE_OPTIONS.map(t=><option key={t.value} value={t.value}>{t.label || t.value}</option>)}
             </select>
@@ -1306,10 +1339,12 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
                 value={stage||''}
                 onChange={e=>setVal('stage',e.target.value)}
                 onClick={e=>e.stopPropagation()}
+                disabled={restrictedAgent}
                 style={{
                   border:`1.5px solid ${stageColor}`, borderRadius:6, padding:'3px 8px',
                   fontSize:11, fontWeight:700, fontFamily:'inherit',
-                  color:stageColor, background:stageColor+'12', cursor:'pointer', outline:'none',
+                  color:stageColor, background:stageColor+'12', cursor: restrictedAgent ? 'not-allowed' : 'pointer', outline:'none',
+                  opacity: restrictedAgent ? 0.6 : 1,
                 }}>
                 {scopedStages.map(s=><option key={s} value={s}>{s}</option>)}
               </select>

@@ -36,7 +36,7 @@ function ownerLabel(p) {
     : { text:'Client · As-Is', color:'#3B6D11', owned:false }
 }
 
-export default function Listings() {
+export default function Listings({ isAgentRole=false, currentUserEmail=null }) {
   const mobile = useIsMobile()
   const [properties, setProperties] = useState([])
   const [mailings, setMailings] = useState([])
@@ -52,12 +52,14 @@ export default function Listings() {
 
   async function load() {
     setLoading(true)
-    const [{ data: p }, { data: m }] = await Promise.all([
+    let propQuery = supabase.from('cashoffer_properties').select('*')
       // Active listings only — no sold_date and no disposition_date
-      supabase.from('cashoffer_properties').select('*')
-        .or('type.eq."Retail Listing",and(type.in.(Flip,Hold),stage.in.("Off Market","Listed","Under Contract"))')
-        .not('stage', 'in', '("Sold","Closed","Cancelled / Expired","Reno In Progress","Reno Completed")')
-        .order('list_date', { ascending: false }),
+      .or('type.eq."Retail Listing",and(type.in.(Flip,Hold),stage.in.("Off Market","Listed","Under Contract"))')
+      .not('stage', 'in', '("Sold","Closed","Cancelled / Expired","Reno In Progress","Reno Completed")')
+    if (isAgentRole) propQuery = propQuery.eq('agent_email', currentUserEmail)
+    propQuery = propQuery.order('list_date', { ascending: false })
+    const [{ data: p }, { data: m }] = await Promise.all([
+      propQuery,
       supabase.from('cashoffer_mailings').select('id,campaign_name,drop_date').order('drop_date', { ascending: false }),
     ])
     setProperties(p || [])
@@ -285,7 +287,7 @@ export default function Listings() {
       </>
       )}
 
-      <PropertyDrawer property={drawer} open={!!drawer} onClose={() => setDrawer(null)} onSave={() => load()} mailings={mailings} onViewOffer={p => setProposal(p)} initialTab={drawerTab} />
+      <PropertyDrawer property={drawer} open={!!drawer} onClose={() => setDrawer(null)} onSave={() => load()} mailings={mailings} onViewOffer={p => setProposal(p)} initialTab={drawerTab} isAgentRole={isAgentRole} currentUserEmail={currentUserEmail} />
       {proposal && <ProposalModal property={proposal} onClose={() => setProposal(null)} />}
     </PageWrap>
   )

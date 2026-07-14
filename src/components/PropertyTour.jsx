@@ -27,8 +27,16 @@ function tourEmbedUrl(url, type) {
   return b ? `${b}?initialViewType=${type}&utm_source=nhc` : ''
 }
 
-const getReviewerName = () => localStorage.getItem('nhc_reviewer_name') || ''
-const setReviewerName = n => localStorage.setItem('nhc_reviewer_name', (n || '').trim())
+// Every note/rating is attributed to whoever is actually signed in, not a typed name.
+function useSessionEmail() {
+  const [email, setEmail] = useState(null)
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => setEmail(data?.session?.user?.email || null))
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, session) => setEmail(session?.user?.email || null))
+    return () => subscription.unsubscribe()
+  }, [])
+  return email
+}
 
 // -- Tour embed + link --
 export function TourSection({ propertyId, tourUrl, onSaved }) {
@@ -94,7 +102,7 @@ export function TourSection({ propertyId, tourUrl, onSaved }) {
 export function ConditionRatings({ propertyId }) {
   const [rows, setRows] = useState([])
   const [loading, setLoading] = useState(true)
-  const [reviewer, setReviewer] = useState(getReviewerName())
+  const email = useSessionEmail()
   const [viewPhoto, setViewPhoto] = useState(null)
   const fileInputRef = useRef(null)
   const photoTargetRef = useRef(null)
@@ -112,10 +120,7 @@ export function ConditionRatings({ propertyId }) {
   const customRows = rows.filter(r => r.is_custom)
 
   async function rate(cat, rating, existing) {
-    const name = reviewer.trim() || getReviewerName()
-    if (!name) { alert('Add your reviewer name first.'); return }
-    setReviewerName(name)
-    const payload = { property_id: propertyId, category: cat, rating, updated_by: name, updated_at: new Date().toISOString() }
+    const payload = { property_id: propertyId, category: cat, rating, updated_by: email || 'Unknown', updated_at: new Date().toISOString() }
     if (existing) {
       await supabase.from('cashoffer_condition_ratings').update(payload).eq('id', existing.id)
     } else {
@@ -185,7 +190,7 @@ export function ConditionRatings({ propertyId }) {
   return (
     <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
       <div className="drawer-section">Condition Rating</div>
-      <Field label="Reviewer Name"><input style={inp} value={reviewer} onChange={e=>setReviewer(e.target.value)} onBlur={e=>setReviewerName(e.target.value)} placeholder="Your name" /></Field>
+      <Field label="Reviewer Name"><input style={{ ...inp, background:'#FAFAF8', color:'#6b7280' }} value={email||''} disabled /></Field>
       <input ref={fileInputRef} type="file" accept="image/*" capture="environment" style={{ display:'none' }} onChange={handleFile} />
       {loading ? <div style={{ textAlign:'center', padding:12, color:'#9ca3af', fontSize:12 }}>Loading...</div> : (
         <div style={{ background:'#FAFAF8', border:'0.5px solid #D6D2CA', borderRadius:8, padding:'6px 12px' }}>
@@ -252,7 +257,7 @@ export function ConditionRatings({ propertyId }) {
 // -- Team comments --
 export function PropertyComments({ propertyId }) {
   const [comments, setComments] = useState([])
-  const [name, setName] = useState(getReviewerName())
+  const email = useSessionEmail()
   const [text, setText] = useState('')
   const [loading, setLoading] = useState(true)
 
@@ -266,10 +271,8 @@ export function PropertyComments({ propertyId }) {
   }
 
   async function add() {
-    if (!name.trim()) { alert('Add your name first.'); return }
     if (!text.trim()) return
-    setReviewerName(name)
-    await supabase.from('cashoffer_property_comments').insert({ property_id: propertyId, author: name.trim(), content: text.trim() })
+    await supabase.from('cashoffer_property_comments').insert({ property_id: propertyId, author: email || 'Unknown', content: text.trim() })
     setText('')
     load()
   }
@@ -283,7 +286,6 @@ export function PropertyComments({ propertyId }) {
     <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
       <div className="drawer-section">Team Notes</div>
       <div style={{ display:'flex', gap:6 }}>
-        <input style={{ ...inp, flex:'0 0 34%' }} placeholder="Your name" value={name} onChange={e=>setName(e.target.value)} />
         <textarea style={{ ...inp, flex:1, minHeight:38, resize:'vertical' }} rows={2} placeholder="Leave a note for the team..." value={text} onChange={e=>setText(e.target.value)} />
       </div>
       <div><Btn onClick={add}>Add Note</Btn></div>

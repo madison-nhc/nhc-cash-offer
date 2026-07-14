@@ -8,7 +8,7 @@ import ProposalModal from '../components/ProposalModal.jsx'
 const DISP_COLOR = { listing:'#3B6D11', flip:'#D97825', hold:'#B8892A', wholesale:'#6b21a8' }
 const DISP_LABEL = { listing:'Listing', flip:'Flip', hold:'Hold Conv.', wholesale:'Wholesale' }
 
-export default function Sold() {
+export default function Sold({ isAgentRole=false, currentUserEmail=null }) {
   const mobile = useIsMobile()
   const [properties, setProperties] = useState([])
   const [mailings,   setMailings]   = useState([])
@@ -23,10 +23,11 @@ export default function Sold() {
 
   async function load() {
     setLoading(true)
+    let propQuery = supabase.from('cashoffer_properties').select('*').in('stage', ['Sold', 'Closed'])
+    if (isAgentRole) propQuery = propQuery.eq('agent_email', currentUserEmail)
+    propQuery = propQuery.order('sold_date', { ascending: false })
     const [{ data: p }, { data: m }] = await Promise.all([
-      supabase.from('cashoffer_properties').select('*')
-        .in('stage', ['Sold', 'Closed'])
-        .order('sold_date', { ascending: false }),
+      propQuery,
       supabase.from('cashoffer_mailings').select('id,campaign_name,drop_date'),
     ])
     setProperties(p || [])
@@ -392,7 +393,7 @@ export default function Sold() {
         </Card>
       )}
 
-      <PropertyDrawer property={drawer} open={!!drawer} onClose={() => setDrawer(null)} onSave={() => load()} mailings={mailings} onViewOffer={p => setProposal(p)} initialTab="disposition" />
+      <PropertyDrawer property={drawer} open={!!drawer} onClose={() => setDrawer(null)} onSave={() => load()} mailings={mailings} onViewOffer={p => setProposal(p)} initialTab="disposition" isAgentRole={isAgentRole} currentUserEmail={currentUserEmail} />
       {proposal && <ProposalModal property={proposal} onClose={() => setProposal(null)} />}
     </PageWrap>
   )

@@ -191,7 +191,7 @@ function PackagePropertiesTable({ pkgProps, stats, setPropDrawer, setProposal })
 }
 
 // ── Main component ────────────────────────────────────────────────────────────
-export default function PackageDeals({ openPropertyId, onOpenedTarget } = {}) {
+export default function PackageDeals({ openPropertyId, onOpenedTarget, isAgentRole=false, currentUserEmail=null } = {}) {
   const mobile = useIsMobile()
   const [packages, setPackages] = useState([])
   const [properties, setProperties] = useState([])
@@ -219,9 +219,12 @@ export default function PackageDeals({ openPropertyId, onOpenedTarget } = {}) {
 
   async function load() {
     setLoading(true)
+    let propQuery = supabase.from('cashoffer_properties').select('*').not('package_id', 'is', null)
+    if (isAgentRole) propQuery = propQuery.eq('agent_email', currentUserEmail)
+    propQuery = propQuery.order('address')
     const [{ data: pkgs }, { data: props }] = await Promise.all([
       supabase.from('cashoffer_package_deals').select('*').order('created_at', { ascending: false }),
-      supabase.from('cashoffer_properties').select('*').not('package_id', 'is', null).order('address'),
+      propQuery,
     ])
     setPackages(pkgs || [])
     setProperties(props || [])
@@ -342,6 +345,8 @@ export default function PackageDeals({ openPropertyId, onOpenedTarget } = {}) {
         onSave={() => load()}
         mailings={[]}
         onViewOffer={p => setProposal(p)}
+        isAgentRole={isAgentRole}
+        currentUserEmail={currentUserEmail}
       />
       {proposal && <ProposalModal property={proposal} onClose={() => setProposal(null)} />}
 

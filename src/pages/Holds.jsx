@@ -28,7 +28,7 @@ function MiniStat({ label, value, sub, color = '#2C2C2C' }) {
   )
 }
 
-export default function Holds() {
+export default function Holds({ isAgentRole=false, currentUserEmail=null }) {
   const mobile = useIsMobile()
   const [properties, setProperties] = useState([])
   const [leases, setLeases] = useState([])
@@ -46,8 +46,10 @@ export default function Holds() {
 
   async function load() {
     setLoading(true)
+    let propQuery = supabase.from('cashoffer_properties').select('*').eq('type', 'Hold').order('purchase_date', { ascending: false })
+    if (isAgentRole) propQuery = propQuery.eq('agent_email', currentUserEmail)
     const [{ data: p }, { data: l }, { data: ln }, { data: m }] = await Promise.all([
-      supabase.from('cashoffer_properties').select('*').eq('type', 'Hold').order('purchase_date', { ascending: false }),
+      propQuery,
       supabase.from('cashoffer_leases').select('*').in('status', ['Active', 'Month-to-Month']),
       supabase.from('cashoffer_loans').select('*').eq('is_active', true),
       supabase.from('cashoffer_mailings').select('id,campaign_name,drop_date').order('drop_date', { ascending: false }),
@@ -254,7 +256,7 @@ export default function Holds() {
       </>
       )}
 
-      <PropertyDrawer property={drawer} open={!!drawer} onClose={() => setDrawer(null)} onSave={() => load()} mailings={mailings} onViewOffer={p => setProposal(p)} initialTab={drawerTab} openRentTracker={autoOpenLease} />
+      <PropertyDrawer property={drawer} open={!!drawer} onClose={() => setDrawer(null)} onSave={() => load()} mailings={mailings} onViewOffer={p => setProposal(p)} initialTab={drawerTab} openRentTracker={autoOpenLease} isAgentRole={isAgentRole} currentUserEmail={currentUserEmail} />
       {proposal && <ProposalModal property={proposal} onClose={() => setProposal(null)} />}
     </PageWrap>
   )

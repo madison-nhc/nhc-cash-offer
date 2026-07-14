@@ -25,7 +25,7 @@ function typeLabel(p) {
   return p.type
 }
 
-export default function DeadDeals() {
+export default function DeadDeals({ isAgentRole=false, currentUserEmail=null }) {
   const mobile = useIsMobile()
   const [properties, setProperties] = useState([])
   const [loading, setLoading] = useState(true)
@@ -34,9 +34,10 @@ export default function DeadDeals() {
   useEffect(() => { load() }, [])
 
   async function load() {
-    const { data } = await supabase.from('cashoffer_properties').select('*')
+    let q = supabase.from('cashoffer_properties').select('*')
       .in('stage', DEAD_STAGES)
-      .order('updated_at', { ascending: false })
+    if (isAgentRole) q = q.eq('agent_email', currentUserEmail)
+    const { data } = await q.order('updated_at', { ascending: false })
     setProperties(data || [])
     setLoading(false)
   }
@@ -107,7 +108,7 @@ export default function DeadDeals() {
         </Card>
       )}
 
-      <PropertyDrawer property={drawer} open={!!drawer} onClose={() => setDrawer(null)} onSave={() => load()} />
+      <PropertyDrawer property={drawer} open={!!drawer} onClose={() => setDrawer(null)} onSave={() => load()} isAgentRole={isAgentRole} currentUserEmail={currentUserEmail} />
     </PageWrap>
   )
 }
