@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase.js'
 import { calcOffers } from '../lib/valuation.js'
-import { Field, FieldRow, inp, monoInp, fmt } from './ui.jsx'
+import { Field, FieldRow, inp, monoInp, fmt, Modal } from './ui.jsx'
 import { TourSection, ConditionRatings, PropertyComments } from './PropertyTour.jsx'
 import ProposalModal from './ProposalModal.jsx'
 
@@ -35,6 +35,59 @@ const TABS = [
   { key:'notes', label:'Notes' },
 ]
 
+function DrivePhotoGrid({ folderId }) {
+  const [photos, setPhotos] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+  const [viewPhoto, setViewPhoto] = useState(null)
+
+  useEffect(() => { if (folderId) load() }, [folderId]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function load() {
+    setLoading(true); setError(null)
+    try {
+      const key = import.meta.env.VITE_GOOGLE_DRIVE_KEY
+      if (!key) { setError('Drive API key not configured yet.'); setLoading(false); return }
+      const q = encodeURIComponent(`'${folderId}' in parents and mimeType contains 'image/' and trashed = false`)
+      const url = `https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id,name,thumbnailLink)&pageSize=200&key=${key}`
+      const res = await fetch(url)
+      const data = await res.json()
+      if (!res.ok) throw new Error(data?.error?.message || 'Failed to load photos')
+      setPhotos(data.files || [])
+    } catch (e) {
+      setError(e.message || 'Could not load photos from Drive.')
+    }
+    setLoading(false)
+  }
+
+  function bigUrl(thumbnailLink) {
+    return (thumbnailLink || '').replace(/=s\d+/, '=s1600')
+  }
+
+  if (loading) return <div style={{ textAlign:'center', padding:16, color:'#9ca3af', fontSize:12 }}>Loading photos...</div>
+  if (error) return <div style={{ fontSize:11.5, color:'#B91C1C', padding:'8px 2px' }}>{error}</div>
+  if (!photos.length) return <div style={{ fontSize:12, color:'#9ca3af', padding:'8px 2px' }}>No photos found in this folder.</div>
+
+  return (
+    <>
+      <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(90px, 1fr))', gap:6 }}>
+        {photos.map(p => (
+          <img
+            key={p.id} src={p.thumbnailLink} alt={p.name}
+            onClick={()=>setViewPhoto(p)}
+            style={{ width:'100%', aspectRatio:'1', objectFit:'cover', borderRadius:6, border:'1px solid #D6D2CA', cursor:'pointer' }}
+          />
+        ))}
+      </div>
+      {viewPhoto && (
+        <Modal title={viewPhoto.name} onClose={()=>setViewPhoto(null)} width={720}>
+          <img src={bigUrl(viewPhoto.thumbnailLink)} alt={viewPhoto.name} style={{ width:'100%', borderRadius:8, display:'block' }} />
+        </Modal>
+      )}
+    </>
+  )
+}
+
 function DriveTab({ propertyId, link, onSaved }) {
   const [editing, setEditing] = useState(!link)
   const [draft, setDraft] = useState(link || '')
@@ -60,16 +113,19 @@ function DriveTab({ propertyId, link, onSaved }) {
           {draft && !driveFolderId(draft) && <div style={{ fontSize:11, color:'#B91C1C', marginTop:6 }}>Couldn't read a folder ID from that link.</div>}
         </Field>
       ) : (
-        <div style={{ display:'flex', gap:6 }}>
-          <button
-            onClick={()=>window.open(`https://drive.google.com/drive/folders/${driveFolderId(link)}`, 'nhc_photos', 'width=1400,height=950,noopener,noreferrer')}
-            style={{ flex:1, background:'#fff', border:'1.5px solid #B8892A', borderRadius:8, padding:'10px 16px', cursor:'pointer', fontFamily:'inherit', display:'flex', alignItems:'center', justifyContent:'space-between' }}
-          >
-            <div style={{ fontSize:13, fontWeight:700, color:'#B8892A' }}>Open Photos Folder</div>
-            <span style={{ fontSize:18, color:'#B8892A' }}>&#8599;</span>
-          </button>
-          <button onClick={()=>setEditing(true)} title="Edit link" style={{ width:40, background:'#fff', border:'1.5px solid #D6D2CA', borderRadius:8, cursor:'pointer', fontSize:15, color:'#9ca3af' }}>&#9998;</button>
-        </div>
+        <>
+          <div style={{ display:'flex', gap:6 }}>
+            <button
+              onClick={()=>window.open(`https://drive.google.com/drive/folders/${driveFolderId(link)}`, 'nhc_photos', 'width=1400,height=950,noopener,noreferrer')}
+              style={{ flex:1, background:'#fff', border:'1.5px solid #B8892A', borderRadius:8, padding:'10px 16px', cursor:'pointer', fontFamily:'inherit', display:'flex', alignItems:'center', justifyContent:'space-between' }}
+            >
+              <div style={{ fontSize:13, fontWeight:700, color:'#B8892A' }}>Open Photos Folder</div>
+              <span style={{ fontSize:18, color:'#B8892A' }}>&#8599;</span>
+            </button>
+            <button onClick={()=>setEditing(true)} title="Edit link" style={{ width:40, background:'#fff', border:'1.5px solid #D6D2CA', borderRadius:8, cursor:'pointer', fontSize:15, color:'#9ca3af' }}>&#9998;</button>
+          </div>
+          <DrivePhotoGrid folderId={driveFolderId(link)} />
+        </>
       )}
     </div>
   )
