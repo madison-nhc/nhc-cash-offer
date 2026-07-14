@@ -263,9 +263,20 @@ export default function PackageDeals({ openPropertyId, onOpenedTarget, isAgentRo
           properties={propertiesForPackage(openPkg.id)}
           packageName={openPkg.deal_name}
           fubLink={openPkg.fub_link}
+          pkg={openPkg}
           onClose={() => setOpenPkg(null)}
           onSaveProperty={() => load()}
-          onEditPackage={() => setPkgDrawer(openPkg)}
+          onSavePackage={async (payload) => {
+            const { error } = await supabase.from('cashoffer_package_deals').update(payload).eq('id', openPkg.id)
+            if (error) { alert(`Couldn't save this package.\n\n${error.message}`); return }
+            await load()
+          }}
+          onDeletePackage={async () => {
+            await supabase.from('cashoffer_properties').update({ package_id: null }).eq('package_id', openPkg.id)
+            await supabase.from('cashoffer_package_deals').delete().eq('id', openPkg.id)
+            setOpenPkg(null)
+            await load()
+          }}
           onAddProperty={() => setAddPropPkg(openPkg.id)}
           isAgentRole={isAgentRole}
           currentUserEmail={currentUserEmail}
