@@ -412,7 +412,18 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
   useEffect(() => {
     if (!form.id) { setUnits([]); return }
     supabase.from('cashoffer_units').select('*').eq('property_id', form.id).order('sort_order', { ascending:true })
-      .then(({ data }) => setUnits(data || []))
+      .then(({ data }) => {
+        const count = parseInt(form.unit_count) || 1
+        if ((!data || data.length === 0) && count > 1) {
+          // Multi-unit property with no per-unit rows yet (e.g. unit_count was set
+          // before this feature existed, or imported directly) — seed blank editable rows.
+          setUnits(Array.from({ length: count }, (_, i) => ({
+            id: `new-${Date.now()}-${i}`, unit_label: `Unit ${i+1}`, beds:'', baths:'', sqft:'', market_rent:'',
+          })))
+        } else {
+          setUnits(data || [])
+        }
+      })
   }, [form.id])
 
   const unitCount = parseInt(form.unit_count) || 1
