@@ -1237,129 +1237,120 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
       title={form.address || 'New Property'}
       headerActions={null}
       subtitle={
-        <div style={{ display:'flex', flexDirection:'column', gap:8, marginTop:8 }}>
-          {/* ── TEAM group: who owns / works this deal ── */}
-          <div>
-            <div style={{ fontSize:9, fontWeight:700, color:'#B8892A', textTransform:'uppercase', letterSpacing:0.8, marginBottom:3 }}>Team</div>
-            <div style={{ display:'flex', alignItems:'center', gap:12, flexWrap:'wrap' }}>
-              <label style={{ display:'flex', alignItems:'center', gap:5 }}>
-                <span style={{ fontSize:10, fontWeight:600, color:'#9ca3af' }}>Owner</span>
-                <select
-                  value={form.owner||'BPV'}
-                  onChange={set('owner')}
-                  onClick={e=>e.stopPropagation()}
-                  disabled={restrictedAgent}
-                  style={{
-                    border:'1.5px solid #D6D2CA', borderRadius:6, padding:'3px 8px',
-                    fontSize:11, fontWeight:600, fontFamily:'inherit', color:'#6b7280', background:'#fff',
-                    cursor: restrictedAgent ? 'not-allowed' : 'pointer', outline:'none',
-                    opacity: restrictedAgent ? 0.6 : 1,
-                  }}>
-                  {['BPV','Bob Sophiea','Eric Kimble','Other'].map(o=><option key={o}>{o}</option>)}
-                </select>
-              </label>
-
-              <label style={{ display:'flex', alignItems:'center', gap:5 }}>
-                <span style={{ fontSize:10, fontWeight:600, color:'#9ca3af' }}>Agent</span>
-                <select
-                  value={form.agent_email||''}
-                  onChange={set('agent_email')}
-                  onClick={e=>e.stopPropagation()}
-                  disabled={restrictedAgent}
-                  style={{
-                    border:'1.5px solid #D6D2CA', borderRadius:6, padding:'3px 8px',
-                    fontSize:11, fontWeight:600, fontFamily:'inherit', color:'#6b7280', background:'#fff',
-                    cursor: restrictedAgent ? 'not-allowed' : 'pointer', outline:'none',
-                    opacity: restrictedAgent ? 0.6 : 1, maxWidth:130,
-                  }}>
-                  <option value="">— Unassigned —</option>
-                  {agentList.map(a=><option key={a.email} value={a.email}>{a.full_name||a.email}</option>)}
-                </select>
-              </label>
-            </div>
+        <div style={{ display:'flex', alignItems:'flex-end', gap:10, marginTop:8, flexWrap:'wrap' }}>
+          {/* Owner dropdown — first */}
+          <div style={{ display:'flex', flexDirection:'column', gap:2 }}>
+            <span style={{ fontSize:9, fontWeight:700, color:'#9ca3af', textTransform:'uppercase', letterSpacing:0.6 }}>Owner</span>
+            <select
+              value={form.owner||'BPV'}
+              onChange={set('owner')}
+              onClick={e=>e.stopPropagation()}
+              disabled={restrictedAgent}
+              style={{
+                border:'1.5px solid #D6D2CA', borderRadius:6, padding:'3px 8px',
+                fontSize:11, fontWeight:600, fontFamily:'inherit', color:'#6b7280', background:'#fff',
+                cursor: restrictedAgent ? 'not-allowed' : 'pointer', outline:'none',
+                opacity: restrictedAgent ? 0.6 : 1,
+              }}>
+              {['BPV','Bob Sophiea','Eric Kimble','Other'].map(o=><option key={o}>{o}</option>)}
+            </select>
           </div>
 
-          {/* ── STATUS group: deal type + stage ── */}
-          <div>
-            <div style={{ fontSize:9, fontWeight:700, color:'#B8892A', textTransform:'uppercase', letterSpacing:0.8, marginBottom:3 }}>Status</div>
-            <div style={{ display:'flex', alignItems:'center', gap:12, flexWrap:'wrap' }}>
-              <label style={{ display:'flex', alignItems:'center', gap:5 }}>
-                <span style={{ fontSize:10, fontWeight:600, color:'#9ca3af' }}>Type</span>
-                <select
-                  value={type}
-                  onChange={e=>setType(e.target.value)}
-                  onClick={e=>e.stopPropagation()}
-                  disabled={restrictedAgent}
-                  style={{
-                    border:`1.5px solid ${typeColor}`, borderRadius:6, padding:'3px 8px',
-                    fontSize:11, fontWeight:700, fontFamily:'inherit',
-                    color:typeColor, background:typeColor+'12', cursor: restrictedAgent ? 'not-allowed' : 'pointer', outline:'none',
-                    opacity: restrictedAgent ? 0.6 : 1,
-                  }}>
-                  {TYPE_OPTIONS.map(t=><option key={t.value} value={t.value}>{t.label || t.value}</option>)}
-                </select>
-              </label>
-
-              {/* As-Is / Reno toggle — Retail Listing only */}
-              {type==='Retail Listing' && (
-                <label style={{ display:'flex', alignItems:'center', gap:5 }}>
-                  <span style={{ fontSize:10, fontWeight:600, color:'#9ca3af' }}>Listing</span>
-                  <select
-                    value={listingType}
-                    onChange={e=>setListingType(e.target.value)}
-                    onClick={e=>e.stopPropagation()}
-                    style={{
-                      border:'1.5px solid #D6D2CA', borderRadius:6, padding:'3px 8px',
-                      fontSize:11, fontWeight:600, fontFamily:'inherit', color:'#6b7280', background:'#fff',
-                      cursor:'pointer', outline:'none',
-                    }}>
-                    <option value="As-Is">As-Is</option>
-                    <option value="Reno">Reno</option>
-                  </select>
-                </label>
-              )}
-
-              {/* Scoped stage dropdown — hidden for Analyzing/Lost which have no stages.
-                  Renovation deals show the WORK stages (rehab_stage); the coarse deal
-                  stage (Purchased/Renovation) is derived underneath, same as the board. */}
-              {type==='Renovation' ? (
-                <label style={{ display:'flex', alignItems:'center', gap:5 }}>
-                  <span style={{ fontSize:10, fontWeight:600, color:'#9ca3af' }}>Stage</span>
-                  <select
-                    value={form.rehab_stage||'Not Started'}
-                    onChange={e=>{
-                      const rs = e.target.value
-                      setForm(f=>({ ...f, rehab_stage:rs, stage: rs==='Not Started' ? 'Purchased' : 'Renovation' }))
-                    }}
-                    onClick={e=>e.stopPropagation()}
-                    style={{
-                      border:`1.5px solid ${REHAB_COLOR[form.rehab_stage||'Not Started']}`, borderRadius:6, padding:'3px 8px',
-                      fontSize:11, fontWeight:700, fontFamily:'inherit',
-                      color:REHAB_COLOR[form.rehab_stage||'Not Started'], background:(REHAB_COLOR[form.rehab_stage||'Not Started'])+'12', cursor:'pointer', outline:'none',
-                    }}>
-                    {REHAB_STAGES.map(s=><option key={s} value={s}>{s}</option>)}
-                  </select>
-                </label>
-              ) : scopedStages.length>0 && (
-                <label style={{ display:'flex', alignItems:'center', gap:5 }}>
-                  <span style={{ fontSize:10, fontWeight:600, color:'#9ca3af' }}>Stage</span>
-                  <select
-                    value={stage||''}
-                    onChange={e=>setVal('stage',e.target.value)}
-                    onClick={e=>e.stopPropagation()}
-                    disabled={restrictedAgent}
-                    style={{
-                      border:`1.5px solid ${stageColor}`, borderRadius:6, padding:'3px 8px',
-                      fontSize:11, fontWeight:700, fontFamily:'inherit',
-                      color:stageColor, background:stageColor+'12', cursor: restrictedAgent ? 'not-allowed' : 'pointer', outline:'none',
-                      opacity: restrictedAgent ? 0.6 : 1,
-                    }}>
-                    {scopedStages.map(s=><option key={s} value={s}>{s}</option>)}
-                  </select>
-                </label>
-              )}
-            </div>
+          {/* Agent dropdown — who's working this deal */}
+          <div style={{ display:'flex', flexDirection:'column', gap:2 }}>
+            <span style={{ fontSize:9, fontWeight:700, color:'#9ca3af', textTransform:'uppercase', letterSpacing:0.6 }}>Agent</span>
+            <select
+              value={form.agent_email||''}
+              onChange={set('agent_email')}
+              onClick={e=>e.stopPropagation()}
+              disabled={restrictedAgent}
+              style={{
+                border:'1.5px solid #D6D2CA', borderRadius:6, padding:'3px 8px',
+                fontSize:11, fontWeight:600, fontFamily:'inherit', color:'#6b7280', background:'#fff',
+                cursor: restrictedAgent ? 'not-allowed' : 'pointer', outline:'none',
+                opacity: restrictedAgent ? 0.6 : 1, maxWidth:130,
+              }}>
+              <option value="">— Unassigned —</option>
+              {agentList.map(a=><option key={a.email} value={a.email}>{a.full_name||a.email}</option>)}
+            </select>
           </div>
+
+          {/* Type dropdown — primary */}
+          <div style={{ display:'flex', flexDirection:'column', gap:2 }}>
+            <span style={{ fontSize:9, fontWeight:700, color:'#9ca3af', textTransform:'uppercase', letterSpacing:0.6 }}>Deal Type</span>
+            <select
+              value={type}
+              onChange={e=>setType(e.target.value)}
+              onClick={e=>e.stopPropagation()}
+              disabled={restrictedAgent}
+              style={{
+                border:`1.5px solid ${typeColor}`, borderRadius:6, padding:'3px 8px',
+                fontSize:11, fontWeight:700, fontFamily:'inherit',
+                color:typeColor, background:typeColor+'12', cursor: restrictedAgent ? 'not-allowed' : 'pointer', outline:'none',
+                opacity: restrictedAgent ? 0.6 : 1,
+              }}>
+              {TYPE_OPTIONS.map(t=><option key={t.value} value={t.value}>{t.label || t.value}</option>)}
+            </select>
+          </div>
+
+          {/* As-Is / Reno toggle — Retail Listing only */}
+          {type==='Retail Listing' && (
+            <div style={{ display:'flex', flexDirection:'column', gap:2 }}>
+              <span style={{ fontSize:9, fontWeight:700, color:'#9ca3af', textTransform:'uppercase', letterSpacing:0.6 }}>Listing Type</span>
+              <select
+                value={listingType}
+                onChange={e=>setListingType(e.target.value)}
+                onClick={e=>e.stopPropagation()}
+                style={{
+                  border:'1.5px solid #D6D2CA', borderRadius:6, padding:'3px 8px',
+                  fontSize:11, fontWeight:600, fontFamily:'inherit', color:'#6b7280', background:'#fff',
+                  cursor:'pointer', outline:'none',
+                }}>
+                <option value="As-Is">As-Is</option>
+                <option value="Reno">Reno</option>
+              </select>
+            </div>
+          )}
+
+          {/* Scoped stage dropdown — hidden for Analyzing/Lost which have no stages.
+              Renovation deals show the WORK stages (rehab_stage); the coarse deal
+              stage (Purchased/Renovation) is derived underneath, same as the board. */}
+          {type==='Renovation' ? (
+            <div style={{ display:'flex', flexDirection:'column', gap:2 }}>
+              <span style={{ fontSize:9, fontWeight:700, color:'#9ca3af', textTransform:'uppercase', letterSpacing:0.6 }}>Renovation Stage</span>
+              <select
+                value={form.rehab_stage||'Not Started'}
+                onChange={e=>{
+                  const rs = e.target.value
+                  setForm(f=>({ ...f, rehab_stage:rs, stage: rs==='Not Started' ? 'Purchased' : 'Renovation' }))
+                }}
+                onClick={e=>e.stopPropagation()}
+                style={{
+                  border:`1.5px solid ${REHAB_COLOR[form.rehab_stage||'Not Started']}`, borderRadius:6, padding:'3px 8px',
+                  fontSize:11, fontWeight:700, fontFamily:'inherit',
+                  color:REHAB_COLOR[form.rehab_stage||'Not Started'], background:(REHAB_COLOR[form.rehab_stage||'Not Started'])+'12', cursor:'pointer', outline:'none',
+                }}>
+                {REHAB_STAGES.map(s=><option key={s} value={s}>{s}</option>)}
+              </select>
+            </div>
+          ) : scopedStages.length>0 && (
+            <div style={{ display:'flex', flexDirection:'column', gap:2 }}>
+              <span style={{ fontSize:9, fontWeight:700, color:'#9ca3af', textTransform:'uppercase', letterSpacing:0.6 }}>Deal Stage</span>
+              <select
+                value={stage||''}
+                onChange={e=>setVal('stage',e.target.value)}
+                onClick={e=>e.stopPropagation()}
+                disabled={restrictedAgent}
+                style={{
+                  border:`1.5px solid ${stageColor}`, borderRadius:6, padding:'3px 8px',
+                  fontSize:11, fontWeight:700, fontFamily:'inherit',
+                  color:stageColor, background:stageColor+'12', cursor: restrictedAgent ? 'not-allowed' : 'pointer', outline:'none',
+                  opacity: restrictedAgent ? 0.6 : 1,
+                }}>
+                {scopedStages.map(s=><option key={s} value={s}>{s}</option>)}
+              </select>
+            </div>
+          )}
         </div>
       }>
       {innerContent}
