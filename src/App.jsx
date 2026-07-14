@@ -182,6 +182,8 @@ function AuthedApp({ isAdmin, isAgentRole, userEmail }) {
     return () => document.removeEventListener('wheel', onWheel)
   }, [])
   const mobile = useIsMobile()
+  const compact = useIsMobile(1150)
+  const [navMenuOpen, setNavMenuOpen] = useState(false)
 
   const navigate = useCallback((tab) => {
     localStorage.setItem('nhc_hub_tab', tab)
@@ -190,6 +192,7 @@ function AuthedApp({ isAdmin, isAgentRole, userEmail }) {
       window.history.pushState({ tab }, '', path)
     }
     setActive(tab)
+    setNavMenuOpen(false)
   }, [])
 
   useEffect(() => {
@@ -244,7 +247,50 @@ function AuthedApp({ isAdmin, isAgentRole, userEmail }) {
           <img src="/nhc-logo.svg" alt="NHC" style={{ width:28, height:28, objectFit:'contain', flexShrink:0 }} />
           {!mobile && <span style={{ fontSize:12, fontWeight:700, letterSpacing:1.5, color:'#2C2C2C', whiteSpace:'nowrap', flexShrink:0 }}>CASH OFFER HUB</span>}
 
-          {!mobile && (
+          {!mobile && compact && (
+            <div style={{ position:'relative', flex:'1 1 auto', minWidth:0, marginLeft:16 }}>
+              <button
+                onClick={() => setNavMenuOpen(o => !o)}
+                style={{
+                  display:'flex', alignItems:'center', gap:6, background:'#FAFAF8', border:'1px solid #E8E5DE',
+                  borderRadius:6, padding:'6px 12px', cursor:'pointer', fontFamily:'inherit',
+                  fontSize:12, fontWeight:700, color:'#2C2C2C', maxWidth:220,
+                }}
+              >
+                <span style={{ overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+                  {TABS.find(t => t.id === active)?.label || 'Menu'}
+                </span>
+                <span style={{ fontSize:10, color:'#9ca3af' }}>{navMenuOpen ? '▲' : '▼'}</span>
+              </button>
+              {navMenuOpen && (
+                <>
+                  <div onClick={() => setNavMenuOpen(false)} style={{ position:'fixed', inset:0, zIndex:150 }} />
+                  <div style={{
+                    position:'absolute', top:'calc(100% + 4px)', left:0, background:'#fff',
+                    border:'1px solid #E8E5DE', borderRadius:8, boxShadow:'0 8px 24px rgba(0,0,0,0.12)',
+                    zIndex:151, minWidth:200, maxHeight:'70vh', overflowY:'auto', padding:6,
+                  }}>
+                    {[MARKETING_TABS, PIPELINE_TABS, visibleOpsTabs].map((group, gi) => (
+                      <div key={gi}>
+                        {gi > 0 && <div style={{ height:1, background:'#F0EDE6', margin:'6px 4px' }} />}
+                        {group.map(t => (
+                          <button key={t.id} onClick={() => navigate(t.id)} style={{
+                            display:'block', width:'100%', textAlign:'left', background: active === t.id ? '#B8892A' : 'transparent',
+                            color: active === t.id ? '#fff' : '#2C2C2C', border:'none', borderRadius:5, padding:'8px 10px',
+                            cursor:'pointer', fontSize:13, fontWeight: active === t.id ? 700 : 400, fontFamily:'inherit',
+                          }}>
+                            {t.label}
+                          </button>
+                        ))}
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+
+          {!mobile && !compact && (
             <div style={{ display:'flex', alignItems:'center', gap:2, marginLeft:16, flex:'1 1 auto', minWidth:0, overflowX:'auto', scrollbarWidth:'none', WebkitOverflowScrolling:'touch' }}>
               {MARKETING_TABS.map(t => (
                 <button key={t.id} onClick={() => navigate(t.id)} style={{
