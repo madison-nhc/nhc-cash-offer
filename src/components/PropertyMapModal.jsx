@@ -251,9 +251,35 @@ function pinSvg(color, isMulti) {
   `)}`
 }
 
-// Street View Static API image URL — returns a placeholder if no coverage
-function streetViewUrl(address) {
-  return `https://maps.googleapis.com/maps/api/streetview?size=600x180&location=${encodeURIComponent(address)}&key=${GMAPS_API_KEY}&return_error_code=true`
+// Street View Static API image URL — returns a placeholder if no coverage.
+// fov narrows the frame a bit (tighter on the subject); heading, when known,
+// points the camera at the actual building instead of Google's road-facing default.
+function streetViewUrl(address, heading) {
+  const params = new URLSearchParams({ size: '600x180', location: address, key: GMAPS_API_KEY, return_error_code: 'true', fov: '80' })
+  if (heading != null) params.set('heading', heading)
+  return `https://maps.googleapis.com/maps/api/streetview?${params.toString()}`
+}
+
+// Street View's default framing points the camera down the road, not at the
+// building — this fetches the panorama's own location and computes the
+// bearing from there to the building's geocoded point, so the image actually
+// centers on the house instead of whatever happens to be roadside.
+async function streetViewHeadingTo(targetLatLng) {
+  try {
+    const url = `https://maps.googleapis.com/maps/api/streetview/metadata?location=${targetLatLng.lat()},${targetLatLng.lng()}&key=${GMAPS_API_KEY}`
+    const res = await fetch(url)
+    const data = await res.json()
+    if (data.status !== 'OK' || !data.location) return null
+    const toRad = d => d * Math.PI / 180
+    const panoLat = toRad(data.location.lat), panoLng = toRad(data.location.lng)
+    const destLat = toRad(targetLatLng.lat()), destLng = toRad(targetLatLng.lng())
+    const dLng = destLng - panoLng
+    const y = Math.sin(dLng) * Math.cos(destLat)
+    const x = Math.cos(panoLat) * Math.sin(destLat) - Math.sin(panoLat) * Math.cos(destLat) * Math.cos(dLng)
+    return Math.round(((Math.atan2(y, x) * 180 / Math.PI) + 360) % 360)
+  } catch {
+    return null
+  }
 }
 
 let mapsLoading = null
@@ -276,6 +302,7 @@ export default function PropertyMapModal({ properties: initialProperties, packag
   const mapInstanceRef = useRef(null)
   const markersRef = useRef([])
   const infoWindowRef = useRef(null)
+  const infoWindowClickTokenRef = useRef(0)
   const geocacheRef = useRef({})
   const mapInitedRef = useRef(false)
 
@@ -410,39 +437,51 @@ export default function PropertyMapModal({ properties: initialProperties, packag
           marker._propId = prop.id
           markersRef.current.push(marker)
 
-          marker.addListener('click', () => {
-            const svStaticUrl = streetViewUrl(prop.address)
-            const svLiveUrl = `https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${latlng.lat()},${latlng.lng()}`
+          marker.addListener('click', async () => {
             const { street, rest } = splitAddress(prop.address)
-            const content = `
-              <div style="font-family:Helvetica Neue,sans-serif;width:300px;">
-                <div style="position:relative;width:100%;height:160px;background:#f0ede6;border-radius:6px;overflow:hidden;margin-bottom:10px;">
-                  <img
-                    src="${svStaticUrl}"
-                    alt="Street View"
-                    style="width:100%;height:100%;object-fit:cover;display:block;"
-                    onerror="this.style.display='none';this.nextElementSibling.style.display='flex';"
-                  />
-                  <div style="display:none;position:absolute;inset:0;align-items:center;justify-content:center;flex-direction:column;gap:4px;color:#9ca3af;font-size:11px;">
-                    <span style="font-size:24px;">📷</span>
-                    No Street View available
+            const svLiveUrlBase = `https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${latlng.lat()},${latlng.lng()}`
+
+            function buildContent(heading) {
+              const svStaticUrl = streetViewUrl(prop.address, heading)
+              const svLiveUrl = heading != null ? `${svLiveUrlBase}&heading=${heading}` : svLiveUrlBase
+              return `
+                <div style="font-family:Helvetica Neue,sans-serif;width:300px;">
+                  <div style="position:relative;width:100%;height:160px;background:#f0ede6;border-radius:6px;overflow:hidden;margin-bottom:10px;">
+                    <img
+                      src="${svStaticUrl}"
+                      alt="Street View"
+                      style="width:100%;height:100%;object-fit:cover;display:block;"
+                      onerror="this.style.display='none';this.nextElementSibling.style.display='flex';"
+                    />
+                    <div style="display:none;position:absolute;inset:0;align-items:center;justify-content:center;flex-direction:column;gap:4px;color:#9ca3af;font-size:11px;">
+                      <span style="font-size:24px;">📷</span>
+                      No Street View available
+                    </div>
+                    <a href="${svLiveUrl}" target="_blank" rel="noopener"
+                      style="position:absolute;bottom:6px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.6);color:#fff;border-radius:4px;padding:3px 8px;font-size:10px;font-weight:600;text-decoration:none;white-space:nowrap;">
+                      Open Street View ↗
+                    </a>
                   </div>
-                  <a href="${svLiveUrl}" target="_blank" rel="noopener"
-                    style="position:absolute;bottom:6px;right:6px;background:rgba(0,0,0,0.6);color:#fff;border-radius:4px;padding:3px 8px;font-size:10px;font-weight:600;text-decoration:none;">
-                    Open Street View ↗
-                  </a>
+                  <div style="font-size:13px;font-weight:700;color:#2C2C2C;line-height:1.3">${street}</div>
+                  <div style="font-size:11px;color:${color};font-weight:600;margin-bottom:${isMulti ? 3 : 8}px">${rest}</div>
+                  ${isMulti ? `<div style="font-size:11px;color:#6b7280;margin-bottom:8px">★ Package — ${prop.unit_count} units</div>` : ''}
+                  <button onclick="window.__nhcOpenProp('${prop.id}')"
+                    style="width:100%;background:#B8892A;color:#fff;border:none;border-radius:5px;padding:7px 0;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;">
+                    Open Property Details →
+                  </button>
                 </div>
-                <div style="font-size:13px;font-weight:700;color:#2C2C2C;line-height:1.3">${street}</div>
-                <div style="font-size:11px;color:${color};font-weight:600;margin-bottom:${isMulti ? 3 : 8}px">${rest}</div>
-                ${isMulti ? `<div style="font-size:11px;color:#6b7280;margin-bottom:8px">★ Package — ${prop.unit_count} units</div>` : ''}
-                <button onclick="window.__nhcOpenProp('${prop.id}')"
-                  style="width:100%;background:#B8892A;color:#fff;border:none;border-radius:5px;padding:7px 0;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;">
-                  Open Property Details →
-                </button>
-              </div>
-            `
-            infoWindow.setContent(content)
+              `
+            }
+
+            const clickToken = ++infoWindowClickTokenRef.current
+            infoWindow.setContent(buildContent(null))
             infoWindow.open(map, marker)
+
+            const heading = await streetViewHeadingTo(latlng)
+            // Only apply if this is still the most recent click (user hasn't opened another pin since)
+            if (heading != null && infoWindowClickTokenRef.current === clickToken) {
+              infoWindow.setContent(buildContent(heading))
+            }
           })
         }
 
