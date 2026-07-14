@@ -247,7 +247,7 @@ export default function PropertyFullView({ propertyId, onClose, isAgentRole=fals
   const offerIsDirty = offerSnapshot && JSON.stringify(normalizeForCompare(pickOfferFields(property||{}, repairs))) !== JSON.stringify(normalizeForCompare(offerSnapshot))
 
   async function notifyAgent() {
-    if (!property.agent_email || notifying) return
+    if (!property.agent_email || property.agent_email === '__outside_agent__' || notifying) return
     const { data: { session } } = await supabase.auth.getSession()
     const { error } = await supabase.from('cashoffer_notifications').insert({
       property_id: propertyId,
@@ -456,7 +456,7 @@ export default function PropertyFullView({ propertyId, onClose, isAgentRole=fals
       </div>
 
       <div style={{ flexShrink:0, background:'#fff', borderTop:'2px solid #B8892A', padding:'12px 24px', display:'flex', justifyContent:'flex-end', alignItems:'center', gap:12, boxShadow:'0 -4px 14px rgba(0,0,0,0.06)' }}>
-        {!isAgentRole && property.agent_email && (
+        {!isAgentRole && property.agent_email && property.agent_email !== '__outside_agent__' && (
           <button
             onClick={notifyAgent}
             disabled={notifying}

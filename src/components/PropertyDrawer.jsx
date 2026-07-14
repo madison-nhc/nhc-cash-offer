@@ -404,7 +404,7 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
   const [agentList, setAgentList] = useState([])
 
   useEffect(() => {
-    supabase.from('cashoffer_users').select('email,full_name').eq('role','agent').order('full_name')
+    supabase.from('cashoffer_users').select('email,full_name,role').in('role',['agent','admin']).order('full_name')
       .then(({ data }) => setAgentList(data || []))
   }, [])
 
@@ -422,13 +422,29 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
     if (n === 2) return 'Duplex'
     if (n === 3) return 'Triplex'
     if (n === 4) return 'Quadplex'
-    return '5+'
+    return 'Custom'
   }
   function setUnitCountAndSync(n) {
     const count = Math.max(1, n)
-    setForm(f => ({ ...f, unit_count: count }))
+    setForm(f => {
+      if (count === 1 && unitCount > 1) {
+        // Preserve the current unit totals as the single-family values so nothing is lost
+        // if they switch back to multi-unit later in this same session.
+        return { ...f, unit_count: count, beds: unitTotals.beds || f.beds, baths: unitTotals.baths || f.baths, sqft: unitTotals.sqft || f.sqft }
+      }
+      return { ...f, unit_count: count }
+    })
+    if (count === 1) {
+      // Leave `units` alone — don't clear them — so toggling back to multi-unit
+      // restores exactly what was there before.
+      return
+    }
     setUnits(us => {
       const next = [...us]
+      if (next.length === 0) {
+        // First time going multi-unit: seed unit 1 with the prior single-family values.
+        next.push({ id:`new-${Date.now()}-0`, unit_label:'Unit 1', beds: form.beds||'', baths: form.baths||'', sqft: form.sqft||'', market_rent:'' })
+      }
       while (next.length < count) next.push({ id:`new-${Date.now()}-${next.length}`, unit_label:`Unit ${next.length+1}`, beds:'', baths:'', sqft:'', market_rent:'' })
       while (next.length > count) next.pop()
       return next
@@ -723,7 +739,7 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
                   else setUnitCountAndSync(Math.max(5, unitCount))
                 }}
                 style={{ ...inp, maxWidth:150 }}>
-                {['Single','Duplex','Triplex','Quadplex','5+'].map(o=><option key={o}>{o}</option>)}
+                {['Single','Duplex','Triplex','Quadplex','Custom'].map(o=><option key={o}>{o}</option>)}
               </select>
               {unitCount>=5 && (
                 <input
@@ -1400,7 +1416,8 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
                 cursor: restrictedAgent ? 'not-allowed' : 'pointer', outline:'none',
                 opacity: restrictedAgent ? 0.6 : 1, maxWidth:130,
               }}>
-              <option value="">— Unassigned —</option>
+              <option value="">No Agent</option>
+              <option value="__outside_agent__">Outside Agent</option>
               {agentList.map(a=><option key={a.email} value={a.email}>{a.full_name||a.email}</option>)}
             </select>
           </div>
