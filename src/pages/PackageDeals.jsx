@@ -142,8 +142,8 @@ export default function PackageDeals({ openPropertyId, onOpenedTarget, isAgentRo
     onOpenedTarget && onOpenedTarget()
   }, [openPropertyId, loading]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  async function load() {
-    setLoading(true)
+  async function load(showSpinner = true) {
+    if (showSpinner) setLoading(true)
     let propQuery = supabase.from('cashoffer_properties').select('*').not('package_id', 'is', null)
     if (isAgentRole) propQuery = propQuery.eq('agent_email', currentUserEmail)
     propQuery = propQuery.order('address')
@@ -153,7 +153,7 @@ export default function PackageDeals({ openPropertyId, onOpenedTarget, isAgentRo
     ])
     setPackages(pkgs || [])
     setProperties(props || [])
-    setLoading(false)
+    if (showSpinner) setLoading(false)
   }
 
   function propertiesForPackage(pkgId) {
@@ -236,12 +236,11 @@ export default function PackageDeals({ openPropertyId, onOpenedTarget, isAgentRo
         onSave={() => { load(); setPkgDrawer(null) }}
       />
 
-      {/* Add property to package */}
       <AddPropertyDrawer
         packageId={addPropPkg}
         open={!!addPropPkg}
         onClose={() => setAddPropPkg(null)}
-        onSave={() => { load(); setAddPropPkg(null) }}
+        onSave={() => { load(false); setAddPropPkg(null) }}
       />
 
       {/* Shared property drawer — used for the global-search deep link case */}
@@ -265,17 +264,17 @@ export default function PackageDeals({ openPropertyId, onOpenedTarget, isAgentRo
           fubLink={openPkg.fub_link}
           pkg={openPkg}
           onClose={() => setOpenPkg(null)}
-          onSaveProperty={() => load()}
+          onSaveProperty={() => load(false)}
           onSavePackage={async (payload) => {
             const { error } = await supabase.from('cashoffer_package_deals').update(payload).eq('id', openPkg.id)
             if (error) { alert(`Couldn't save this package.\n\n${error.message}`); return }
-            await load()
+            await load(false)
           }}
           onDeletePackage={async () => {
             await supabase.from('cashoffer_properties').update({ package_id: null }).eq('package_id', openPkg.id)
             await supabase.from('cashoffer_package_deals').delete().eq('id', openPkg.id)
             setOpenPkg(null)
-            await load()
+            await load(false)
           }}
           onAddProperty={() => setAddPropPkg(openPkg.id)}
           isAgentRole={isAgentRole}
