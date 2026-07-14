@@ -289,9 +289,8 @@ export default function PropertyFullView({ propertyId, onClose }) {
         <span style={{ marginLeft:'auto', fontSize:11, color:'#9ca3af', marginRight: onClose ? 36 : 0 }}>{savedAt ? `Saved ${savedAt.toLocaleTimeString()}` : ''}</span>
       </div>
 
-      <div style={{ flex:1, overflowY:'auto' }}>
-        <div style={{ display:'grid', gridTemplateColumns:'minmax(380px, 460px) 1fr', gap:20, padding:20, alignItems:'start' }}>
-          <div style={{ background:'#fff', borderRadius:10, border:'0.5px solid #D6D2CA', padding:20, position:'sticky', top:20, display:'flex', flexDirection:'column', gap:14 }}>
+      <div style={{ flex:1, minHeight:0, display:'grid', gridTemplateColumns:'minmax(380px, 460px) 1fr', gap:20, padding:20, alignItems:'stretch' }}>
+        <div style={{ background:'#fff', borderRadius:10, border:'0.5px solid #D6D2CA', padding:20, height:'100%', overflowY:'auto', display:'flex', flexDirection:'column', gap:14 }}>
           <div className="drawer-section">Valuation</div>
           <Field label="After Renovation Value ($)">
             <input style={{ ...monoInp, borderLeft:'3px solid #D97825' }} type="number" value={property.arv??''} onChange={set('arv')} />
@@ -394,7 +393,7 @@ export default function PropertyFullView({ propertyId, onClose }) {
           <button onClick={addRepair} style={{ background:'transparent', border:'1px dashed #D6D2CA', borderRadius:6, padding:'6px', color:'#9ca3af', fontSize:12, cursor:'pointer', fontFamily:'inherit', width:'100%' }}>+ Add Line Item</button>
         </div>
 
-        <div style={{ background:'#fff', borderRadius:10, border:'0.5px solid #D6D2CA', padding:20, position:'sticky', top:20, maxHeight:'calc(100vh - 40px)', overflowY:'auto' }}>
+        <div style={{ background:'#fff', borderRadius:10, border:'0.5px solid #D6D2CA', padding:20, height:'100%', overflowY:'auto' }}>
           <div style={{ display:'flex', gap:0, borderBottom:'2px solid #F0EDE6', marginBottom:16 }}>
             {TABS.map(t=>(
               <button key={t.key} onClick={()=>setTab(t.key)} style={{
@@ -439,7 +438,6 @@ export default function PropertyFullView({ propertyId, onClose }) {
           )}
           {tab==='drive' && <DriveTab propertyId={propertyId} link={property.photos_drive_link} onSaved={load} />}
         </div>
-      </div>
       </div>
 
       <div style={{ flexShrink:0, background:'#fff', borderTop:'2px solid #B8892A', padding:'12px 24px', display:'flex', justifyContent:'flex-end', alignItems:'center', gap:12, boxShadow:'0 -4px 14px rgba(0,0,0,0.06)' }}>
