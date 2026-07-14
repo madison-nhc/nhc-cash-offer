@@ -242,41 +242,41 @@ function AuthedApp({ isAdmin, isAgentRole, userEmail }) {
       }}>
         <div style={{ display:'flex', alignItems:'center', padding: mobile ? '0 12px' : '0 24px', height:48, gap:10 }}>
           <img src="/nhc-logo.svg" alt="NHC" style={{ width:28, height:28, objectFit:'contain', flexShrink:0 }} />
-          {!mobile && <span style={{ fontSize:12, fontWeight:700, letterSpacing:1.5, color:'#2C2C2C', whiteSpace:'nowrap' }}>CASH OFFER HUB</span>}
+          {!mobile && <span style={{ fontSize:12, fontWeight:700, letterSpacing:1.5, color:'#2C2C2C', whiteSpace:'nowrap', flexShrink:0 }}>CASH OFFER HUB</span>}
 
           {!mobile && (
-            <div style={{ display:'flex', alignItems:'center', gap:2, marginLeft:16 }}>
+            <div style={{ display:'flex', alignItems:'center', gap:2, marginLeft:16, flex:'1 1 auto', minWidth:0, overflowX:'auto', scrollbarWidth:'none', WebkitOverflowScrolling:'touch' }}>
               {MARKETING_TABS.map(t => (
                 <button key={t.id} onClick={() => navigate(t.id)} style={{
                   background: active === t.id ? '#B8892A' : 'transparent',
                   color: active === t.id ? '#fff' : '#6b7280',
                   border:'none', borderRadius:4, padding:'5px 12px',
                   cursor:'pointer', fontSize:12, fontWeight: active === t.id ? 700 : 400,
-                  letterSpacing:0.3, whiteSpace:'nowrap', fontFamily:'inherit', transition:'all 0.15s'
+                  letterSpacing:0.3, whiteSpace:'nowrap', fontFamily:'inherit', transition:'all 0.15s', flexShrink:0,
                 }}>
                   {t.label}
                 </button>
               ))}
-              <div style={{ width:1, height:20, background:'#D6D2CA', margin:'0 8px' }} />
+              <div style={{ width:1, height:20, background:'#D6D2CA', margin:'0 8px', flexShrink:0 }} />
               {PIPELINE_TABS.map(t => (
                 <button key={t.id} onClick={() => navigate(t.id)} style={{
                   background: active === t.id ? '#B8892A' : 'transparent',
                   color: active === t.id ? '#fff' : '#6b7280',
                   border:'none', borderRadius:4, padding:'5px 12px',
                   cursor:'pointer', fontSize:12, fontWeight: active === t.id ? 700 : 400,
-                  letterSpacing:0.3, whiteSpace:'nowrap', fontFamily:'inherit', transition:'all 0.15s'
+                  letterSpacing:0.3, whiteSpace:'nowrap', fontFamily:'inherit', transition:'all 0.15s', flexShrink:0,
                 }}>
                   {t.label}
                 </button>
               ))}
-              <div style={{ width:1, height:20, background:'#D6D2CA', margin:'0 8px' }} />
+              <div style={{ width:1, height:20, background:'#D6D2CA', margin:'0 8px', flexShrink:0 }} />
               {visibleOpsTabs.map(t => (
                 <button key={t.id} onClick={() => navigate(t.id)} style={{
                   background: active === t.id ? '#B8892A' : 'transparent',
                   color: active === t.id ? '#fff' : '#6b7280',
                   border:'none', borderRadius:4, padding:'5px 12px',
                   cursor:'pointer', fontSize:12, fontWeight: active === t.id ? 700 : 400,
-                  letterSpacing:0.3, whiteSpace:'nowrap', fontFamily:'inherit', transition:'all 0.15s'
+                  letterSpacing:0.3, whiteSpace:'nowrap', fontFamily:'inherit', transition:'all 0.15s', flexShrink:0,
                 }}>
                   {t.label}
                 </button>
@@ -287,7 +287,7 @@ function AuthedApp({ isAdmin, isAgentRole, userEmail }) {
           {!mobile && <GlobalSearch onSelect={handleSearchSelect} mobile={false} />}
 
           {!mobile && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginLeft: 4 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginLeft: 4, flexShrink:0 }}>
               <span style={{ fontSize: 11, color: '#9ca3af', whiteSpace: 'nowrap' }}>{userEmail}</span>
               <button
                 onClick={() => supabase.auth.signOut()}
