@@ -608,17 +608,6 @@ export default function PropertyMapModal({ properties: initialProperties, packag
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0, flexWrap: 'nowrap' }}>
             {fubLink && <FubPreviewPanel fubLink={fubLink} />}
-            {/* List / Map segmented toggle */}
-            <div style={{ display: 'flex', border: '1.5px solid #D6D2CA', borderRadius: 7, overflow: 'hidden', flexShrink: 0 }}>
-              {['list','map'].map(v => (
-                <button key={v} onClick={() => setView(v)} style={{
-                  padding: '6px 14px', border: 'none', cursor: 'pointer', fontFamily: 'inherit',
-                  fontSize: 12, fontWeight: 700, textTransform: 'capitalize',
-                  background: view===v ? '#B8892A' : '#fff',
-                  color: view===v ? '#fff' : '#6b7280',
-                }}>{v}</button>
-              ))}
-            </div>
             {view==='map' && (
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end', flexShrink: 0, maxWidth: 220 }}>
                 {cities.map(city => (
@@ -633,6 +622,17 @@ export default function PropertyMapModal({ properties: initialProperties, packag
                 </div>
               </div>
             )}
+            {/* List / Map segmented toggle */}
+            <div style={{ display: 'flex', border: '1.5px solid #D6D2CA', borderRadius: 7, overflow: 'hidden', flexShrink: 0 }}>
+              {['list','map'].map(v => (
+                <button key={v} onClick={() => setView(v)} style={{
+                  padding: '6px 14px', border: 'none', cursor: 'pointer', fontFamily: 'inherit',
+                  fontSize: 12, fontWeight: 700, textTransform: 'capitalize',
+                  background: view===v ? '#B8892A' : '#fff',
+                  color: view===v ? '#fff' : '#6b7280',
+                }}>{v}</button>
+              ))}
+            </div>
             {onAddProperty && (
               <button onClick={onAddProperty} style={{ background:'#B8892A', border:'none', borderRadius:6, padding:'6px 12px', fontSize:11.5, fontWeight:700, color:'#fff', cursor:'pointer', fontFamily:'inherit', whiteSpace:'nowrap', flexShrink:0 }}>
                 + Property
