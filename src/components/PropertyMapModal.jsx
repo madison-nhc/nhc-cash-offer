@@ -297,7 +297,7 @@ function loadGoogleMaps() {
   return mapsLoading
 }
 
-export default function PropertyMapModal({ properties: initialProperties, packageName, fubLink, onClose, onSaveProperty, onEditPackage, onAddProperty, isAgentRole, currentUserEmail, defaultView='list' }) {
+export default function PropertyMapModal({ properties: initialProperties, packageName, fubLink, pkg, onClose, onSaveProperty, onSavePackage, onDeletePackage, onAddProperty, isAgentRole, currentUserEmail, defaultView='list' }) {
   const mapRef = useRef(null)
   const mapInstanceRef = useRef(null)
   const markersRef = useRef([])
@@ -316,6 +316,28 @@ export default function PropertyMapModal({ properties: initialProperties, packag
   // Property currently open in the side drawer (null = drawer closed)
   const [drawerProp, setDrawerProp] = useState(null)
   const [proposal, setProposal] = useState(null)
+  // Package metadata edit panel — rendered inline (same overlay) instead of a separate Drawer
+  const [editingMeta, setEditingMeta] = useState(false)
+  const [metaForm, setMetaForm] = useState({})
+  const [metaSaving, setMetaSaving] = useState(false)
+
+  function openMetaEdit() {
+    setMetaForm({ deal_name: pkg?.deal_name || '', notes: pkg?.notes || '', fub_link: pkg?.fub_link || '' })
+    setEditingMeta(true)
+  }
+
+  async function saveMeta() {
+    if (!metaForm.deal_name) return
+    setMetaSaving(true)
+    await onSavePackage({ deal_name: metaForm.deal_name, notes: metaForm.notes || null, fub_link: metaForm.fub_link || null })
+    setMetaSaving(false)
+    setEditingMeta(false)
+  }
+
+  async function deleteMeta() {
+    if (!confirm('Delete this package and all its properties? This cannot be undone.')) return
+    await onDeletePackage()
+  }
 
   // Refresh property data from DB after a save (keeps drawer open)
   const handleSave = useCallback(async () => {
@@ -538,19 +560,19 @@ export default function PropertyMapModal({ properties: initialProperties, packag
         {/* Header */}
         <div style={{
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          padding: '12px 20px', borderBottom: '1px solid #F0EDE6', flexShrink: 0, gap: 12, flexWrap: 'wrap',
+          padding: '12px 20px', borderBottom: '1px solid #F0EDE6', flexShrink: 0, gap: 12,
         }}>
-          <div style={{ minWidth: 0 }}>
-            <div style={{ fontSize: 15, fontWeight: 700, color: '#2C2C2C' }}>{packageName}</div>
-            <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 2 }}>
+          <div style={{ minWidth: 0, flex: 1 }}>
+            <div style={{ fontSize: 15, fontWeight: 700, color: '#2C2C2C', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{packageName}</div>
+            <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
               {properties.length} propert{properties.length===1?'y':'ies'}
               {view==='map' ? ' · click a pin for Street View + details' : ' · click a row to open it'}
             </div>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0, flexWrap: 'nowrap' }}>
             {fubLink && <FubPreviewPanel fubLink={fubLink} />}
             {/* List / Map segmented toggle */}
-            <div style={{ display: 'flex', border: '1.5px solid #D6D2CA', borderRadius: 7, overflow: 'hidden' }}>
+            <div style={{ display: 'flex', border: '1.5px solid #D6D2CA', borderRadius: 7, overflow: 'hidden', flexShrink: 0 }}>
               {['list','map'].map(v => (
                 <button key={v} onClick={() => setView(v)} style={{
                   padding: '6px 14px', border: 'none', cursor: 'pointer', fontFamily: 'inherit',
@@ -561,7 +583,7 @@ export default function PropertyMapModal({ properties: initialProperties, packag
               ))}
             </div>
             {view==='map' && (
-              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end', flexShrink: 0, maxWidth: 220 }}>
                 {cities.map(city => (
                   <div key={city} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                     <div style={{ width: 9, height: 9, borderRadius: 2, background: cityColor(city), flexShrink: 0 }} />
@@ -575,12 +597,12 @@ export default function PropertyMapModal({ properties: initialProperties, packag
               </div>
             )}
             {onAddProperty && (
-              <button onClick={onAddProperty} style={{ background:'#B8892A', border:'none', borderRadius:6, padding:'6px 12px', fontSize:11.5, fontWeight:700, color:'#fff', cursor:'pointer', fontFamily:'inherit', whiteSpace:'nowrap' }}>
+              <button onClick={onAddProperty} style={{ background:'#B8892A', border:'none', borderRadius:6, padding:'6px 12px', fontSize:11.5, fontWeight:700, color:'#fff', cursor:'pointer', fontFamily:'inherit', whiteSpace:'nowrap', flexShrink:0 }}>
                 + Property
               </button>
             )}
-            {onEditPackage && (
-              <button onClick={onEditPackage} style={{ background:'#F0EDE6', border:'none', borderRadius:6, padding:'6px 12px', fontSize:11.5, fontWeight:600, color:'#6b7280', cursor:'pointer', fontFamily:'inherit', whiteSpace:'nowrap' }}>
+            {onSavePackage && (
+              <button onClick={openMetaEdit} style={{ background:'#F0EDE6', border:'none', borderRadius:6, padding:'6px 12px', fontSize:11.5, fontWeight:600, color:'#6b7280', cursor:'pointer', fontFamily:'inherit', whiteSpace:'nowrap', flexShrink:0 }}>
                 Edit
               </button>
             )}
@@ -624,6 +646,82 @@ export default function PropertyMapModal({ properties: initialProperties, packag
             minWidth: 0,
             display: view==='map' ? 'block' : 'none',
           }} />
+
+          {/* Package metadata edit panel — inline, same overlay (avoids the separate-Drawer unmount bug) */}
+          {editingMeta && (
+            <div style={{
+              width: 420,
+              flexShrink: 0,
+              borderLeft: '1px solid #F0EDE6',
+              background: '#fff',
+              overflowY: 'auto',
+              display: 'flex',
+              flexDirection: 'column',
+              animation: 'slideInRight 0.2s ease',
+            }}>
+              <style>{`
+                @keyframes slideInRight {
+                  from { transform: translateX(100%); opacity: 0; }
+                  to   { transform: translateX(0);    opacity: 1; }
+                }
+              `}</style>
+              <div style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                padding: '12px 16px', borderBottom: '1px solid #F0EDE6',
+                background: '#FAFAF8', flexShrink: 0, position: 'sticky', top: 0, zIndex: 5,
+              }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: '#2C2C2C' }}>Edit Package</div>
+                <button
+                  onClick={() => setEditingMeta(false)}
+                  style={{ background: 'none', border: 'none', fontSize: 18, cursor: 'pointer', color: '#9ca3af', padding: 4 }}
+                >✕</button>
+              </div>
+              <div style={{ flex: 1, padding: 16, display: 'flex', flexDirection: 'column', gap: 14 }}>
+                <div>
+                  <label style={{ fontSize: 11, fontWeight: 600, color: '#6b7280', display: 'block', marginBottom: 4 }}>Package Name</label>
+                  <input
+                    style={{ width: '100%', boxSizing: 'border-box', border: '1px solid #D6D2CA', borderRadius: 6, padding: '8px 10px', fontSize: 13, fontFamily: 'inherit' }}
+                    value={metaForm.deal_name || ''}
+                    onChange={e => setMetaForm(f => ({ ...f, deal_name: e.target.value }))}
+                    placeholder="Central KY Portfolio — 35 Properties"
+                  />
+                </div>
+                <div>
+                  <label style={{ fontSize: 11, fontWeight: 600, color: '#6b7280', display: 'block', marginBottom: 4 }}>Notes</label>
+                  <textarea
+                    style={{ width: '100%', boxSizing: 'border-box', border: '1px solid #D6D2CA', borderRadius: 6, padding: '8px 10px', fontSize: 13, fontFamily: 'inherit', minHeight: 72, resize: 'vertical' }}
+                    value={metaForm.notes || ''}
+                    onChange={e => setMetaForm(f => ({ ...f, notes: e.target.value }))}
+                    placeholder="Seller context, deal overview..."
+                  />
+                </div>
+                <div>
+                  <label style={{ fontSize: 11, fontWeight: 600, color: '#6b7280', display: 'block', marginBottom: 4 }}>FUB Link</label>
+                  <input
+                    style={{ width: '100%', boxSizing: 'border-box', border: '1px solid #D6D2CA', borderRadius: 6, padding: '8px 10px', fontSize: 13, fontFamily: 'inherit' }}
+                    value={metaForm.fub_link || ''}
+                    onChange={e => setMetaForm(f => ({ ...f, fub_link: e.target.value }))}
+                    placeholder="https://app.followupboss.com/people/view/…"
+                  />
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 8, paddingTop: 12, borderTop: '1px solid #F0EDE6' }}>
+                  {onDeletePackage && (
+                    <button onClick={deleteMeta} style={{ background: 'none', border: '1px solid #E5B8B8', color: '#B22020', borderRadius: 6, padding: '7px 12px', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+                      Delete Package
+                    </button>
+                  )}
+                  <div style={{ display: 'flex', gap: 8, marginLeft: 'auto' }}>
+                    <button onClick={() => setEditingMeta(false)} style={{ background: 'none', border: '1px solid #D6D2CA', borderRadius: 6, padding: '7px 14px', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', color: '#6b7280' }}>
+                      Cancel
+                    </button>
+                    <button onClick={saveMeta} disabled={metaSaving || !metaForm.deal_name} style={{ background: '#B8892A', border: 'none', borderRadius: 6, padding: '7px 14px', fontSize: 12, fontWeight: 700, cursor: metaSaving ? 'default' : 'pointer', fontFamily: 'inherit', color: '#fff', opacity: (metaSaving || !metaForm.deal_name) ? 0.6 : 1 }}>
+                      {metaSaving ? 'Saving…' : 'Save'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Property drawer panel — slides in from the right, overlays the map or list */}
           {drawerProp && (
