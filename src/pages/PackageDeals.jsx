@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase.js'
 import { useIsMobile } from '../hooks/useIsMobile.js'
-import { PageWrap, Field, Btn, EmptyState, LoadingSpinner, fmtK } from '../components/ui.jsx'
+import { PageWrap, Field, inp, Btn, EmptyState, LoadingSpinner, fmtK } from '../components/ui.jsx'
 import Drawer from '../components/Drawer.jsx'
 import PropertyDrawer from '../components/PropertyDrawer.jsx'
 import ProposalModal from '../components/ProposalModal.jsx'
