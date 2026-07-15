@@ -139,21 +139,26 @@ function initialTab() {
   return tabForPath(window.location.pathname) || localStorage.getItem('nhc_hub_tab') || 'analyzer'
 }
 
-// Simple, address-only add flow — agents only see their own deals, so the
-// property is always attributed to whoever is adding it right now.
+// Address-only add flow, plus one small branch: is this a property still being
+// analyzed, or one already owned? If owned, who owns it? Agents only see their
+// own deals, so the property is always attributed to whoever is adding it.
 function QuickAddPropertyModal({ open, onClose, onAdd }) {
   const [address, setAddress] = useState('')
+  const [owned, setOwned] = useState(false)
+  const [owner, setOwner] = useState('BPV')
   const [saving, setSaving] = useState(false)
 
-  useEffect(() => { if (open) setAddress('') }, [open])
+  useEffect(() => { if (open) { setAddress(''); setOwned(false); setOwner('BPV') } }, [open])
   if (!open) return null
 
   async function submit() {
     if (!address) return
     setSaving(true)
-    await onAdd(address)
+    await onAdd(address, { owned, owner })
     setSaving(false)
   }
+
+  const pillBase = { flex:1, textAlign:'center', padding:'8px 10px', borderRadius:6, fontSize:12.5, fontWeight:700, cursor:'pointer', border:'1.5px solid #D6D2CA', fontFamily:'inherit' }
 
   return (
     <div
@@ -164,6 +169,32 @@ function QuickAddPropertyModal({ open, onClose, onAdd }) {
         <div style={{ fontSize:15, fontWeight:700, color:'#2C2C2C', marginBottom:16 }}>Add Property</div>
         <label style={{ fontSize:11, fontWeight:600, color:'#6b7280', display:'block', marginBottom:4 }}>Address</label>
         <AddressInput value={address} onChange={setAddress} />
+
+        <label style={{ fontSize:11, fontWeight:600, color:'#6b7280', display:'block', marginTop:16, marginBottom:6 }}>Status</label>
+        <div style={{ display:'flex', gap:8 }}>
+          <div
+            onClick={() => setOwned(false)}
+            style={{ ...pillBase, background: !owned ? '#2D6FAF' : '#fff', color: !owned ? '#fff' : '#6b7280', borderColor: !owned ? '#2D6FAF' : '#D6D2CA' }}
+          >Property to Analyze</div>
+          <div
+            onClick={() => setOwned(true)}
+            style={{ ...pillBase, background: owned ? '#3B6D11' : '#fff', color: owned ? '#fff' : '#6b7280', borderColor: owned ? '#3B6D11' : '#D6D2CA' }}
+          >Already Owned</div>
+        </div>
+
+        {owned && (
+          <div style={{ marginTop:14 }}>
+            <label style={{ fontSize:11, fontWeight:600, color:'#6b7280', display:'block', marginBottom:4 }}>Owned By</label>
+            <select
+              value={owner}
+              onChange={e => setOwner(e.target.value)}
+              style={{ width:'100%', border:'1.5px solid #D6D2CA', borderRadius:6, padding:'8px 10px', fontSize:13, fontWeight:600, fontFamily:'inherit', color:'#2C2C2C', background:'#fff', cursor:'pointer', outline:'none' }}
+            >
+              {['BPV','Bob Sophiea','Eric Kimble','Other'].map(o => <option key={o}>{o}</option>)}
+            </select>
+          </div>
+        )}
+
         <div style={{ display:'flex', gap:8, marginTop:20 }}>
           <button
             onClick={onClose}
@@ -567,10 +598,11 @@ function AuthedApp({ isAdmin, isAgentRole, userEmail }) {
       <QuickAddPropertyModal
         open={newPropertyOpen}
         onClose={() => setNewPropertyOpen(false)}
-        onAdd={async (address) => {
-          const { error } = await supabase.from('cashoffer_properties').insert({
-            address, type: 'Analyzing', stage: 'Analyzing', owner: 'BPV', agent_email: userEmail || null,
-          })
+        onAdd={async (address, details) => {
+          const payload = details?.owned
+            ? { address, type:'Renovation', stage:'Purchased', disposition:'renovation', owner: details.owner || 'BPV', agent_email: userEmail || null }
+            : { address, type:'Analyzing', stage:'Analyzing', owner:'BPV', agent_email: userEmail || null }
+          const { error } = await supabase.from('cashoffer_properties').insert(payload)
           if (error) { alert(`Couldn't add this property.\n\n${error.message}`); return }
           setNewPropertyOpen(false)
           // Refresh the current page by re-navigating to it
