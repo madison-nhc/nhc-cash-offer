@@ -150,11 +150,11 @@ export default function PortfolioProposalModal({ packageName, properties, onClos
       ${hdr(packageName || '')}
       <div class="sec-title" style="margin-top:12px;">Property Schedule${totalTablePages>1?` (Page ${pageNum} of ${totalTablePages})`:''}</div>
       <table class="port-tbl">
-        <thead><tr><th>Address</th><th class="num">ARV</th><th class="num">Est. Repairs</th><th class="num">Cash Offer</th></tr></thead>
+        <thead><tr><th>Address</th><th class="num">Cash Offer</th></tr></thead>
         <tbody>
           ${chunk.map(item => item.kind === 'group'
-            ? `<tr class="grp"><td colspan="4">${item.label} (${item.count})</td></tr>`
-            : `<tr><td>${(item.p.address||'—').split(',')[0]}${item.p.unit_count>1?` <span style="color:#999;font-weight:400;">(${item.p.unit_count} units)</span>`:''}</td><td class="num">${d$(item.d.arv)}</td><td class="num">${item.d.reno>0?d$(item.d.reno):'—'}</td><td class="num" style="font-weight:700;color:var(--green);">${d$(item.d.cashOffer)}</td></tr>`
+            ? `<tr class="grp"><td colspan="2">${item.label} (${item.count})</td></tr>`
+            : `<tr><td>${(item.p.address||'—').split(',')[0]}${item.p.unit_count>1?` <span style="color:#999;font-weight:400;">(${item.p.unit_count} units)</span>`:''}</td><td class="num" style="font-weight:700;color:var(--green);">${d$(item.d.cashOffer)}</td></tr>`
           ).join('')}
         </tbody>
       </table>
