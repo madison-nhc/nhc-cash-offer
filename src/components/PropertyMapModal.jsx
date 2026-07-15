@@ -411,10 +411,11 @@ function PortfolioSummaryFooter({ properties, rentByProperty, onOpenPortfolioOff
   const included = (properties||[]).filter(p => !p.excluded_from_offer)
   const totals = included.reduce((acc, p) => ({
     cashOffer: acc.cashOffer + (calcCashOffer(p) || 0),
+    rehab: acc.rehab + (parseFloat(p.rehab_cost) || 0),
     arv: acc.arv + (parseFloat(p.arv) || 0),
     rentCurrent: acc.rentCurrent + (rentByProperty?.[p.id]?.current || 0),
     marketRent: acc.marketRent + (rentByProperty?.[p.id]?.market || 0),
-  }), { cashOffer: 0, arv: 0, rentCurrent: 0, marketRent: 0 })
+  }), { cashOffer: 0, rehab: 0, arv: 0, rentCurrent: 0, marketRent: 0 })
 
   const label = { fontSize: 9.5, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: 0.6, fontWeight: 700, marginBottom: 2 }
   const Stat = ({ children: valueEl, title, color }) => (
@@ -423,6 +424,7 @@ function PortfolioSummaryFooter({ properties, rentByProperty, onOpenPortfolioOff
       <div style={{ fontSize: 14, fontWeight: 700, color: color || '#2C2C2C', fontFamily: 'monospace' }}>{valueEl}</div>
     </div>
   )
+  const VDivider = () => <div style={{ width: 1, height: 26, background: '#E5E0D5', flexShrink: 0 }} />
 
   return (
     <div style={{
@@ -432,10 +434,12 @@ function PortfolioSummaryFooter({ properties, rentByProperty, onOpenPortfolioOff
     }}>
       <div style={{ fontSize: 11, fontWeight: 700, color: '#B8892A', textTransform: 'uppercase', letterSpacing: 0.6, flexShrink: 0 }}>Portfolio Summary</div>
       <Stat title="Properties Included">{included.length} <span style={{ fontSize: 11, fontWeight: 500, color: '#9ca3af', fontFamily: 'inherit' }}>of {properties.length}</span></Stat>
-      <Stat title="Total Cash Offer" color="#3B6D11">{totals.cashOffer ? fmt(totals.cashOffer) : '—'}</Stat>
-      <Stat title="Combined ARV">{totals.arv ? fmt(totals.arv) : '—'}</Stat>
       <Stat title="Rent Current" color="#3B6D11">{totals.rentCurrent ? fmt(totals.rentCurrent) : '—'}</Stat>
       <Stat title="Market Rent" color="#6b7280">{totals.marketRent ? fmt(totals.marketRent) : '—'}</Stat>
+      <VDivider />
+      <Stat title="Cash Offer" color="#3B6D11">{totals.cashOffer ? fmt(totals.cashOffer) : '—'}</Stat>
+      <Stat title="Est. Rehab" color="#6b7280">{totals.rehab ? fmt(totals.rehab) : '—'}</Stat>
+      <Stat title="ARV">{totals.arv ? fmt(totals.arv) : '—'}</Stat>
       <div style={{ fontSize: 10, color: '#9ca3af', marginLeft: 'auto', flexShrink: 0 }}>Excluded properties aren't counted above.</div>
       <button
         onClick={onOpenPortfolioOffer}
