@@ -169,7 +169,14 @@ export default function PackageDeals({ openPropertyId, onOpenedTarget, isAgentRo
                 onMouseEnter={e => e.currentTarget.style.boxShadow = '0 2px 10px rgba(0,0,0,0.08)'}
                 onMouseLeave={e => e.currentTarget.style.boxShadow = 'none'}
               >
-                <div style={{ fontSize: 15, fontWeight: 700, color: '#2C2C2C' }}>{pkg.deal_name}</div>
+                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
+                  <div style={{ fontSize: 15, fontWeight: 700, color: '#2C2C2C' }}>{pkg.deal_name}</div>
+                  <button
+                    onClick={e => { e.stopPropagation(); setPkgDrawer(pkg) }}
+                    title="Edit package"
+                    style={{ background: 'none', border: '1px solid #D6D2CA', borderRadius: 5, padding: '3px 8px', fontSize: 10.5, fontWeight: 600, color: '#6b7280', cursor: 'pointer', fontFamily: 'inherit', flexShrink: 0 }}
+                  >Edit</button>
+                </div>
                 <div style={{ fontSize: 12, color: '#9ca3af' }}>
                   {stats.total} propert{stats.total===1?'y':'ies'} · {stats.purchased} purchased · {stats.analyzing} analyzing
                 </div>
@@ -223,20 +230,9 @@ export default function PackageDeals({ openPropertyId, onOpenedTarget, isAgentRo
           pkg={openPkg}
           onClose={() => setOpenPkg(null)}
           onSaveProperty={() => load(false)}
-          onSavePackage={async (payload) => {
-            const { error } = await supabase.from('cashoffer_package_deals').update(payload).eq('id', openPkg.id)
-            if (error) { alert(`Couldn't save this package.\n\n${error.message}`); return }
-            await load(false)
-          }}
-          onDeletePackage={async () => {
-            await supabase.from('cashoffer_properties').update({ package_id: null }).eq('package_id', openPkg.id)
-            await supabase.from('cashoffer_package_deals').delete().eq('id', openPkg.id)
-            setOpenPkg(null)
-            await load(false)
-          }}
           onAddProperty={async (address) => {
             const { error } = await supabase.from('cashoffer_properties').insert({
-              address, package_id: openPkg.id, type: 'Analyzing',
+              address, package_id: openPkg.id, type: 'Analyzing', agent_email: currentUserEmail || null,
             })
             if (error) { alert(`Couldn't add this property.\n\n${error.message}`); return }
             await load(false)
