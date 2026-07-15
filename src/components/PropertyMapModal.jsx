@@ -404,7 +404,7 @@ function loadGoogleMaps() {
 // totals by default, and switches to the selected property's own quick
 // summary when a row is opened (mirrors PropertyFullView's meta rail, just
 // on the opposite side and always present).
-function PortfolioSidebar({ properties, selected, rentByProperty }) {
+function PortfolioSummaryBar({ properties, rentByProperty }) {
   const included = (properties||[]).filter(p => !p.excluded_from_offer)
   const totals = included.reduce((acc, p) => ({
     cashOffer: acc.cashOffer + (calcCashOffer(p) || 0),
@@ -413,68 +413,35 @@ function PortfolioSidebar({ properties, selected, rentByProperty }) {
     marketRent: acc.marketRent + (rentByProperty?.[p.id]?.market || 0),
   }), { cashOffer: 0, arv: 0, rentCurrent: 0, marketRent: 0 })
 
-  const wrap = { width: 250, flexShrink: 0, borderLeft: '1px solid #F0EDE6', background: '#FAFAF8', overflowY: 'auto', padding: '16px 14px' }
   const label = { fontSize: 10, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: 0.6, fontWeight: 700, marginBottom: 3 }
-  const card = { background: '#fff', border: '1px solid #F0EDE6', borderRadius: 8, padding: '10px 12px', marginBottom: 10 }
+  const stat = { flex: '1 1 130px', minWidth: 130, background: '#fff', border: '1px solid #F0EDE6', borderRadius: 8, padding: '10px 12px' }
 
-  if (!selected) {
-    return (
-      <div style={wrap}>
-        <div style={{ fontSize: 12, fontWeight: 700, color: '#B8892A', textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 12 }}>Portfolio Summary</div>
-        <div style={card}>
+  return (
+    <div style={{ padding: '20px 24px' }}>
+      <div style={{ fontSize: 12, fontWeight: 700, color: '#B8892A', textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 14 }}>Portfolio Summary</div>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
+        <div style={stat}>
           <div style={label}>Properties Included</div>
-          <div style={{ fontSize: 18, fontWeight: 700, color: '#2C2C2C' }}>{included.length} <span style={{ fontSize: 12, fontWeight: 500, color: '#9ca3af' }}>of {properties.length}</span></div>
+          <div style={{ fontSize: 16, fontWeight: 700, color: '#2C2C2C' }}>{included.length} <span style={{ fontSize: 12, fontWeight: 500, color: '#9ca3af' }}>of {properties.length}</span></div>
         </div>
-        <div style={{ ...card, borderTop: '3px solid #3B6D11' }}>
+        <div style={{ ...stat, borderTop: '3px solid #3B6D11' }}>
           <div style={label}>Total Cash Offer</div>
-          <div style={{ fontSize: 18, fontWeight: 700, color: '#3B6D11', fontFamily: 'monospace' }}>{totals.cashOffer ? fmt(totals.cashOffer) : '—'}</div>
+          <div style={{ fontSize: 16, fontWeight: 700, color: '#3B6D11', fontFamily: 'monospace' }}>{totals.cashOffer ? fmt(totals.cashOffer) : '—'}</div>
         </div>
-        <div style={card}>
+        <div style={stat}>
           <div style={label}>Combined ARV</div>
           <div style={{ fontSize: 15, fontWeight: 700, color: '#2C2C2C', fontFamily: 'monospace' }}>{totals.arv ? fmt(totals.arv) : '—'}</div>
         </div>
-        <div style={card}>
+        <div style={stat}>
           <div style={label}>Total Rent Current</div>
           <div style={{ fontSize: 14, fontWeight: 700, color: '#3B6D11', fontFamily: 'monospace' }}>{totals.rentCurrent ? fmt(totals.rentCurrent) : '—'}</div>
         </div>
-        <div style={{ ...card, marginBottom: 0 }}>
+        <div style={stat}>
           <div style={label}>Total Market Rent</div>
           <div style={{ fontSize: 14, fontWeight: 700, color: '#6b7280', fontFamily: 'monospace' }}>{totals.marketRent ? fmt(totals.marketRent) : '—'}</div>
         </div>
-        <div style={{ fontSize: 10.5, color: '#9ca3af', marginTop: 14, lineHeight: 1.5 }}>Click a property to see its own numbers here. Greyed-out (excluded) properties aren't counted above.</div>
       </div>
-    )
-  }
-
-  const cashOffer = calcCashOffer(selected)
-  const rent = rentByProperty?.[selected.id]
-  const { street, rest } = splitAddress(selected.address)
-  return (
-    <div style={wrap}>
-      <div style={{ fontSize: 12, fontWeight: 700, color: '#B8892A', textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 8 }}>Selected Property</div>
-      <div style={{ fontSize: 14, fontWeight: 700, color: '#2C2C2C', lineHeight: 1.3 }}>{street}</div>
-      {rest && <div style={{ fontSize: 11, color: '#9ca3af', marginBottom: 12 }}>{rest}</div>}
-      {selected.unit_count > 1 && <div style={{ fontSize: 10, color: '#9ca3af', marginBottom: 12 }}>{selected.unit_count} units</div>}
-      <div style={{ ...card, borderTop: '3px solid #3B6D11', marginTop: 10 }}>
-        <div style={label}>Cash Offer</div>
-        <div style={{ fontSize: 18, fontWeight: 700, color: '#3B6D11', fontFamily: 'monospace' }}>{cashOffer ? fmt(cashOffer) : '—'}</div>
-      </div>
-      <div style={card}>
-        <div style={label}>ARV</div>
-        <div style={{ fontSize: 15, fontWeight: 700, color: '#2C2C2C', fontFamily: 'monospace' }}>{fmt(selected.arv)||'—'}</div>
-      </div>
-      <div style={card}>
-        <div style={label}>Rehab</div>
-        <div style={{ fontSize: 13, fontWeight: 600, color: '#6b7280', fontFamily: 'monospace' }}>{fmt(selected.rehab_cost)||'—'}</div>
-      </div>
-      <div style={card}>
-        <div style={label}>Rent Current</div>
-        <div style={{ fontSize: 13, fontWeight: 700, color: '#3B6D11', fontFamily: 'monospace' }}>{rent?.current ? fmt(rent.current) : '—'}</div>
-      </div>
-      <div style={{ ...card, marginBottom: 0 }}>
-        <div style={label}>Market Rent</div>
-        <div style={{ fontSize: 13, fontWeight: 600, color: '#6b7280', fontFamily: 'monospace' }}>{rent?.market ? fmt(rent.market) : '—'}</div>
-      </div>
+      <div style={{ fontSize: 10.5, color: '#9ca3af', marginTop: 16, lineHeight: 1.5 }}>Click a property to see its full detail here. Greyed-out (excluded) properties aren't counted above.</div>
     </div>
   )
 }
@@ -1031,62 +998,59 @@ export default function PropertyMapModal({
             </div>
           )}
 
-          {/* Property drawer panel — slides in from the right, overlays the map or list */}
-          {drawerProp && (
-            <div style={{
-              width: 480,
-              flexShrink: 0,
-              borderLeft: '1px solid #F0EDE6',
-              background: '#fff',
-              overflowY: 'auto',
-              display: 'flex',
-              flexDirection: 'column',
-              animation: 'slideInRight 0.2s ease',
-            }}>
-              <style>{`
-                @keyframes slideInRight {
-                  from { transform: translateX(100%); opacity: 0; }
-                  to   { transform: translateX(0);    opacity: 1; }
-                }
-              `}</style>
-              {/* Drawer header */}
-              <div style={{
-                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                padding: '12px 16px', borderBottom: '1px solid #F0EDE6',
-                background: '#FAFAF8', flexShrink: 0, position: 'sticky', top: 0, zIndex: 5,
-              }}>
-                <div>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: '#2C2C2C', lineHeight: 1.3 }}>
-                    {drawerProp.address}
+          {/* Persistent right-hand panel — always present in the same spot. Shows the
+              property drawer when a row is open, otherwise the portfolio summary. */}
+          <div style={{
+            width: 480,
+            flexShrink: 0,
+            borderLeft: '1px solid #F0EDE6',
+            background: '#fff',
+            overflowY: 'auto',
+            display: 'flex',
+            flexDirection: 'column',
+          }}>
+            {drawerProp ? (
+              <>
+                {/* Drawer header */}
+                <div style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  padding: '12px 16px', borderBottom: '1px solid #F0EDE6',
+                  background: '#FAFAF8', flexShrink: 0, position: 'sticky', top: 0, zIndex: 5,
+                }}>
+                  <div>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: '#2C2C2C', lineHeight: 1.3 }}>
+                      {drawerProp.address}
+                    </div>
+                    <div style={{ fontSize: 11, color: cityColor(cityFromAddress(drawerProp.address)), marginTop: 2, fontWeight: 600 }}>
+                      {cityFromAddress(drawerProp.address)}
+                      {(drawerProp.unit_count || 1) > 1 && ` · ★ ${drawerProp.unit_count} units`}
+                    </div>
                   </div>
-                  <div style={{ fontSize: 11, color: cityColor(cityFromAddress(drawerProp.address)), marginTop: 2, fontWeight: 600 }}>
-                    {cityFromAddress(drawerProp.address)}
-                    {(drawerProp.unit_count || 1) > 1 && ` · ★ ${drawerProp.unit_count} units`}
-                  </div>
+                  <button
+                    onClick={handleDrawerClose}
+                    style={{ background: 'none', border: 'none', fontSize: 18, cursor: 'pointer', color: '#9ca3af', padding: 4 }}
+                  >✕</button>
                 </div>
-                <button
-                  onClick={handleDrawerClose}
-                  style={{ background: 'none', border: 'none', fontSize: 18, cursor: 'pointer', color: '#9ca3af', padding: 4 }}
-                >✕</button>
-              </div>
 
-              {/* Inline PropertyDrawer content — rendered inside our panel */}
-              <div style={{ flex: 1 }}>
-                <PropertyDrawer
-                  property={drawerProp}
-                  open={true}
-                  onClose={handleDrawerClose}
-                  onSave={handleSave}
-                  mailings={[]}
-                  onViewOffer={p => setProposal(p)}
-                  inlineMode={true}
-                  isAgentRole={isAgentRole}
-                  currentUserEmail={currentUserEmail}
-                />
-              </div>
-            </div>
-          )}
-          <PortfolioSidebar properties={properties} selected={drawerProp} rentByProperty={rentByProperty} />
+                {/* Inline PropertyDrawer content — rendered inside our panel */}
+                <div style={{ flex: 1 }}>
+                  <PropertyDrawer
+                    property={drawerProp}
+                    open={true}
+                    onClose={handleDrawerClose}
+                    onSave={handleSave}
+                    mailings={[]}
+                    onViewOffer={p => setProposal(p)}
+                    inlineMode={true}
+                    isAgentRole={isAgentRole}
+                    currentUserEmail={currentUserEmail}
+                  />
+                </div>
+              </>
+            ) : (
+              <PortfolioSummaryBar properties={properties} rentByProperty={rentByProperty} />
+            )}
+          </div>
           {proposal && <ProposalModal property={proposal} onClose={() => setProposal(null)} />}
           {portfolioProposalOpen && (
             <PortfolioProposalModal
