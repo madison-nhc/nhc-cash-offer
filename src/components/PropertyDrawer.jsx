@@ -1403,7 +1403,39 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
     </div>
   )
 
-  if (inlineMode) return <div style={{ padding:'0 16px 24px' }}>{innerContent}<div style={{ marginTop:20, paddingTop:16, borderTop:'1px solid #F0EDE6' }}>{footerContent}</div></div>
+  const fullViewModal = fullViewOpen && form.id && (
+    <div
+      onClick={e => e.target === e.currentTarget && setFullViewOpen(false)}
+      style={{
+        position:'fixed', inset:0, background:'rgba(0,0,0,0.55)',
+        zIndex:300, display:'flex', alignItems:'center', justifyContent:'center', padding:20,
+      }}
+    >
+      <div style={{
+        background:'#FAFAF8', borderRadius:12, width:'100%', maxWidth:1400, height:'92vh',
+        display:'flex', flexDirection:'column', overflow:'hidden',
+        boxShadow:'0 24px 70px rgba(0,0,0,0.35)', position:'relative',
+      }}>
+        <button
+          onClick={() => setFullViewOpen(false)}
+          title="Close"
+          style={{
+            position:'absolute', top:14, right:16, width:32, height:32, borderRadius:'50%',
+            background:'#fff', border:'1px solid #D6D2CA', fontSize:16, cursor:'pointer',
+            color:'#6b7280', zIndex:20, display:'flex', alignItems:'center', justifyContent:'center',
+          }}
+        >&times;</button>
+        <PropertyFullView propertyId={form.id} onClose={()=>setFullViewOpen(false)} isAgentRole={isAgentRole} />
+      </div>
+    </div>
+  )
+
+  if (inlineMode) return (
+    <>
+      <div style={{ padding:'0 16px 24px' }}>{innerContent}<div style={{ marginTop:20, paddingTop:16, borderTop:'1px solid #F0EDE6' }}>{footerContent}</div></div>
+      {fullViewModal}
+    </>
+  )
 
   return (
     <>
@@ -1531,32 +1563,7 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
       {innerContent}
     </Drawer>
 
-    {fullViewOpen && form.id && (
-      <div
-        onClick={e => e.target === e.currentTarget && setFullViewOpen(false)}
-        style={{
-          position:'fixed', inset:0, background:'rgba(0,0,0,0.55)',
-          zIndex:300, display:'flex', alignItems:'center', justifyContent:'center', padding:20,
-        }}
-      >
-        <div style={{
-          background:'#FAFAF8', borderRadius:12, width:'100%', maxWidth:1400, height:'92vh',
-          display:'flex', flexDirection:'column', overflow:'hidden',
-          boxShadow:'0 24px 70px rgba(0,0,0,0.35)', position:'relative',
-        }}>
-          <button
-            onClick={() => setFullViewOpen(false)}
-            title="Close"
-            style={{
-              position:'absolute', top:14, right:16, width:32, height:32, borderRadius:'50%',
-              background:'#fff', border:'1px solid #D6D2CA', fontSize:16, cursor:'pointer',
-              color:'#6b7280', zIndex:20, display:'flex', alignItems:'center', justifyContent:'center',
-            }}
-          >&times;</button>
-          <PropertyFullView propertyId={form.id} onClose={()=>setFullViewOpen(false)} isAgentRole={isAgentRole} />
-        </div>
-      </div>
-    )}
+    {fullViewModal}
     </>
   )
 }
