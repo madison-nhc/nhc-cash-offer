@@ -785,7 +785,7 @@ export default function PropertyMapModal({
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0, flexWrap: 'nowrap' }}>
             {fubLink && <FubPreviewPanel fubLink={fubLink} />}
             {view==='map' && (
-              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end', flexShrink: 0, maxWidth: 220 }}>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end', alignContent: 'flex-start', flexShrink: 0, maxWidth: 240, maxHeight: 36, overflowY: 'auto', paddingRight: 2 }}>
                 {cities.map(city => (
                   <div key={city} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                     <div style={{ width: 9, height: 9, borderRadius: 2, background: cityColor(city), flexShrink: 0 }} />
