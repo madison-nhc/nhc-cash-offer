@@ -413,7 +413,7 @@ function PortfolioSidebar({ properties, selected, rentByProperty }) {
     marketRent: acc.marketRent + (rentByProperty?.[p.id]?.market || 0),
   }), { cashOffer: 0, arv: 0, rentCurrent: 0, marketRent: 0 })
 
-  const wrap = { width: 250, flexShrink: 0, borderRight: '1px solid #F0EDE6', background: '#FAFAF8', overflowY: 'auto', padding: '16px 14px' }
+  const wrap = { width: 250, flexShrink: 0, borderLeft: '1px solid #F0EDE6', background: '#FAFAF8', overflowY: 'auto', padding: '16px 14px' }
   const label = { fontSize: 10, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: 0.6, fontWeight: 700, marginBottom: 3 }
   const card = { background: '#fff', border: '1px solid #F0EDE6', borderRadius: 8, padding: '10px 12px', marginBottom: 10 }
 
@@ -877,7 +877,6 @@ export default function PropertyMapModal({
 
         {/* Body + drawer row */}
         <div style={{ flex: 1, position: 'relative', display: 'flex', overflow: 'hidden' }}>
-          <PortfolioSidebar properties={properties} selected={drawerProp} rentByProperty={rentByProperty} />
           {/* Loading overlay (map only) */}
           {view==='map' && loading && (
             <div style={{
@@ -1087,6 +1086,7 @@ export default function PropertyMapModal({
               </div>
             </div>
           )}
+          <PortfolioSidebar properties={properties} selected={drawerProp} rentByProperty={rentByProperty} />
           {proposal && <ProposalModal property={proposal} onClose={() => setProposal(null)} />}
           {portfolioProposalOpen && (
             <PortfolioProposalModal
