@@ -112,23 +112,26 @@ export default function Holds({ isAgentRole=false, currentUserEmail=null }) {
   function holdCardContent(p) {
     const rent = monthlyRent(p.id)
     const payment = loanPayment(p.id)
-    const cashflow = rent - payment
     const lease = leases.find(l => l.property_id === p.id)
     return (
       <>
         <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:8 }}>
           <div style={{ fontSize:13, fontWeight:700, color:'#2C2C2C', minWidth:0 }}>{shortStreet(p.address) || 'New Property'}</div>
-          {p.owner ? <div style={{ fontSize:11, color:'#6b7280', flexShrink:0 }}>{p.owner}</div> : null}
+          <div style={{ fontSize:11, color:'#6b7280', flexShrink:0 }}>{p.owner || 'BPV'}</div>
         </div>
-        <div style={{ fontSize:10, color:'#9ca3af', marginTop:1, marginBottom:3 }}>{p.address?.split(',').slice(1,3).join(',').trim() || ''}</div>
-        {lease?.tenant_name && <div style={{ fontSize:11.5, color:'#3B6D11', fontWeight:600, marginBottom:8 }}>{lease.tenant_name}</div>}
-        <div style={{ display:'grid', gridTemplateColumns: rent>0 && payment>0 ? '1fr 1fr' : '1fr', gap:6 }}>
-          {rent > 0 && <span style={{ ...cardChip('#3B6D11','#EEF5E7','#CBDDB8'), flexShrink:1, minWidth:0, overflow:'hidden', textOverflow:'ellipsis', textAlign:'center' }}>Rent {fmt(rent)}/mo</span>}
-          {payment > 0 && <span style={{ ...cardChip('#D97825','#FBF0E4','#F2D9BE'), flexShrink:1, minWidth:0, overflow:'hidden', textOverflow:'ellipsis', textAlign:'center' }}>Loan {fmt(payment)}/mo</span>}
-        </div>
-        {lease ? (
-          <button style={cardBtn} onClick={e => { e.stopPropagation(); setDrawerTab('rent'); setAutoOpenLease(true); setDrawer(p) }}>View Lease</button>
+        <div style={{ fontSize:10, color:'#9ca3af', marginTop:1, marginBottom:8 }}>{p.address?.split(',').slice(1,3).join(',').trim() || ''}</div>
+        {(rent > 0 || payment > 0) ? (
+          <div style={{ display:'flex', gap:4, alignItems:'center', justifyContent:'center', marginBottom:8, flexWrap:'wrap' }}>
+            {rent > 0 && <span style={cardChip('#3B6D11','#EEF5E7','#CBDDB8')}>Rent {fmt(rent)}/mo</span>}
+            {payment > 0 && <span style={cardChip('#D97825','#FBF0E4','#F2D9BE')}>Loan {fmt(payment)}/mo</span>}
+          </div>
         ) : null}
+        {lease?.tenant_name ? (
+          <div style={{ fontSize:11.5, color:'#3B6D11', fontWeight:600, textAlign:'center', margin:'2px 0 8px' }}>{lease.tenant_name}</div>
+        ) : (
+          <div style={{ fontSize:10, color:'#9ca3af', fontStyle:'italic', textAlign:'center', margin:'2px 0 8px' }}>No lease yet</div>
+        )}
+        <button style={cardBtn} onClick={e => { e.stopPropagation(); setDrawerTab('rent'); setAutoOpenLease(true); setDrawer(p) }}>Lease Dashboard</button>
       </>
     )
   }

@@ -420,7 +420,7 @@ export default function RentOverview({ propertyId, onOpenFull, refreshSignal, on
         fontSize:12.5, fontWeight:700, cursor:'pointer', fontFamily:'inherit',
         display:'flex', alignItems:'center', justifyContent:'center', gap:6,
       }}>
-        Open Lease Details <span>→</span>
+        Open Lease Dashboard <span>→</span>
       </button>
 
       {/* Maintenance Cost */}

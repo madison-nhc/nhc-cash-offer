@@ -783,7 +783,7 @@ export default function RentTracker({ propertyId, propertyAddress, open, onClose
 
   return (
     <Modal
-      title={`Lease Tracker — ${propertyAddress?.split(',')[0] || ''}`}
+      title={`Lease Dashboard — ${propertyAddress?.split(',')[0] || ''}`}
       onClose={onClose}
       isDirty={()=> !!editing || expensesDirty()}
       hideCloseButton
