@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useCallback, Fragment } from 'react'
 import PropertyDrawer from './PropertyDrawer.jsx'
 import ProposalModal from './ProposalModal.jsx'
+import PortfolioProposalModal from './PortfolioProposalModal.jsx'
 import AddressInput from './AddressInput.jsx'
 import { supabase } from '../lib/supabase.js'
 import { fmt, useSort, SortTh } from './ui.jsx'
@@ -37,9 +38,35 @@ function unitTypeLabel(count) {
 }
 const UNIT_TYPE_ORDER = ['Single', 'Duplex', 'Triplex', 'Quadplex', 'Custom']
 
+// Small eye / eye-off icon button used to toggle a property's inclusion in the
+// portfolio-wide cash offer total and PDF.
+function EyeToggle({ excluded, onClick }) {
+  return (
+    <button
+      onClick={e => { e.stopPropagation(); onClick() }}
+      title={excluded ? 'Excluded from portfolio offer — click to include' : 'Included in portfolio offer — click to exclude'}
+      style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, display: 'flex', alignItems: 'center', color: excluded ? '#c4c0b6' : '#B8892A' }}
+    >
+      {excluded ? (
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/>
+          <path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/>
+          <path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"/>
+          <line x1="2" y1="2" x2="22" y2="22"/>
+        </svg>
+      ) : (
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z"/>
+          <circle cx="12" cy="12" r="3"/>
+        </svg>
+      )}
+    </button>
+  )
+}
+
 // Properties table for the List view — its own component (not inline JSX)
 // because useSort is a hook and needs a stable component instance.
-function PackagePropertiesTable({ pkgProps, onOpenProperty, rentByProperty }) {
+function PackagePropertiesTable({ pkgProps, onOpenProperty, rentByProperty, onToggleExclude }) {
   const { sorted, sortKey, sortDir, toggleSort } = useSort(pkgProps, 'address', 'asc', {
     cash_offer: p => calcCashOffer(p),
     disposition: p => DISP_LABELS[p.disposition] || (p.disposition ? p.disposition : ''),
@@ -52,10 +79,25 @@ function PackagePropertiesTable({ pkgProps, onOpenProperty, rentByProperty }) {
     .map(label => ({ label, rows: sorted.filter(p => unitTypeLabel(p.unit_count) === label) }))
     .filter(g => g.rows.length > 0)
 
+  // Subtotal helper — only sums rows NOT excluded from the portfolio offer
+  function subtotal(rows) {
+    const included = rows.filter(p => !p.excluded_from_offer)
+    return included.reduce((acc, p) => ({
+      cashOffer: acc.cashOffer + (calcCashOffer(p) || 0),
+      rehab: acc.rehab + (parseFloat(p.rehab_cost) || 0),
+      arv: acc.arv + (parseFloat(p.arv) || 0),
+      rentCurrent: acc.rentCurrent + (rentByProperty?.[p.id]?.current || 0),
+      marketRent: acc.marketRent + (rentByProperty?.[p.id]?.market || 0),
+      count: acc.count + 1,
+    }), { cashOffer: 0, rehab: 0, arv: 0, rentCurrent: 0, marketRent: 0, count: 0 })
+  }
+  const grandTotal = subtotal(sorted)
+
   return (
     <table style={{ width: '100%', borderCollapse: 'collapse' }}>
       <thead>
         <tr style={{ background: '#F0EDE6', position:'sticky', top:0 }}>
+          <th style={{ width: 32 }}></th>
           <SortTh sortKeyName="address" {...{sortKey,sortDir,toggleSort}}>Address</SortTh>
           <SortTh sortKeyName="cash_offer" {...{sortKey,sortDir,toggleSort}}>Cash Offer</SortTh>
           <SortTh sortKeyName="rehab_cost" {...{sortKey,sortDir,toggleSort}}>Rehab</SortTh>
@@ -66,10 +108,12 @@ function PackagePropertiesTable({ pkgProps, onOpenProperty, rentByProperty }) {
         </tr>
       </thead>
       <tbody>
-        {groups.map(group => (
+        {groups.map(group => {
+          const groupTotal = subtotal(group.rows)
+          return (
           <Fragment key={group.label}>
             <tr>
-              <td colSpan={7} style={{ padding: '10px 14px 6px', fontSize: 11, fontWeight: 700, color: '#B8892A', textTransform: 'uppercase', letterSpacing: 0.6, background: '#FAF7F0', borderTop: '1px solid #F0EDE6' }}>
+              <td colSpan={8} style={{ padding: '10px 14px 6px', fontSize: 11, fontWeight: 700, color: '#B8892A', textTransform: 'uppercase', letterSpacing: 0.6, background: '#FAF7F0', borderTop: '1px solid #F0EDE6' }}>
                 {group.label} <span style={{ color: '#9ca3af', fontWeight: 600 }}>({group.rows.length})</span>
               </td>
             </tr>
@@ -78,14 +122,19 @@ function PackagePropertiesTable({ pkgProps, onOpenProperty, rentByProperty }) {
               const dispLabel = DISP_LABELS[p.disposition]
               const cashOffer = calcCashOffer(p)
               const rent = rentByProperty?.[p.id]
+              const excluded = !!p.excluded_from_offer
+              const baseBg = i % 2 === 0 ? '#fff' : '#FAFAF8'
               return (
                 <tr
                   key={p.id}
                   onClick={() => onOpenProperty(p)}
-                  style={{ background: i % 2 === 0 ? '#fff' : '#FAFAF8', borderTop: '0.5px solid #F0EDE6', cursor: 'pointer' }}
+                  style={{ background: baseBg, borderTop: '0.5px solid #F0EDE6', cursor: 'pointer', opacity: excluded ? 0.45 : 1 }}
                   onMouseEnter={e => e.currentTarget.style.background = '#fef9f0'}
-                  onMouseLeave={e => e.currentTarget.style.background = i % 2 === 0 ? '#fff' : '#FAFAF8'}
+                  onMouseLeave={e => e.currentTarget.style.background = baseBg}
                 >
+                  <td style={{ padding: '9px 0 9px 10px' }}>
+                    <EyeToggle excluded={excluded} onClick={() => onToggleExclude(p)} />
+                  </td>
                   <td style={{ padding: '9px 14px', fontSize: 13, fontWeight: 600 }}>
                     {(() => { const { street, rest } = splitAddress(p.address); return (
                       <>
@@ -112,10 +161,36 @@ function PackagePropertiesTable({ pkgProps, onOpenProperty, rentByProperty }) {
                 </tr>
               )
             })}
+            <tr style={{ background: '#FAFAF8', borderTop: '1px solid #E5E0D5' }}>
+              <td></td>
+              <td style={{ padding: '7px 14px', fontSize: 10.5, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                {group.label} Subtotal{groupTotal.count < group.rows.length ? ` (${groupTotal.count} of ${group.rows.length} included)` : ''}
+              </td>
+              <td style={{ padding: '7px 14px', fontSize: 12, fontFamily: 'monospace', color: '#3B6D11', fontWeight: 700 }}>{groupTotal.cashOffer ? fmt(groupTotal.cashOffer) : '—'}</td>
+              <td style={{ padding: '7px 14px', fontSize: 12, fontFamily: 'monospace', color: '#6b7280', fontWeight: 600 }}>{groupTotal.rehab ? fmt(groupTotal.rehab) : '—'}</td>
+              <td style={{ padding: '7px 14px', fontSize: 12, fontFamily: 'monospace', fontWeight: 700 }}>{groupTotal.arv ? fmt(groupTotal.arv) : '—'}</td>
+              <td></td>
+              <td style={{ padding: '7px 14px', fontSize: 12, fontFamily: 'monospace', color: '#3B6D11', fontWeight: 700 }}>{groupTotal.rentCurrent ? fmt(groupTotal.rentCurrent) : '—'}</td>
+              <td style={{ padding: '7px 14px', fontSize: 12, fontFamily: 'monospace', color: '#6b7280', fontWeight: 600 }}>{groupTotal.marketRent ? fmt(groupTotal.marketRent) : '—'}</td>
+            </tr>
           </Fragment>
-        ))}
+        )})}
         {sorted.length === 0 && (
-          <tr><td colSpan={7} style={{ padding: '24px 14px', textAlign:'center', color:'#bbb', fontSize:12 }}>No properties in this package yet.</td></tr>
+          <tr><td colSpan={8} style={{ padding: '24px 14px', textAlign:'center', color:'#bbb', fontSize:12 }}>No properties in this package yet.</td></tr>
+        )}
+        {sorted.length > 0 && (
+          <tr style={{ background: '#2C2C2C', borderTop: '2px solid #B8892A' }}>
+            <td></td>
+            <td style={{ padding: '10px 14px', fontSize: 11, fontWeight: 700, color: '#fff', textTransform: 'uppercase', letterSpacing: 0.6 }}>
+              Portfolio Total{grandTotal.count < sorted.length ? ` (${grandTotal.count} of ${sorted.length} included)` : ''}
+            </td>
+            <td style={{ padding: '10px 14px', fontSize: 13, fontFamily: 'monospace', color: '#7CC576', fontWeight: 700 }}>{grandTotal.cashOffer ? fmt(grandTotal.cashOffer) : '—'}</td>
+            <td style={{ padding: '10px 14px', fontSize: 12, fontFamily: 'monospace', color: '#d1d1d1', fontWeight: 600 }}>{grandTotal.rehab ? fmt(grandTotal.rehab) : '—'}</td>
+            <td style={{ padding: '10px 14px', fontSize: 13, fontFamily: 'monospace', color: '#fff', fontWeight: 700 }}>{grandTotal.arv ? fmt(grandTotal.arv) : '—'}</td>
+            <td></td>
+            <td style={{ padding: '10px 14px', fontSize: 12, fontFamily: 'monospace', color: '#7CC576', fontWeight: 700 }}>{grandTotal.rentCurrent ? fmt(grandTotal.rentCurrent) : '—'}</td>
+            <td style={{ padding: '10px 14px', fontSize: 12, fontFamily: 'monospace', color: '#d1d1d1', fontWeight: 600 }}>{grandTotal.marketRent ? fmt(grandTotal.marketRent) : '—'}</td>
+          </tr>
         )}
       </tbody>
     </table>
@@ -344,6 +419,7 @@ export default function PropertyMapModal({ properties: initialProperties, packag
   // Property currently open in the side drawer (null = drawer closed)
   const [drawerProp, setDrawerProp] = useState(null)
   const [proposal, setProposal] = useState(null)
+  const [portfolioProposalOpen, setPortfolioProposalOpen] = useState(false)
   // Aggregated per-property rent figures for the list table: { [property_id]: { current, market } }
   const [rentByProperty, setRentByProperty] = useState({})
   // Package metadata edit panel — rendered inline (same overlay) instead of a separate Drawer
@@ -373,6 +449,19 @@ export default function PropertyMapModal({ properties: initialProperties, packag
   const [addingProperty, setAddingProperty] = useState(false)
   const [newAddress, setNewAddress] = useState('')
   const [addSaving, setAddSaving] = useState(false)
+
+  // Toggle a property's inclusion in the portfolio-wide cash offer total/PDF.
+  // Optimistic local update so the row greys out immediately; persists in the background.
+  async function toggleExclude(p) {
+    const nextVal = !p.excluded_from_offer
+    setProperties(prev => prev.map(x => x.id === p.id ? { ...x, excluded_from_offer: nextVal } : x))
+    const { error } = await supabase.from('cashoffer_properties').update({ excluded_from_offer: nextVal }).eq('id', p.id)
+    if (error) {
+      // Revert on failure
+      setProperties(prev => prev.map(x => x.id === p.id ? { ...x, excluded_from_offer: !nextVal } : x))
+      alert(`Couldn't update this property.\n\n${error.message}`)
+    }
+  }
 
   function openAddProperty() {
     setNewAddress('')
@@ -691,6 +780,9 @@ export default function PropertyMapModal({ properties: initialProperties, packag
                 + Property
               </button>
             )}
+            <button onClick={() => setPortfolioProposalOpen(true)} style={{ background:'#2C2C2C', border:'none', borderRadius:6, padding:'6px 12px', fontSize:11.5, fontWeight:700, color:'#fff', cursor:'pointer', fontFamily:'inherit', whiteSpace:'nowrap', flexShrink:0 }}>
+              Portfolio Offer
+            </button>
             {onSavePackage && (
               <button onClick={openMetaEdit} style={{ background:'#F0EDE6', border:'none', borderRadius:6, padding:'6px 12px', fontSize:11.5, fontWeight:600, color:'#6b7280', cursor:'pointer', fontFamily:'inherit', whiteSpace:'nowrap', flexShrink:0 }}>
                 Edit
@@ -726,7 +818,7 @@ export default function PropertyMapModal({ properties: initialProperties, packag
           {/* List view */}
           {view==='list' && (
             <div style={{ flex: 1, minWidth: 0, overflowY: 'auto' }}>
-              <PackagePropertiesTable pkgProps={properties} onOpenProperty={setDrawerProp} rentByProperty={rentByProperty} />
+              <PackagePropertiesTable pkgProps={properties} onOpenProperty={setDrawerProp} rentByProperty={rentByProperty} onToggleExclude={toggleExclude} />
             </div>
           )}
 
@@ -915,6 +1007,13 @@ export default function PropertyMapModal({ properties: initialProperties, packag
             </div>
           )}
           {proposal && <ProposalModal property={proposal} onClose={() => setProposal(null)} />}
+          {portfolioProposalOpen && (
+            <PortfolioProposalModal
+              packageName={packageName}
+              properties={properties}
+              onClose={() => setPortfolioProposalOpen(false)}
+            />
+          )}
         </div>
       </div>
     </div>
