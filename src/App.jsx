@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { useIsMobile } from './hooks/useIsMobile.js'
 import { supabase } from './lib/supabase.js'
 import Analyzer from './pages/Analyzer.jsx'
-import PropertyDrawer from './components/PropertyDrawer.jsx'
+import AddressInput from './components/AddressInput.jsx'
 import Rehabs from './pages/Rehabs.jsx'
 import Supplies from './pages/Supplies.jsx'
 import Listings from './pages/Listings.jsx'
@@ -137,6 +137,47 @@ function pathForTab(tab) {
 
 function initialTab() {
   return tabForPath(window.location.pathname) || localStorage.getItem('nhc_hub_tab') || 'analyzer'
+}
+
+// Simple, address-only add flow — agents only see their own deals, so the
+// property is always attributed to whoever is adding it right now.
+function QuickAddPropertyModal({ open, onClose, onAdd }) {
+  const [address, setAddress] = useState('')
+  const [saving, setSaving] = useState(false)
+
+  useEffect(() => { if (open) setAddress('') }, [open])
+  if (!open) return null
+
+  async function submit() {
+    if (!address) return
+    setSaving(true)
+    await onAdd(address)
+    setSaving(false)
+  }
+
+  return (
+    <div
+      onClick={e => { if (e.target === e.currentTarget) onClose() }}
+      style={{ position:'fixed', inset:0, zIndex:400, background:'rgba(0,0,0,0.55)', display:'flex', alignItems:'center', justifyContent:'center' }}
+    >
+      <div style={{ background:'#fff', borderRadius:12, width:420, maxWidth:'92vw', padding:24, boxShadow:'0 8px 40px rgba(0,0,0,0.3)' }}>
+        <div style={{ fontSize:15, fontWeight:700, color:'#2C2C2C', marginBottom:16 }}>Add Property</div>
+        <label style={{ fontSize:11, fontWeight:600, color:'#6b7280', display:'block', marginBottom:4 }}>Address</label>
+        <AddressInput value={address} onChange={setAddress} />
+        <div style={{ display:'flex', gap:8, marginTop:20 }}>
+          <button
+            onClick={onClose}
+            style={{ flex:1, background:'none', border:'1px solid #D6D2CA', borderRadius:6, padding:'9px 14px', fontSize:13, fontWeight:600, cursor:'pointer', fontFamily:'inherit', color:'#6b7280' }}
+          >Cancel</button>
+          <button
+            onClick={submit}
+            disabled={saving || !address}
+            style={{ flex:1, background:'#B8892A', border:'none', borderRadius:6, padding:'9px 14px', fontSize:13, fontWeight:700, cursor: saving ? 'default' : 'pointer', fontFamily:'inherit', color:'#fff', opacity: (saving || !address) ? 0.6 : 1 }}
+          >{saving ? 'Adding…' : 'Add Property'}</button>
+        </div>
+      </div>
+    </div>
+  )
 }
 
 export default function App() {
@@ -521,27 +562,22 @@ function AuthedApp({ isAdmin, isAgentRole, userEmail }) {
         {pages[active]}
       </main>
 
-      {/* Global new property drawer — accessible from any page */}
-      <PropertyDrawer
-        property={newPropertyOpen ? {
-          address:'', arv:'', asis_pct:50, profit_margin:15,
-          comm_cash_pct:9, comm_list_pct:6, hold_cash_pct:0.75, hold_cash_months:6,
-          hold_opt2_pct:0.5, hold_opt2_months:3, hold_opt3_pct:0.5, hold_opt3_months:6,
-          repair_items:[], stage:'Analyzing', acquisition_type:'Purchased', owner:'BPV',
-          agent_email: isAgentRole ? userEmail : null,
-        } : null}
+      {/* Global quick-add — just the address; the adding user is always set as
+          the agent so the property shows up correctly in their filtered view */}
+      <QuickAddPropertyModal
         open={newPropertyOpen}
         onClose={() => setNewPropertyOpen(false)}
-        onSave={() => {
+        onAdd={async (address) => {
+          const { error } = await supabase.from('cashoffer_properties').insert({
+            address, type: 'Analyzing', stage: 'Analyzing', owner: 'BPV', agent_email: userEmail || null,
+          })
+          if (error) { alert(`Couldn't add this property.\n\n${error.message}`); return }
           setNewPropertyOpen(false)
           // Refresh the current page by re-navigating to it
           const cur = active
           setActive(null)
           setTimeout(() => setActive(cur), 50)
         }}
-        mailings={[]}
-        isAgentRole={isAgentRole}
-        currentUserEmail={userEmail}
       />
     </div>
   )
