@@ -91,7 +91,6 @@ function PackagePropertiesTable({ pkgProps, onOpenProperty, rentByProperty, onTo
       count: acc.count + 1,
     }), { cashOffer: 0, rehab: 0, arv: 0, rentCurrent: 0, marketRent: 0, count: 0 })
   }
-  const grandTotal = subtotal(sorted)
 
   return (
     <table style={{ width: '100%', borderCollapse: 'collapse' }}>
@@ -113,7 +112,7 @@ function PackagePropertiesTable({ pkgProps, onOpenProperty, rentByProperty, onTo
           return (
           <Fragment key={group.label}>
             <tr>
-              <td colSpan={8} style={{ padding: '10px 14px 6px', fontSize: 11, fontWeight: 700, color: '#B8892A', textTransform: 'uppercase', letterSpacing: 0.6, background: '#FAF7F0', borderTop: '1px solid #F0EDE6' }}>
+              <td colSpan={8} style={{ padding: '9px 14px', fontSize: 12, fontWeight: 800, color: '#B8892A', textTransform: 'uppercase', letterSpacing: 0.8, background: '#F5EAD3', borderTop: '1px solid #E8D9B5', borderBottom: '1px solid #E8D9B5' }}>
                 {group.label} <span style={{ color: '#9ca3af', fontWeight: 600 }}>({group.rows.length})</span>
               </td>
             </tr>
@@ -180,20 +179,6 @@ function PackagePropertiesTable({ pkgProps, onOpenProperty, rentByProperty, onTo
         )})}
         {sorted.length === 0 && (
           <tr><td colSpan={8} style={{ padding: '24px 14px', textAlign:'center', color:'#bbb', fontSize:12 }}>No properties in this package yet.</td></tr>
-        )}
-        {sorted.length > 0 && (
-          <tr style={{ background: '#2C2C2C', borderTop: '2px solid #B8892A' }}>
-            <td></td>
-            <td style={{ padding: '10px 14px', fontSize: 11, fontWeight: 700, color: '#fff', textTransform: 'uppercase', letterSpacing: 0.6 }}>
-              Portfolio Total{grandTotal.count < sorted.length ? ` (${grandTotal.count} of ${sorted.length} included)` : ''}
-            </td>
-            <td style={{ padding: '10px 14px', fontSize: 12, fontFamily: 'monospace', color: '#7CC576', fontWeight: 700 }}>{grandTotal.rentCurrent ? fmt(grandTotal.rentCurrent) : '—'}</td>
-            <td style={{ padding: '10px 14px', fontSize: 12, fontFamily: 'monospace', color: '#d1d1d1', fontWeight: 600 }}>{grandTotal.marketRent ? fmt(grandTotal.marketRent) : '—'}</td>
-            <td style={{ padding: '10px 14px', fontSize: 13, fontFamily: 'monospace', color: '#7CC576', fontWeight: 700 }}>{grandTotal.cashOffer ? fmt(grandTotal.cashOffer) : '—'}</td>
-            <td style={{ padding: '10px 14px', fontSize: 12, fontFamily: 'monospace', color: '#d1d1d1', fontWeight: 600 }}>{grandTotal.rehab ? fmt(grandTotal.rehab) : '—'}</td>
-            <td style={{ padding: '10px 14px', fontSize: 13, fontFamily: 'monospace', color: '#fff', fontWeight: 700 }}>{grandTotal.arv ? fmt(grandTotal.arv) : '—'}</td>
-            <td></td>
-          </tr>
         )}
       </tbody>
     </table>
