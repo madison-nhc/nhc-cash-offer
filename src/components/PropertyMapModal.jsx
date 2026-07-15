@@ -99,8 +99,8 @@ function PackagePropertiesTable({ pkgProps, onOpenProperty, rentByProperty, onTo
         <tr style={{ background: '#F0EDE6', position:'sticky', top:0 }}>
           <th style={{ width: 32 }}></th>
           <SortTh sortKeyName="address" {...{sortKey,sortDir,toggleSort}}>Address</SortTh>
-          <SortTh sortKeyName="rent_current" {...{sortKey,sortDir,toggleSort}}>Total Rent Current</SortTh>
-          <SortTh sortKeyName="market_rent" {...{sortKey,sortDir,toggleSort}}>Total Market Rent</SortTh>
+          <SortTh sortKeyName="rent_current" {...{sortKey,sortDir,toggleSort}}>Rent Current</SortTh>
+          <SortTh sortKeyName="market_rent" {...{sortKey,sortDir,toggleSort}}>Market Rent</SortTh>
           <SortTh sortKeyName="cash_offer" {...{sortKey,sortDir,toggleSort}}>Cash Offer</SortTh>
           <SortTh sortKeyName="rehab_cost" {...{sortKey,sortDir,toggleSort}}>Est. Rehab</SortTh>
           <SortTh sortKeyName="arv" {...{sortKey,sortDir,toggleSort}}>ARV</SortTh>
@@ -407,7 +407,7 @@ function loadGoogleMaps() {
 // totals by default, and switches to the selected property's own quick
 // summary when a row is opened (mirrors PropertyFullView's meta rail, just
 // on the opposite side and always present).
-function PortfolioSummaryFooter({ properties, rentByProperty }) {
+function PortfolioSummaryFooter({ properties, rentByProperty, onOpenPortfolioOffer }) {
   const included = (properties||[]).filter(p => !p.excluded_from_offer)
   const totals = included.reduce((acc, p) => ({
     cashOffer: acc.cashOffer + (calcCashOffer(p) || 0),
@@ -434,9 +434,15 @@ function PortfolioSummaryFooter({ properties, rentByProperty }) {
       <Stat title="Properties Included">{included.length} <span style={{ fontSize: 11, fontWeight: 500, color: '#9ca3af', fontFamily: 'inherit' }}>of {properties.length}</span></Stat>
       <Stat title="Total Cash Offer" color="#3B6D11">{totals.cashOffer ? fmt(totals.cashOffer) : '—'}</Stat>
       <Stat title="Combined ARV">{totals.arv ? fmt(totals.arv) : '—'}</Stat>
-      <Stat title="Total Rent Current" color="#3B6D11">{totals.rentCurrent ? fmt(totals.rentCurrent) : '—'}</Stat>
-      <Stat title="Total Market Rent" color="#6b7280">{totals.marketRent ? fmt(totals.marketRent) : '—'}</Stat>
+      <Stat title="Rent Current" color="#3B6D11">{totals.rentCurrent ? fmt(totals.rentCurrent) : '—'}</Stat>
+      <Stat title="Market Rent" color="#6b7280">{totals.marketRent ? fmt(totals.marketRent) : '—'}</Stat>
       <div style={{ fontSize: 10, color: '#9ca3af', marginLeft: 'auto', flexShrink: 0 }}>Excluded properties aren't counted above.</div>
+      <button
+        onClick={onOpenPortfolioOffer}
+        style={{ background:'#2C2C2C', border:'none', borderRadius:6, padding:'6px 12px', fontSize:11.5, fontWeight:700, color:'#fff', cursor:'pointer', fontFamily:'inherit', whiteSpace:'nowrap', flexShrink:0 }}
+      >
+        Portfolio Offer
+      </button>
     </div>
   )
 }
@@ -814,9 +820,6 @@ export default function PropertyMapModal({
                 + Property
               </button>
             )}
-            <button onClick={() => setPortfolioProposalOpen(true)} style={{ background:'#2C2C2C', border:'none', borderRadius:6, padding:'6px 12px', fontSize:11.5, fontWeight:700, color:'#fff', cursor:'pointer', fontFamily:'inherit', whiteSpace:'nowrap', flexShrink:0 }}>
-              Portfolio Offer
-            </button>
             <button onClick={onClose} style={{
               background: 'none', border: 'none', fontSize: 20, cursor: 'pointer',
               color: '#9ca3af', lineHeight: 1, padding: 4, flexShrink: 0,
@@ -970,7 +973,7 @@ export default function PropertyMapModal({
         </div>
 
         {/* Portfolio summary footer — always visible across the bottom, regardless of list/map view or drawer state */}
-        <PortfolioSummaryFooter properties={properties} rentByProperty={rentByProperty} />
+        <PortfolioSummaryFooter properties={properties} rentByProperty={rentByProperty} onOpenPortfolioOffer={() => setPortfolioProposalOpen(true)} />
       </div>
     </div>
   )
