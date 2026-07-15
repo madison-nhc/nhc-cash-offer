@@ -4,10 +4,10 @@ import ProposalModal from './ProposalModal.jsx'
 import PortfolioProposalModal from './PortfolioProposalModal.jsx'
 import AddressInput from './AddressInput.jsx'
 import { supabase } from '../lib/supabase.js'
+import { PROMO_PAYLOADS } from './KanbanBoard.jsx'
 import { fmt, useSort, SortTh } from './ui.jsx'
 
-const DISP_COLORS = { listing:'#3B6D11', wholesale:'#6b21a8', flip:'#D97825', hold:'#2D6FAF', lost:'#9ca3af' }
-const DISP_LABELS = { listing:'Listing', wholesale:'Wholesale', flip:'Flip', hold:'Hold', lost:'Lost' }
+const STAGE_COLORS = { Purchased:'#3B6D11', Rehab:'#D97825', 'Reno In Progress':'#D97825', 'Reno Completed':'#D97825', Listed:'#2D6FAF', 'Under Contract':'#2D6FAF', Sold:'#3B6D11', Lost:'#9ca3af' }
 
 // Splits "123 Main St, Lexington, KY 40503" into { street:"123 Main St", rest:"Lexington, KY 40503" }
 function splitAddress(address) {
@@ -66,10 +66,10 @@ function EyeToggle({ excluded, onClick }) {
 
 // Properties table for the List view — its own component (not inline JSX)
 // because useSort is a hook and needs a stable component instance.
-function PackagePropertiesTable({ pkgProps, onOpenProperty, rentByProperty, onToggleExclude }) {
+function PackagePropertiesTable({ pkgProps, onOpenProperty, rentByProperty, onToggleExclude, onPromote }) {
   const { sorted, sortKey, sortDir, toggleSort } = useSort(pkgProps, 'address', 'asc', {
     cash_offer: p => calcCashOffer(p),
-    disposition: p => DISP_LABELS[p.disposition] || (p.disposition ? p.disposition : ''),
+    stage: p => p.stage || 'Analyzing',
     rent_current: p => rentByProperty?.[p.id]?.current || 0,
     market_rent: p => rentByProperty?.[p.id]?.market || 0,
   })
@@ -100,9 +100,9 @@ function PackagePropertiesTable({ pkgProps, onOpenProperty, rentByProperty, onTo
           <th style={{ width: 32 }}></th>
           <SortTh sortKeyName="address" {...{sortKey,sortDir,toggleSort}}>Address</SortTh>
           <SortTh sortKeyName="cash_offer" {...{sortKey,sortDir,toggleSort}}>Cash Offer</SortTh>
-          <SortTh sortKeyName="rehab_cost" {...{sortKey,sortDir,toggleSort}}>Rehab</SortTh>
+          <SortTh sortKeyName="rehab_cost" {...{sortKey,sortDir,toggleSort}}>Est. Rehab</SortTh>
           <SortTh sortKeyName="arv" {...{sortKey,sortDir,toggleSort}}>ARV</SortTh>
-          <SortTh sortKeyName="disposition" {...{sortKey,sortDir,toggleSort}}>Disposition</SortTh>
+          <SortTh sortKeyName="stage" {...{sortKey,sortDir,toggleSort}}>Status</SortTh>
           <SortTh sortKeyName="rent_current" {...{sortKey,sortDir,toggleSort}}>Total Rent Current</SortTh>
           <SortTh sortKeyName="market_rent" {...{sortKey,sortDir,toggleSort}}>Total Market Rent</SortTh>
         </tr>
@@ -118,8 +118,6 @@ function PackagePropertiesTable({ pkgProps, onOpenProperty, rentByProperty, onTo
               </td>
             </tr>
             {group.rows.map((p, i) => {
-              const dispColor = DISP_COLORS[p.disposition] || '#9ca3af'
-              const dispLabel = DISP_LABELS[p.disposition]
               const cashOffer = calcCashOffer(p)
               const rent = rentByProperty?.[p.id]
               const excluded = !!p.excluded_from_offer
@@ -147,13 +145,24 @@ function PackagePropertiesTable({ pkgProps, onOpenProperty, rentByProperty, onTo
                   <td style={{ padding: '9px 14px', fontSize: 12, fontFamily: 'monospace', color: '#3B6D11', fontWeight: 600 }}>{cashOffer ? fmt(cashOffer) : '—'}</td>
                   <td style={{ padding: '9px 14px', fontSize: 12, fontFamily: 'monospace', color: '#6b7280' }}>{fmt(p.rehab_cost)||'—'}</td>
                   <td style={{ padding: '9px 14px', fontSize: 12, fontFamily: 'monospace', fontWeight: 700 }}>{fmt(p.arv)||'—'}</td>
-                  <td style={{ padding: '9px 14px' }}>
-                    {dispLabel ? (
-                      <span style={{ background: dispColor + '20', color: dispColor, border: `1px solid ${dispColor}40`, borderRadius: 4, padding: '2px 7px', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.8 }}>
-                        {dispLabel}
-                      </span>
+                  <td style={{ padding: '9px 14px' }} onClick={e => e.stopPropagation()}>
+                    {(!p.stage || p.stage === 'Analyzing') ? (
+                      <div style={{ display: 'flex', gap: 6 }}>
+                        <button
+                          onClick={() => onPromote(p, PROMO_PAYLOADS['Renovation'])}
+                          style={{ background: 'none', border: '1px solid #3B6D1155', color: '#3B6D11', borderRadius: 5, padding: '3px 7px', fontSize: 10, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}
+                        >Mark Purchased</button>
+                        <button
+                          onClick={() => onPromote(p, { ...PROMO_PAYLOADS['Renovation'], stage: 'Rehab' })}
+                          style={{ background: 'none', border: '1px solid #D9782555', color: '#D97825', borderRadius: 5, padding: '3px 7px', fontSize: 10, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}
+                        >Send to Rehab</button>
+                      </div>
                     ) : (
-                      <span style={{ fontSize: 11, color: '#9ca3af' }}>Analyzing</span>
+                      (() => { const c = STAGE_COLORS[p.stage] || '#9ca3af'; return (
+                        <span style={{ background: c + '20', color: c, border: `1px solid ${c}40`, borderRadius: 4, padding: '2px 7px', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.8 }}>
+                          {p.stage}
+                        </span>
+                      )})()
                     )}
                   </td>
                   <td style={{ padding: '9px 14px', fontSize: 12, fontFamily: 'monospace', color: '#3B6D11', fontWeight: 600 }}>{rent?.current ? fmt(rent.current) : '—'}</td>
@@ -404,7 +413,7 @@ function loadGoogleMaps() {
 // totals by default, and switches to the selected property's own quick
 // summary when a row is opened (mirrors PropertyFullView's meta rail, just
 // on the opposite side and always present).
-function PortfolioSummaryBar({ properties, rentByProperty }) {
+function PortfolioSummaryFooter({ properties, rentByProperty }) {
   const included = (properties||[]).filter(p => !p.excluded_from_offer)
   const totals = included.reduce((acc, p) => ({
     cashOffer: acc.cashOffer + (calcCashOffer(p) || 0),
@@ -413,41 +422,33 @@ function PortfolioSummaryBar({ properties, rentByProperty }) {
     marketRent: acc.marketRent + (rentByProperty?.[p.id]?.market || 0),
   }), { cashOffer: 0, arv: 0, rentCurrent: 0, marketRent: 0 })
 
-  const label = { fontSize: 10, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: 0.6, fontWeight: 700, marginBottom: 3 }
-  const stat = { flex: '1 1 130px', minWidth: 130, background: '#fff', border: '1px solid #F0EDE6', borderRadius: 8, padding: '10px 12px' }
+  const label = { fontSize: 9.5, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: 0.6, fontWeight: 700, marginBottom: 2 }
+  const Stat = ({ children: valueEl, title, color }) => (
+    <div style={{ flexShrink: 0 }}>
+      <div style={label}>{title}</div>
+      <div style={{ fontSize: 14, fontWeight: 700, color: color || '#2C2C2C', fontFamily: 'monospace' }}>{valueEl}</div>
+    </div>
+  )
 
   return (
-    <div style={{ padding: '20px 24px' }}>
-      <div style={{ fontSize: 12, fontWeight: 700, color: '#B8892A', textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 14 }}>Portfolio Summary</div>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
-        <div style={stat}>
-          <div style={label}>Properties Included</div>
-          <div style={{ fontSize: 16, fontWeight: 700, color: '#2C2C2C' }}>{included.length} <span style={{ fontSize: 12, fontWeight: 500, color: '#9ca3af' }}>of {properties.length}</span></div>
-        </div>
-        <div style={{ ...stat, borderTop: '3px solid #3B6D11' }}>
-          <div style={label}>Total Cash Offer</div>
-          <div style={{ fontSize: 16, fontWeight: 700, color: '#3B6D11', fontFamily: 'monospace' }}>{totals.cashOffer ? fmt(totals.cashOffer) : '—'}</div>
-        </div>
-        <div style={stat}>
-          <div style={label}>Combined ARV</div>
-          <div style={{ fontSize: 15, fontWeight: 700, color: '#2C2C2C', fontFamily: 'monospace' }}>{totals.arv ? fmt(totals.arv) : '—'}</div>
-        </div>
-        <div style={stat}>
-          <div style={label}>Total Rent Current</div>
-          <div style={{ fontSize: 14, fontWeight: 700, color: '#3B6D11', fontFamily: 'monospace' }}>{totals.rentCurrent ? fmt(totals.rentCurrent) : '—'}</div>
-        </div>
-        <div style={stat}>
-          <div style={label}>Total Market Rent</div>
-          <div style={{ fontSize: 14, fontWeight: 700, color: '#6b7280', fontFamily: 'monospace' }}>{totals.marketRent ? fmt(totals.marketRent) : '—'}</div>
-        </div>
-      </div>
-      <div style={{ fontSize: 10.5, color: '#9ca3af', marginTop: 16, lineHeight: 1.5 }}>Click a property to see its full detail here. Greyed-out (excluded) properties aren't counted above.</div>
+    <div style={{
+      flexShrink: 0, borderTop: '2px solid #B8892A', background: '#fff',
+      padding: '10px 24px', display: 'flex', alignItems: 'center', gap: 26,
+      overflowX: 'auto', whiteSpace: 'nowrap',
+    }}>
+      <div style={{ fontSize: 11, fontWeight: 700, color: '#B8892A', textTransform: 'uppercase', letterSpacing: 0.6, flexShrink: 0 }}>Portfolio Summary</div>
+      <Stat title="Properties Included">{included.length} <span style={{ fontSize: 11, fontWeight: 500, color: '#9ca3af', fontFamily: 'inherit' }}>of {properties.length}</span></Stat>
+      <Stat title="Total Cash Offer" color="#3B6D11">{totals.cashOffer ? fmt(totals.cashOffer) : '—'}</Stat>
+      <Stat title="Combined ARV">{totals.arv ? fmt(totals.arv) : '—'}</Stat>
+      <Stat title="Total Rent Current" color="#3B6D11">{totals.rentCurrent ? fmt(totals.rentCurrent) : '—'}</Stat>
+      <Stat title="Total Market Rent" color="#6b7280">{totals.marketRent ? fmt(totals.marketRent) : '—'}</Stat>
+      <div style={{ fontSize: 10, color: '#9ca3af', marginLeft: 'auto', flexShrink: 0 }}>Excluded properties aren't counted above.</div>
     </div>
   )
 }
 
 export default function PropertyMapModal({
-  properties: initialProperties, packageName, fubLink, pkg, onClose, onSaveProperty, onSavePackage, onDeletePackage, onAddProperty, isAgentRole, currentUserEmail, defaultView='list' }) {
+  properties: initialProperties, packageName, fubLink, pkg, onClose, onSaveProperty, onAddProperty, isAgentRole, currentUserEmail, defaultView='list' }) {
   const mapRef = useRef(null)
   const mapInstanceRef = useRef(null)
   const markersRef = useRef([])
@@ -469,29 +470,6 @@ export default function PropertyMapModal({
   const [portfolioProposalOpen, setPortfolioProposalOpen] = useState(false)
   // Aggregated per-property rent figures for the list table: { [property_id]: { current, market } }
   const [rentByProperty, setRentByProperty] = useState({})
-  // Package metadata edit panel — rendered inline (same overlay) instead of a separate Drawer
-  const [editingMeta, setEditingMeta] = useState(false)
-  const [metaForm, setMetaForm] = useState({})
-  const [metaSaving, setMetaSaving] = useState(false)
-
-  function openMetaEdit() {
-    setMetaForm({ deal_name: pkg?.deal_name || '', notes: pkg?.notes || '', fub_link: pkg?.fub_link || '' })
-    setEditingMeta(true)
-  }
-
-  async function saveMeta() {
-    if (!metaForm.deal_name) return
-    setMetaSaving(true)
-    await onSavePackage({ deal_name: metaForm.deal_name, notes: metaForm.notes || null, fub_link: metaForm.fub_link || null })
-    setMetaSaving(false)
-    setEditingMeta(false)
-  }
-
-  async function deleteMeta() {
-    if (!confirm('Delete this package and all its properties? This cannot be undone.')) return
-    await onDeletePackage()
-  }
-
   // Add-property panel — rendered inline (same overlay), same pattern as the package metadata panel
   const [addingProperty, setAddingProperty] = useState(false)
   const [newAddress, setNewAddress] = useState('')
@@ -508,6 +486,19 @@ export default function PropertyMapModal({
       setProperties(prev => prev.map(x => x.id === p.id ? { ...x, excluded_from_offer: !nextVal } : x))
       alert(`Couldn't update this property.\n\n${error.message}`)
     }
+  }
+
+  // Promote a property's stage/type from the package list (e.g. Mark Purchased, Send to Rehab)
+  async function promoteProperty(p, payload) {
+    const prevValues = { type: p.type, stage: p.stage, disposition: p.disposition }
+    setProperties(prev => prev.map(x => x.id === p.id ? { ...x, ...payload } : x))
+    const { error } = await supabase.from('cashoffer_properties').update(payload).eq('id', p.id)
+    if (error) {
+      setProperties(prev => prev.map(x => x.id === p.id ? { ...x, ...prevValues } : x))
+      alert(`Couldn't update this property.\n\n${error.message}`)
+      return
+    }
+    onSaveProperty && onSaveProperty()
   }
 
   function openAddProperty() {
@@ -830,11 +821,6 @@ export default function PropertyMapModal({
             <button onClick={() => setPortfolioProposalOpen(true)} style={{ background:'#2C2C2C', border:'none', borderRadius:6, padding:'6px 12px', fontSize:11.5, fontWeight:700, color:'#fff', cursor:'pointer', fontFamily:'inherit', whiteSpace:'nowrap', flexShrink:0 }}>
               Portfolio Offer
             </button>
-            {onSavePackage && (
-              <button onClick={openMetaEdit} style={{ background:'#F0EDE6', border:'none', borderRadius:6, padding:'6px 12px', fontSize:11.5, fontWeight:600, color:'#6b7280', cursor:'pointer', fontFamily:'inherit', whiteSpace:'nowrap', flexShrink:0 }}>
-                Edit
-              </button>
-            )}
             <button onClick={onClose} style={{
               background: 'none', border: 'none', fontSize: 20, cursor: 'pointer',
               color: '#9ca3af', lineHeight: 1, padding: 4, flexShrink: 0,
@@ -865,7 +851,7 @@ export default function PropertyMapModal({
           {/* List view */}
           {view==='list' && (
             <div style={{ flex: 1, minWidth: 0, overflowY: 'auto' }}>
-              <PackagePropertiesTable pkgProps={properties} onOpenProperty={setDrawerProp} rentByProperty={rentByProperty} onToggleExclude={toggleExclude} />
+              <PackagePropertiesTable pkgProps={properties} onOpenProperty={setDrawerProp} rentByProperty={rentByProperty} onToggleExclude={toggleExclude} onPromote={promoteProperty} />
             </div>
           )}
 
@@ -875,82 +861,6 @@ export default function PropertyMapModal({
             minWidth: 0,
             display: view==='map' ? 'block' : 'none',
           }} />
-
-          {/* Package metadata edit panel — inline, same overlay (avoids the separate-Drawer unmount bug) */}
-          {editingMeta && (
-            <div style={{
-              width: 420,
-              flexShrink: 0,
-              borderLeft: '1px solid #F0EDE6',
-              background: '#fff',
-              overflowY: 'auto',
-              display: 'flex',
-              flexDirection: 'column',
-              animation: 'slideInRight 0.2s ease',
-            }}>
-              <style>{`
-                @keyframes slideInRight {
-                  from { transform: translateX(100%); opacity: 0; }
-                  to   { transform: translateX(0);    opacity: 1; }
-                }
-              `}</style>
-              <div style={{
-                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                padding: '12px 16px', borderBottom: '1px solid #F0EDE6',
-                background: '#FAFAF8', flexShrink: 0, position: 'sticky', top: 0, zIndex: 5,
-              }}>
-                <div style={{ fontSize: 13, fontWeight: 700, color: '#2C2C2C' }}>Edit Package</div>
-                <button
-                  onClick={() => setEditingMeta(false)}
-                  style={{ background: 'none', border: 'none', fontSize: 18, cursor: 'pointer', color: '#9ca3af', padding: 4 }}
-                >✕</button>
-              </div>
-              <div style={{ flex: 1, padding: 16, display: 'flex', flexDirection: 'column', gap: 14 }}>
-                <div>
-                  <label style={{ fontSize: 11, fontWeight: 600, color: '#6b7280', display: 'block', marginBottom: 4 }}>Package Name</label>
-                  <input
-                    style={{ width: '100%', boxSizing: 'border-box', border: '1px solid #D6D2CA', borderRadius: 6, padding: '8px 10px', fontSize: 13, fontFamily: 'inherit' }}
-                    value={metaForm.deal_name || ''}
-                    onChange={e => setMetaForm(f => ({ ...f, deal_name: e.target.value }))}
-                    placeholder="Central KY Portfolio — 35 Properties"
-                  />
-                </div>
-                <div>
-                  <label style={{ fontSize: 11, fontWeight: 600, color: '#6b7280', display: 'block', marginBottom: 4 }}>Notes</label>
-                  <textarea
-                    style={{ width: '100%', boxSizing: 'border-box', border: '1px solid #D6D2CA', borderRadius: 6, padding: '8px 10px', fontSize: 13, fontFamily: 'inherit', minHeight: 72, resize: 'vertical' }}
-                    value={metaForm.notes || ''}
-                    onChange={e => setMetaForm(f => ({ ...f, notes: e.target.value }))}
-                    placeholder="Seller context, deal overview..."
-                  />
-                </div>
-                <div>
-                  <label style={{ fontSize: 11, fontWeight: 600, color: '#6b7280', display: 'block', marginBottom: 4 }}>FUB Link</label>
-                  <input
-                    style={{ width: '100%', boxSizing: 'border-box', border: '1px solid #D6D2CA', borderRadius: 6, padding: '8px 10px', fontSize: 13, fontFamily: 'inherit' }}
-                    value={metaForm.fub_link || ''}
-                    onChange={e => setMetaForm(f => ({ ...f, fub_link: e.target.value }))}
-                    placeholder="https://app.followupboss.com/people/view/…"
-                  />
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 8, paddingTop: 12, borderTop: '1px solid #F0EDE6' }}>
-                  {onDeletePackage && (
-                    <button onClick={deleteMeta} style={{ background: 'none', border: '1px solid #E5B8B8', color: '#B22020', borderRadius: 6, padding: '7px 12px', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
-                      Delete Package
-                    </button>
-                  )}
-                  <div style={{ display: 'flex', gap: 8, marginLeft: 'auto' }}>
-                    <button onClick={() => setEditingMeta(false)} style={{ background: 'none', border: '1px solid #D6D2CA', borderRadius: 6, padding: '7px 14px', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', color: '#6b7280' }}>
-                      Cancel
-                    </button>
-                    <button onClick={saveMeta} disabled={metaSaving || !metaForm.deal_name} style={{ background: '#B8892A', border: 'none', borderRadius: 6, padding: '7px 14px', fontSize: 12, fontWeight: 700, cursor: metaSaving ? 'default' : 'pointer', fontFamily: 'inherit', color: '#fff', opacity: (metaSaving || !metaForm.deal_name) ? 0.6 : 1 }}>
-                      {metaSaving ? 'Saving…' : 'Save'}
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
 
           {/* Add-property panel — inline, same overlay (matches the package-edit pattern) */}
           {addingProperty && (
@@ -998,59 +908,61 @@ export default function PropertyMapModal({
             </div>
           )}
 
-          {/* Persistent right-hand panel — always present in the same spot. Shows the
-              property drawer when a row is open, otherwise the portfolio summary. */}
-          <div style={{
-            width: 480,
-            flexShrink: 0,
-            borderLeft: '1px solid #F0EDE6',
-            background: '#fff',
-            overflowY: 'auto',
-            display: 'flex',
-            flexDirection: 'column',
-          }}>
-            {drawerProp ? (
-              <>
-                {/* Drawer header */}
-                <div style={{
-                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                  padding: '12px 16px', borderBottom: '1px solid #F0EDE6',
-                  background: '#FAFAF8', flexShrink: 0, position: 'sticky', top: 0, zIndex: 5,
-                }}>
-                  <div>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: '#2C2C2C', lineHeight: 1.3 }}>
-                      {drawerProp.address}
-                    </div>
-                    <div style={{ fontSize: 11, color: cityColor(cityFromAddress(drawerProp.address)), marginTop: 2, fontWeight: 600 }}>
-                      {cityFromAddress(drawerProp.address)}
-                      {(drawerProp.unit_count || 1) > 1 && ` · ★ ${drawerProp.unit_count} units`}
-                    </div>
+          {/* Property drawer panel — slides in from the right, overlays the map or list */}
+          {drawerProp && (
+            <div style={{
+              width: 480,
+              flexShrink: 0,
+              borderLeft: '1px solid #F0EDE6',
+              background: '#fff',
+              overflowY: 'auto',
+              display: 'flex',
+              flexDirection: 'column',
+              animation: 'slideInRight 0.2s ease',
+            }}>
+              <style>{`
+                @keyframes slideInRight {
+                  from { transform: translateX(100%); opacity: 0; }
+                  to   { transform: translateX(0);    opacity: 1; }
+                }
+              `}</style>
+              {/* Drawer header */}
+              <div style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                padding: '12px 16px', borderBottom: '1px solid #F0EDE6',
+                background: '#FAFAF8', flexShrink: 0, position: 'sticky', top: 0, zIndex: 5,
+              }}>
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: '#2C2C2C', lineHeight: 1.3 }}>
+                    {drawerProp.address}
                   </div>
-                  <button
-                    onClick={handleDrawerClose}
-                    style={{ background: 'none', border: 'none', fontSize: 18, cursor: 'pointer', color: '#9ca3af', padding: 4 }}
-                  >✕</button>
+                  <div style={{ fontSize: 11, color: cityColor(cityFromAddress(drawerProp.address)), marginTop: 2, fontWeight: 600 }}>
+                    {cityFromAddress(drawerProp.address)}
+                    {(drawerProp.unit_count || 1) > 1 && ` · ★ ${drawerProp.unit_count} units`}
+                  </div>
                 </div>
+                <button
+                  onClick={handleDrawerClose}
+                  style={{ background: 'none', border: 'none', fontSize: 18, cursor: 'pointer', color: '#9ca3af', padding: 4 }}
+                >✕</button>
+              </div>
 
-                {/* Inline PropertyDrawer content — rendered inside our panel */}
-                <div style={{ flex: 1 }}>
-                  <PropertyDrawer
-                    property={drawerProp}
-                    open={true}
-                    onClose={handleDrawerClose}
-                    onSave={handleSave}
-                    mailings={[]}
-                    onViewOffer={p => setProposal(p)}
-                    inlineMode={true}
-                    isAgentRole={isAgentRole}
-                    currentUserEmail={currentUserEmail}
-                  />
-                </div>
-              </>
-            ) : (
-              <PortfolioSummaryBar properties={properties} rentByProperty={rentByProperty} />
-            )}
-          </div>
+              {/* Inline PropertyDrawer content — rendered inside our panel */}
+              <div style={{ flex: 1 }}>
+                <PropertyDrawer
+                  property={drawerProp}
+                  open={true}
+                  onClose={handleDrawerClose}
+                  onSave={handleSave}
+                  mailings={[]}
+                  onViewOffer={p => setProposal(p)}
+                  inlineMode={true}
+                  isAgentRole={isAgentRole}
+                  currentUserEmail={currentUserEmail}
+                />
+              </div>
+            </div>
+          )}
           {proposal && <ProposalModal property={proposal} onClose={() => setProposal(null)} />}
           {portfolioProposalOpen && (
             <PortfolioProposalModal
@@ -1060,6 +972,9 @@ export default function PropertyMapModal({
             />
           )}
         </div>
+
+        {/* Portfolio summary footer — always visible across the bottom, regardless of list/map view or drawer state */}
+        <PortfolioSummaryFooter properties={properties} rentByProperty={rentByProperty} />
       </div>
     </div>
   )
