@@ -66,7 +66,7 @@ function EyeToggle({ excluded, onClick }) {
 
 // Properties table for the List view — its own component (not inline JSX)
 // because useSort is a hook and needs a stable component instance.
-function PackagePropertiesTable({ pkgProps, onOpenProperty, rentByProperty, onToggleExclude, onPromote }) {
+function PackagePropertiesTable({ pkgProps, onOpenProperty, rentByProperty, onToggleExclude, onPromote, onGenerateSectionOffer }) {
   const { sorted, sortKey, sortDir, toggleSort } = useSort(pkgProps, 'address', 'asc', {
     cash_offer: p => calcCashOffer(p),
     stage: p => p.stage || 'Analyzing',
@@ -163,17 +163,22 @@ function PackagePropertiesTable({ pkgProps, onOpenProperty, rentByProperty, onTo
                 </tr>
               )
             })}
-            <tr style={{ background: '#FAFAF8', borderTop: '1px solid #E5E0D5' }}>
+            <tr style={{ background: '#FBF6EA', borderTop: '1.5px solid #E8D9B5', borderBottom: '1.5px solid #E8D9B5' }}>
               <td></td>
-              <td style={{ padding: '7px 14px', fontSize: 10.5, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+              <td style={{ padding: '8px 14px', fontSize: 11, fontWeight: 800, color: '#8a6d1f', textTransform: 'uppercase', letterSpacing: 0.6 }}>
                 {group.label} Subtotal{groupTotal.count < group.rows.length ? ` (${groupTotal.count} of ${group.rows.length} included)` : ''}
               </td>
-              <td style={{ padding: '7px 14px', fontSize: 12, fontFamily: 'monospace', color: '#3B6D11', fontWeight: 700 }}>{groupTotal.rentCurrent ? fmt(groupTotal.rentCurrent) : '—'}</td>
-              <td style={{ padding: '7px 14px', fontSize: 12, fontFamily: 'monospace', color: '#6b7280', fontWeight: 600 }}>{groupTotal.marketRent ? fmt(groupTotal.marketRent) : '—'}</td>
-              <td style={{ padding: '7px 14px', fontSize: 12, fontFamily: 'monospace', color: '#3B6D11', fontWeight: 700 }}>{groupTotal.cashOffer ? fmt(groupTotal.cashOffer) : '—'}</td>
-              <td style={{ padding: '7px 14px', fontSize: 12, fontFamily: 'monospace', color: '#6b7280', fontWeight: 600 }}>{groupTotal.rehab ? fmt(groupTotal.rehab) : '—'}</td>
-              <td style={{ padding: '7px 14px', fontSize: 12, fontFamily: 'monospace', fontWeight: 700 }}>{groupTotal.arv ? fmt(groupTotal.arv) : '—'}</td>
-              <td></td>
+              <td style={{ padding: '8px 14px', fontSize: 12.5, fontFamily: 'monospace', color: '#3B6D11', fontWeight: 800 }}>{groupTotal.rentCurrent ? fmt(groupTotal.rentCurrent) : '—'}</td>
+              <td style={{ padding: '8px 14px', fontSize: 12.5, fontFamily: 'monospace', color: '#6b7280', fontWeight: 700 }}>{groupTotal.marketRent ? fmt(groupTotal.marketRent) : '—'}</td>
+              <td style={{ padding: '8px 14px', fontSize: 12.5, fontFamily: 'monospace', color: '#3B6D11', fontWeight: 800 }}>{groupTotal.cashOffer ? fmt(groupTotal.cashOffer) : '—'}</td>
+              <td style={{ padding: '8px 14px', fontSize: 12.5, fontFamily: 'monospace', color: '#6b7280', fontWeight: 700 }}>{groupTotal.rehab ? fmt(groupTotal.rehab) : '—'}</td>
+              <td style={{ padding: '8px 14px', fontSize: 12.5, fontFamily: 'monospace', fontWeight: 800 }}>{groupTotal.arv ? fmt(groupTotal.arv) : '—'}</td>
+              <td style={{ padding: '8px 14px' }}>
+                <button
+                  onClick={() => onGenerateSectionOffer(group)}
+                  style={{ background:'#2C2C2C', border:'none', borderRadius:5, padding:'4px 9px', fontSize:10, fontWeight:700, color:'#fff', cursor:'pointer', fontFamily:'inherit', whiteSpace:'nowrap' }}
+                >Generate Offer</button>
+              </td>
             </tr>
           </Fragment>
         )})}
@@ -456,7 +461,7 @@ export default function PropertyMapModal({
   // Property currently open in the side drawer (null = drawer closed)
   const [drawerProp, setDrawerProp] = useState(null)
   const [proposal, setProposal] = useState(null)
-  const [portfolioProposalOpen, setPortfolioProposalOpen] = useState(false)
+  const [proposalScope, setProposalScope] = useState(null) // null | { label, rows } — label is null for the whole portfolio
   // Aggregated per-property rent figures for the list table: { [property_id]: { current, market } }
   const [rentByProperty, setRentByProperty] = useState({})
   // Add-property panel — rendered inline (same overlay), same pattern as the package metadata panel
@@ -839,7 +844,7 @@ export default function PropertyMapModal({
           {/* List view */}
           {view==='list' && (
             <div style={{ flex: 1, minWidth: 0, overflowY: 'auto' }}>
-              <PackagePropertiesTable pkgProps={properties} onOpenProperty={setDrawerProp} rentByProperty={rentByProperty} onToggleExclude={toggleExclude} onPromote={promoteProperty} />
+              <PackagePropertiesTable pkgProps={properties} onOpenProperty={setDrawerProp} rentByProperty={rentByProperty} onToggleExclude={toggleExclude} onPromote={promoteProperty} onGenerateSectionOffer={group => setProposalScope({ label: group.label, rows: group.rows })} />
             </div>
           )}
 
@@ -952,17 +957,17 @@ export default function PropertyMapModal({
             </div>
           )}
           {proposal && <ProposalModal property={proposal} onClose={() => setProposal(null)} />}
-          {portfolioProposalOpen && (
+          {proposalScope && (
             <PortfolioProposalModal
-              packageName={packageName}
-              properties={properties}
-              onClose={() => setPortfolioProposalOpen(false)}
+              packageName={proposalScope.label ? `${packageName} — ${proposalScope.label}` : packageName}
+              properties={proposalScope.rows}
+              onClose={() => setProposalScope(null)}
             />
           )}
         </div>
 
         {/* Portfolio summary footer — always visible across the bottom, regardless of list/map view or drawer state */}
-        <PortfolioSummaryFooter properties={properties} rentByProperty={rentByProperty} onOpenPortfolioOffer={() => setPortfolioProposalOpen(true)} />
+        <PortfolioSummaryFooter properties={properties} rentByProperty={rentByProperty} onOpenPortfolioOffer={() => setProposalScope({ label: null, rows: properties })} />
       </div>
     </div>
   )
