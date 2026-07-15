@@ -759,12 +759,13 @@ export default function PropertyMapModal({
       position: 'fixed', inset: 0, zIndex: 500,
       background: 'rgba(0,0,0,0.55)',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
+      padding: 20,
     }}
       onClick={e => { if (e.target === e.currentTarget) onClose() }}
     >
       <div style={{
         background: '#fff', borderRadius: 12, overflow: 'hidden',
-        width: 'min(1200px, 96vw)', height: 'min(780px, 94vh)',
+        width: '100%', maxWidth: 1400, height: '92vh',
         display: 'flex', flexDirection: 'column',
         boxShadow: '0 8px 40px rgba(0,0,0,0.3)',
         position: 'relative',
