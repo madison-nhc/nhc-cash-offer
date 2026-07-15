@@ -147,16 +147,10 @@ function PackagePropertiesTable({ pkgProps, onOpenProperty, rentByProperty, onTo
                   <td style={{ padding: '9px 14px', fontSize: 12, fontFamily: 'monospace', fontWeight: 700 }}>{fmt(p.arv)||'—'}</td>
                   <td style={{ padding: '9px 14px' }} onClick={e => e.stopPropagation()}>
                     {(!p.stage || p.stage === 'Analyzing') ? (
-                      <div style={{ display: 'flex', gap: 6 }}>
-                        <button
-                          onClick={() => onPromote(p, PROMO_PAYLOADS['Renovation'])}
-                          style={{ background: 'none', border: '1px solid #3B6D1155', color: '#3B6D11', borderRadius: 5, padding: '3px 7px', fontSize: 10, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}
-                        >Mark Purchased</button>
-                        <button
-                          onClick={() => onPromote(p, { ...PROMO_PAYLOADS['Renovation'], stage: 'Rehab' })}
-                          style={{ background: 'none', border: '1px solid #D9782555', color: '#D97825', borderRadius: 5, padding: '3px 7px', fontSize: 10, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}
-                        >Send to Rehab</button>
-                      </div>
+                      <button
+                        onClick={() => onPromote(p, PROMO_PAYLOADS['Renovation'])}
+                        style={{ background: 'none', border: '1px solid #3B6D1155', color: '#3B6D11', borderRadius: 5, padding: '3px 7px', fontSize: 10, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}
+                      >Mark Purchased</button>
                     ) : (
                       (() => { const c = STAGE_COLORS[p.stage] || '#9ca3af'; return (
                         <span style={{ background: c + '20', color: c, border: `1px solid ${c}40`, borderRadius: 4, padding: '2px 7px', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.8 }}>
@@ -488,7 +482,8 @@ export default function PropertyMapModal({
     }
   }
 
-  // Promote a property's stage/type from the package list (e.g. Mark Purchased, Send to Rehab)
+  // Promote a property's stage/type from the package list (e.g. Mark Purchased) — Rehab is the
+  // automatic next phase once Purchased, so it already shows up on the Rehabs page, no extra step needed
   async function promoteProperty(p, payload) {
     const prevValues = { type: p.type, stage: p.stage, disposition: p.disposition }
     setProperties(prev => prev.map(x => x.id === p.id ? { ...x, ...payload } : x))
