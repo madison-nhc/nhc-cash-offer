@@ -400,7 +400,87 @@ function loadGoogleMaps() {
   return mapsLoading
 }
 
-export default function PropertyMapModal({ properties: initialProperties, packageName, fubLink, pkg, onClose, onSaveProperty, onSavePackage, onDeletePackage, onAddProperty, isAgentRole, currentUserEmail, defaultView='list' }) {
+// Persistent left sidebar inside the package overlay — shows portfolio-wide
+// totals by default, and switches to the selected property's own quick
+// summary when a row is opened (mirrors PropertyFullView's meta rail, just
+// on the opposite side and always present).
+function PortfolioSidebar({ properties, selected, rentByProperty }) {
+  const included = (properties||[]).filter(p => !p.excluded_from_offer)
+  const totals = included.reduce((acc, p) => ({
+    cashOffer: acc.cashOffer + (calcCashOffer(p) || 0),
+    arv: acc.arv + (parseFloat(p.arv) || 0),
+    rentCurrent: acc.rentCurrent + (rentByProperty?.[p.id]?.current || 0),
+    marketRent: acc.marketRent + (rentByProperty?.[p.id]?.market || 0),
+  }), { cashOffer: 0, arv: 0, rentCurrent: 0, marketRent: 0 })
+
+  const wrap = { width: 250, flexShrink: 0, borderRight: '1px solid #F0EDE6', background: '#FAFAF8', overflowY: 'auto', padding: '16px 14px' }
+  const label = { fontSize: 10, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: 0.6, fontWeight: 700, marginBottom: 3 }
+  const card = { background: '#fff', border: '1px solid #F0EDE6', borderRadius: 8, padding: '10px 12px', marginBottom: 10 }
+
+  if (!selected) {
+    return (
+      <div style={wrap}>
+        <div style={{ fontSize: 12, fontWeight: 700, color: '#B8892A', textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 12 }}>Portfolio Summary</div>
+        <div style={card}>
+          <div style={label}>Properties Included</div>
+          <div style={{ fontSize: 18, fontWeight: 700, color: '#2C2C2C' }}>{included.length} <span style={{ fontSize: 12, fontWeight: 500, color: '#9ca3af' }}>of {properties.length}</span></div>
+        </div>
+        <div style={{ ...card, borderTop: '3px solid #3B6D11' }}>
+          <div style={label}>Total Cash Offer</div>
+          <div style={{ fontSize: 18, fontWeight: 700, color: '#3B6D11', fontFamily: 'monospace' }}>{totals.cashOffer ? fmt(totals.cashOffer) : '—'}</div>
+        </div>
+        <div style={card}>
+          <div style={label}>Combined ARV</div>
+          <div style={{ fontSize: 15, fontWeight: 700, color: '#2C2C2C', fontFamily: 'monospace' }}>{totals.arv ? fmt(totals.arv) : '—'}</div>
+        </div>
+        <div style={card}>
+          <div style={label}>Total Rent Current</div>
+          <div style={{ fontSize: 14, fontWeight: 700, color: '#3B6D11', fontFamily: 'monospace' }}>{totals.rentCurrent ? fmt(totals.rentCurrent) : '—'}</div>
+        </div>
+        <div style={{ ...card, marginBottom: 0 }}>
+          <div style={label}>Total Market Rent</div>
+          <div style={{ fontSize: 14, fontWeight: 700, color: '#6b7280', fontFamily: 'monospace' }}>{totals.marketRent ? fmt(totals.marketRent) : '—'}</div>
+        </div>
+        <div style={{ fontSize: 10.5, color: '#9ca3af', marginTop: 14, lineHeight: 1.5 }}>Click a property to see its own numbers here. Greyed-out (excluded) properties aren't counted above.</div>
+      </div>
+    )
+  }
+
+  const cashOffer = calcCashOffer(selected)
+  const rent = rentByProperty?.[selected.id]
+  const { street, rest } = splitAddress(selected.address)
+  return (
+    <div style={wrap}>
+      <div style={{ fontSize: 12, fontWeight: 700, color: '#B8892A', textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 8 }}>Selected Property</div>
+      <div style={{ fontSize: 14, fontWeight: 700, color: '#2C2C2C', lineHeight: 1.3 }}>{street}</div>
+      {rest && <div style={{ fontSize: 11, color: '#9ca3af', marginBottom: 12 }}>{rest}</div>}
+      {selected.unit_count > 1 && <div style={{ fontSize: 10, color: '#9ca3af', marginBottom: 12 }}>{selected.unit_count} units</div>}
+      <div style={{ ...card, borderTop: '3px solid #3B6D11', marginTop: 10 }}>
+        <div style={label}>Cash Offer</div>
+        <div style={{ fontSize: 18, fontWeight: 700, color: '#3B6D11', fontFamily: 'monospace' }}>{cashOffer ? fmt(cashOffer) : '—'}</div>
+      </div>
+      <div style={card}>
+        <div style={label}>ARV</div>
+        <div style={{ fontSize: 15, fontWeight: 700, color: '#2C2C2C', fontFamily: 'monospace' }}>{fmt(selected.arv)||'—'}</div>
+      </div>
+      <div style={card}>
+        <div style={label}>Rehab</div>
+        <div style={{ fontSize: 13, fontWeight: 600, color: '#6b7280', fontFamily: 'monospace' }}>{fmt(selected.rehab_cost)||'—'}</div>
+      </div>
+      <div style={card}>
+        <div style={label}>Rent Current</div>
+        <div style={{ fontSize: 13, fontWeight: 700, color: '#3B6D11', fontFamily: 'monospace' }}>{rent?.current ? fmt(rent.current) : '—'}</div>
+      </div>
+      <div style={{ ...card, marginBottom: 0 }}>
+        <div style={label}>Market Rent</div>
+        <div style={{ fontSize: 13, fontWeight: 600, color: '#6b7280', fontFamily: 'monospace' }}>{rent?.market ? fmt(rent.market) : '—'}</div>
+      </div>
+    </div>
+  )
+}
+
+export default function PropertyMapModal({
+  properties: initialProperties, packageName, fubLink, pkg, onClose, onSaveProperty, onSavePackage, onDeletePackage, onAddProperty, isAgentRole, currentUserEmail, defaultView='list' }) {
   const mapRef = useRef(null)
   const mapInstanceRef = useRef(null)
   const markersRef = useRef([])
@@ -797,6 +877,7 @@ export default function PropertyMapModal({ properties: initialProperties, packag
 
         {/* Body + drawer row */}
         <div style={{ flex: 1, position: 'relative', display: 'flex', overflow: 'hidden' }}>
+          <PortfolioSidebar properties={properties} selected={drawerProp} rentByProperty={rentByProperty} />
           {/* Loading overlay (map only) */}
           {view==='map' && loading && (
             <div style={{
