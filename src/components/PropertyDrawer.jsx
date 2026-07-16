@@ -45,6 +45,133 @@ const STAGE_COLOR = {
   Lost:'#9ca3af', 'Cancelled / Expired':'#9ca3af', Cancelled:'#9ca3af',
 }
 
+// Search-and-link to a matching Ops Hub deal (pipeline_deals.cashoffer_property_id
+// points back at this property). Shows the current link (if any) with a button to
+// open it in Ops Hub, plus a search box to link/relink/unlink. Writes happen
+// immediately (not gated behind the drawer's main Save button) since this is a
+// cross-table relationship, not a field on this property row.
+function LinkedOpsDealField({ propertyId, propertyAddress }) {
+  const [linked, setLinked] = useState(undefined) // undefined = loading, null = none
+  const [query, setQuery] = useState('')
+  const [results, setResults] = useState([])
+  const [open, setOpen] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const wrapRef = useRef(null)
+
+  async function loadLinked() {
+    if (!propertyId) { setLinked(null); return }
+    const { data } = await supabase.from('pipeline_deals')
+      .select('id, client_name, property_address, status, primary_agent, deal_type')
+      .eq('cashoffer_property_id', propertyId)
+      .maybeSingle()
+    setLinked(data || null)
+  }
+
+  useEffect(() => { loadLinked() }, [propertyId]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    function handler(e) { if (wrapRef.current && !wrapRef.current.contains(e.target)) setOpen(false) }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [])
+
+  async function search(q) {
+    if (!q || q.trim().length < 2) { setResults([]); setOpen(false); return }
+    setLoading(true)
+    const { data } = await supabase.from('pipeline_deals')
+      .select('id, client_name, property_address, status, primary_agent, deal_type')
+      .or(`client_name.ilike.%${q}%,property_address.ilike.%${q}%`)
+      .limit(8)
+    setResults(data || [])
+    setOpen(true)
+    setLoading(false)
+  }
+
+  function handleChange(e) {
+    const v = e.target.value
+    setQuery(v)
+    search(v)
+  }
+
+  async function linkDeal(dealId) {
+    await supabase.from('pipeline_deals').update({ cashoffer_property_id: propertyId }).eq('id', dealId)
+    setOpen(false)
+    setQuery('')
+    setResults([])
+    loadLinked()
+  }
+
+  async function unlink() {
+    if (!linked) return
+    await supabase.from('pipeline_deals').update({ cashoffer_property_id: null }).eq('id', linked.id)
+    setLinked(null)
+  }
+
+  return (
+    <div>
+      <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 5 }}>
+        Linked Ops Hub Deal
+      </label>
+
+      {linked === undefined ? (
+        <div style={{ fontSize: 12, color: '#9ca3af' }}>Loading…</div>
+      ) : linked ? (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, background: '#FAF6EF', border: '0.5px solid #E8DFC8', borderRadius: 6, padding: '8px 10px' }}>
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: '#2C2C2C' }}>{linked.client_name || linked.property_address || '—'}</div>
+            <div style={{ fontSize: 11, color: '#888', marginTop: 2 }}>
+              {linked.deal_type} · {linked.status}{linked.primary_agent ? ` · ${linked.primary_agent}` : ''}
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+            <button
+              onClick={() => window.open(`https://ops.nhcnow.com/?page=pipeline&deal=${linked.id}`, '_blank', 'noopener,noreferrer')}
+              style={{ background: '#B8892A', border: 'none', borderRadius: 6, padding: '6px 10px', fontSize: 11, fontWeight: 700, color: '#fff', cursor: 'pointer' }}
+            >↗ Open in Ops Hub</button>
+            <button onClick={unlink} title="Unlink" style={{ background: 'none', border: '1px solid #D6D2CA', borderRadius: 6, color: '#9ca3af', cursor: 'pointer', width: 28 }}>×</button>
+          </div>
+        </div>
+      ) : (
+        <div ref={wrapRef} style={{ position: 'relative' }}>
+          <input
+            style={inp}
+            value={query}
+            onChange={handleChange}
+            onFocus={() => { if (results.length > 0) setOpen(true) }}
+            placeholder={propertyAddress ? `Search by client or "${propertyAddress}"` : 'Search Ops Hub by client name or address'}
+          />
+          {open && (loading || results.length > 0) && (
+            <div style={{
+              position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 500, marginTop: 4,
+              background: '#fff', border: '1px solid #E0DDD6', borderRadius: 8,
+              boxShadow: '0 6px 20px rgba(0,0,0,0.14)', maxHeight: 240, overflowY: 'auto',
+            }}>
+              {loading && <div style={{ padding: '10px 12px', fontSize: 12, color: '#9ca3af' }}>Searching…</div>}
+              {!loading && results.length === 0 && (
+                <div style={{ padding: '10px 12px', fontSize: 12, color: '#9ca3af' }}>No matching Ops Hub deals</div>
+              )}
+              {!loading && results.map(d => (
+                <div
+                  key={d.id}
+                  onMouseDown={() => linkDeal(d.id)}
+                  style={{ padding: '9px 12px', cursor: 'pointer', borderBottom: '1px solid #F5F2EB' }}
+                  onMouseEnter={e => e.currentTarget.style.background = '#FAFAF8'}
+                  onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                >
+                  <div style={{ fontSize: 13, fontWeight: 700, color: '#2C2C2C' }}>{d.client_name || '—'}</div>
+                  <div style={{ fontSize: 11, color: '#888', marginTop: 2 }}>
+                    {d.property_address || 'No address'} · {d.deal_type} · {d.status}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
 function stagesForType(type, listingType) {
   const s = STAGE_BY_TYPE[type]
   if (!s) return []
@@ -856,6 +983,9 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
               </Field>
             )}
           </FieldRow>
+
+          <div className="drawer-section">Linked Records</div>
+          <LinkedOpsDealField propertyId={form.id} propertyAddress={form.address} />
 
           <div className="drawer-section">Valuation</div>
 
