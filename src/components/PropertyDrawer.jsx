@@ -895,7 +895,7 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
             </div>
           </Field>
 
-          <FieldRow>
+          <FieldRow forceRow>
             <Field label="Beds">
               {isMultiUnit
                 ? <div style={{ ...monoInp, background:'#FAFAF8', color:'#6b7280', display:'flex', alignItems:'center' }}>{unitTotals.beds || '—'}</div>
@@ -914,7 +914,7 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
           </FieldRow>
 
           {!isMultiUnit && (
-            <FieldRow>
+            <FieldRow forceRow>
               <Field label="Market Rent">
                 <input style={monoInp} type="number" value={form.market_rent||''} onChange={set('market_rent')} placeholder="0" />
               </Field>
@@ -986,9 +986,6 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
             )}
           </FieldRow>
 
-          <div className="drawer-section">Linked Records</div>
-          <LinkedOpsDealField propertyId={form.id} propertyAddress={form.address} />
-
           <div className="drawer-section">Valuation</div>
 
           {form.arv && (
@@ -1039,7 +1036,7 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
               onClick={() => setFullViewOpen(true)}
               style={{ background:'#6b21a8', color:'#fff', border:'none', borderRadius:8, padding:'11px 16px', cursor:'pointer', fontSize:13, fontWeight:700, fontFamily:'inherit', width:'100%', display:'flex', alignItems:'center', justifyContent:'center', gap:8, marginTop:4 }}
             >
-              <span>Open Full Property View (Edit Offer)</span>
+              <span>Open Valuation Workspace</span>
               <span style={{ fontSize:16 }}>&#8599;</span>
             </button>
           )}
@@ -1049,6 +1046,9 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
               View Offer PDF
             </button>
           )}
+          <div className="drawer-section">Linked Records</div>
+          <LinkedOpsDealField propertyId={form.id} propertyAddress={form.address} />
+
           <Field label="Notes"><textarea style={{ ...inp, minHeight:56, resize:'vertical' }} value={form.nhc_notes||''} onChange={set('nhc_notes')} /></Field>
         </div>
       )}

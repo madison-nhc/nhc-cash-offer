@@ -116,10 +116,10 @@ export function PageWrap({ children, pad = true }) {
   )
 }
 
-export function FieldRow({ children }) {
+export function FieldRow({ children, forceRow=false, gap=12 }) {
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 768
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : `repeat(${children.length || 2}, 1fr)`, gap: 12 }}>
+    <div style={{ display: 'grid', gridTemplateColumns: (isMobile && !forceRow) ? '1fr' : `repeat(${children.length || 2}, 1fr)`, gap: (isMobile && forceRow) ? Math.min(gap, 8) : gap }}>
       {children}
     </div>
   )
