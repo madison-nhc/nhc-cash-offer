@@ -141,13 +141,6 @@ const CSS = `
   .reno-tbl tr:nth-child(even) td { background:#f9f9f9; }
   .reno-tbl .total td { background:var(--blue);color:#fff;font-weight:700;border:none;padding:7px 12px; }
 
-  .calc-tbl  { width:100%;border-collapse:collapse;font-size:14px;margin-top:16px; }
-  .calc-tbl td { padding:12px 16px;border-bottom:1px solid #eee; }
-  .calc-tbl td:last-child { text-align:right;font-weight:600;font-family:'Courier New',monospace; }
-  .calc-tbl tr:nth-child(even) td { background:#f9f9f9; }
-  .calc-tbl .total td { background:var(--green);color:#fff;font-weight:800;border:none;padding:16px;font-size:17px; }
-  .calc-tbl .total td:last-child { font-family:'Courier New',monospace; }
-
   /* ── PAGE FOOTER ── */
   .pg-foot { position:absolute;bottom:22px;left:0;right:0;text-align:center;font-size:9.5px;color:#aaa; }
 
@@ -238,31 +231,10 @@ export default function ProposalModal({ property, onClose, embedded=false }) {
         <div class="reno-note" style="font-style:italic;color:#555;font-size:12px;padding:10px 0;">No repairs identified — this property appears to be move-in ready.</div>
       `}
 
-      <div class="pg-foot">New Home Collective · Page 1 of 4</div>
+      <div class="pg-foot">New Home Collective · Page 1 of 3</div>
     </div>
 
-    <!-- ══ PAGE 2 — CASH OFFER CALCULATION ══ -->
-    <div class="pg">
-      ${hdr(addr)}
-      <div class="sec-title" style="margin-top:12px;">How We Calculated Your Cash Offer</div>
-      <p class="intro-text">Our cash offer starts from the property's After Renovation Value, then accounts for the cost of repairs, commission, holding costs, and profit margin — here's the math, line by line.</p>
-
-      <table class="calc-tbl">
-        <tbody>
-          <tr><td>After Renovation Value</td><td>${d$(d.arv)}</td></tr>
-          <tr><td>Repairs</td><td>${d.reno > 0 ? dn$(d.reno) : 'Move-In Ready'}</td></tr>
-          <tr><td>Commission (${(d.commOfferPct*100).toFixed(1).replace(/\.0$/,'')}% of offer)</td><td>${dn$(d.commOfferAmt)}</td></tr>
-          <tr><td>Commission (${(d.commArvPct*100).toFixed(1).replace(/\.0$/,'')}% of ARV)</td><td>${dn$(d.commArvAmt)}</td></tr>
-          <tr><td>Holding Costs (${d.cashHoldMo} months)</td><td>${dn$(d.cashHold)}</td></tr>
-          <tr><td>Profit Margin</td><td>${dn$(d.profit)}</td></tr>
-          <tr class="total"><td>CASH OFFER</td><td>${d$(d.cashOffer)}</td></tr>
-        </tbody>
-      </table>
-
-      <div class="pg-foot">New Home Collective · Page 2 of 4</div>
-    </div>
-
-    <!-- ══ PAGE 3 — THREE-OPTION OFFER ══ -->
+    <!-- ══ PAGE 2 — THREE-OPTION OFFER ══ -->
     <div class="pg">
       ${hdr(addr)}
       <div class="sec-title" style="margin-top:12px;">Three-Option Offer</div>
@@ -272,9 +244,14 @@ export default function ProposalModal({ property, onClose, embedded=false }) {
         <div class="opt-hdr"><div class="opt-title">OPTION 1 — CASH OFFER</div><div class="opt-sub">Fast, As-Is, No Hassle</div></div>
         <div class="opt-body">
           <div class="opt-left">
-            <div class="price-lbl">Purchase Price</div>
-            <div class="price-num" style="color:var(--green)">${d$(d.cashOffer)}</div>
-            <div class="net-row" style="color:var(--green)"><span>Net to Seller:</span><span>${d$(d.cashOffer)}</span></div>
+            <div class="price-lbl">After Renovation Value</div>
+            <div class="price-num" style="color:var(--green)">${d$(d.arv)}</div>
+            <div class="less-ttl">Less Costs:</div>
+            <div class="less-row"><span>Repairs:</span><span>${d.reno > 0 ? dn$(d.reno) : "Move-In Ready"}</span></div>
+            <div class="less-row"><span>Commission:</span><span>${dn$(d.commOfferAmt + d.commArvAmt)}</span></div>
+            <div class="less-row"><span>Holding (${d.cashHoldMo} mo):</span><span>${dn$(d.cashHold)}</span></div>
+            <div class="less-row"><span>Profit Margin:</span><span>${dn$(d.profit)}</span></div>
+            <div class="net-row" style="color:var(--green)"><span>Cash Offer:</span><span>${d$(d.cashOffer)}</span></div>
           </div>
           <div class="opt-right">
             <div class="bul-ttl">Highlights</div>
@@ -335,10 +312,10 @@ export default function ProposalModal({ property, onClose, embedded=false }) {
         </div>
       </div>
 
-      <div class="pg-foot">New Home Collective · Page 3 of 4</div>
+      <div class="pg-foot">New Home Collective · Page 2 of 3</div>
     </div>
 
-    <!-- ══ PAGE 4 ══ -->
+    <!-- ══ PAGE 3 ══ -->
     <div class="pg">
       ${hdr(addr)}
       <div class="sec-title" style="margin-top:12px;">Seller Comparison</div>
@@ -363,7 +340,7 @@ export default function ProposalModal({ property, onClose, embedded=false }) {
         <div><div class="fn">NEW HOME COLLECTIVE</div><div class="fs">Real Estate Solutions · Lexington, KY</div></div>
       </div>
 
-      <div class="pg-foot">New Home Collective · Page 4 of 4</div>
+      <div class="pg-foot">New Home Collective · Page 3 of 3</div>
     </div>
   `
 
@@ -407,7 +384,7 @@ export default function ProposalModal({ property, onClose, embedded=false }) {
           </button>
           {!embedded && <button className="btn-close" onClick={onClose}>✕ Close</button>}
           <span className="tip">Downloads as a PDF matching this preview exactly</span>
-          <span className="page-info">4 pages</span>
+          <span className="page-info">3 pages</span>
         </div>
         <div id="prop-canvas" ref={canvasRef} dangerouslySetInnerHTML={{ __html: pages }} />
       </div>
