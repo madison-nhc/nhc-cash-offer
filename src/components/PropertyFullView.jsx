@@ -192,6 +192,7 @@ export default function PropertyFullView({ propertyId, onClose, isAgentRole=fals
   const [notifying, setNotifying] = useState(false)
   const [offerSnapshot, setOfferSnapshot] = useState(null)
   const [offerGeneratedAt, setOfferGeneratedAt] = useState(null)
+  const [showOfferModal, setShowOfferModal] = useState(false)
   const saveTimer = useRef(null)
   const loadedRef = useRef(false)
 
@@ -298,6 +299,113 @@ export default function PropertyFullView({ propertyId, onClose, isAgentRole=fals
 
   const d = calcOffers(property, repairs)
 
+  const valuationBody = (
+    <>
+          <div className="drawer-section">Valuation</div>
+          <Field label="After Renovation Value ($)">
+            <input style={{ ...monoInp, borderLeft:'3px solid #D97825', opacity: isAgentRole ? 0.6 : 1 }} type="number" value={property.arv??''} onChange={set('arv')} disabled={isAgentRole} />
+          </Field>
+          <FieldRow>
+            <Field label="As-Is Deduction %"><input style={{ ...monoInp, minHeight:34, opacity: isAgentRole ? 0.6 : 1 }} type="number" placeholder="50" value={property.asis_pct??''} onChange={set('asis_pct')} disabled={isAgentRole} /></Field>
+            <Field label="As-Is Override ($)"><input style={{ ...monoInp, minHeight:34, opacity: isAgentRole ? 0.6 : 1 }} type="number" value={property.asis_override??''} onChange={set('asis_override')} disabled={isAgentRole} /></Field>
+          </FieldRow>
+          <FieldRow>
+            <Field label="Profit Margin %"><input style={{ ...monoInp, minHeight:34, opacity: isAgentRole ? 0.6 : 1 }} type="number" placeholder="15" value={property.profit_margin??''} onChange={set('profit_margin')} disabled={isAgentRole} /></Field>
+            <Field label="Cash Offer Override ($)"><input style={{ ...monoInp, minHeight:34, opacity: isAgentRole ? 0.6 : 1 }} type="number" value={property.cash_offer_override??''} onChange={set('cash_offer_override')} disabled={isAgentRole} /></Field>
+          </FieldRow>
+
+          <div style={{ fontSize:10, fontWeight:700, color:'#2D6FAF', textTransform:'uppercase', letterSpacing:0.6, marginTop:4 }}>Holding Cost — As-Is Net</div>
+          <FieldRow>
+            <Field label="As-Is Holding % / mo"><input style={{ ...monoInp, minHeight:34, opacity: isAgentRole ? 0.6 : 1 }} type="number" step="0.05" placeholder="0.5" value={property.hold_opt2_pct??''} onChange={set('hold_opt2_pct')} disabled={isAgentRole} /></Field>
+            <Field label="As-Is Holding Months"><input style={{ ...monoInp, minHeight:34, opacity: isAgentRole ? 0.6 : 1 }} type="number" placeholder="3" value={property.hold_opt2_months??''} onChange={set('hold_opt2_months')} disabled={isAgentRole} /></Field>
+          </FieldRow>
+
+          <div style={{ fontSize:10, fontWeight:700, color:'#D97825', textTransform:'uppercase', letterSpacing:0.6, marginTop:4 }}>Holding Cost — Full Retail</div>
+          <FieldRow>
+            <Field label="Full Retail Holding % / mo"><input style={{ ...monoInp, minHeight:34, opacity: isAgentRole ? 0.6 : 1 }} type="number" step="0.05" placeholder="0.5" value={property.hold_opt3_pct??''} onChange={set('hold_opt3_pct')} disabled={isAgentRole} /></Field>
+            <Field label="Full Retail Holding Months"><input style={{ ...monoInp, minHeight:34, opacity: isAgentRole ? 0.6 : 1 }} type="number" placeholder="6" value={property.hold_opt3_months??''} onChange={set('hold_opt3_months')} disabled={isAgentRole} /></Field>
+          </FieldRow>
+
+          {property.arv && (
+            <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+              {[
+                { label:'Cash Offer', value:d.cashOffer, color:'#3B6D11', overridden:!!property.cash_offer_override, overrideField:'cash_offer_override', rows:[
+                  { l:'ARV', v:fmt(d.arv) },
+                  { l:'Repairs', v:`−${fmt(d.reno)}` },
+                  { l:`Comm (${(d.commOfferPct*100).toFixed(1).replace(/\.0$/,'')}% of offer)`, v:`−${fmt(d.commOfferAmt)}` },
+                  { l:`Comm (${(d.commArvPct*100).toFixed(1).replace(/\.0$/,'')}% of ARV)`, v:`−${fmt(d.commArvAmt)}` },
+                  { l:`Holding (${d.cashHoldMo}mo)`, v:`−${fmt(d.cashHold)}` },
+                  { l:'Profit margin', v:`−${fmt(d.profit)}` },
+                ]},
+                { label:'As-Is Net', value:d.opt2Net, color:'#2D6FAF', overridden:!!property.asis_override, overrideField:'asis_override', rows:[
+                  { l:'ARV', v:fmt(d.arv) },
+                  { l:'As-Is Deduction', v:`−${fmt(d.asisDeduction)}` },
+                  { l:'Listing Price', v:fmt(d.asisVal), strong:true },
+                  { l:`Comm (${(d.commListPct*100).toFixed(1).replace(/\.0$/,'')}%)`, v:`−${fmt(d.opt2Comm)}` },
+                  { l:`Holding (${d.opt2HoldMo}mo)`, v:`−${fmt(d.opt2Hold)}` },
+                ]},
+                { label:'Full Retail', value:d.opt3Net, color:'#D97825', rows:[
+                  { l:'ARV', v:fmt(d.arv) },
+                  { l:'Repairs', v:`−${fmt(d.reno)}` },
+                  { l:`Comm (${(d.commListPct*100).toFixed(1).replace(/\.0$/,'')}%)`, v:`−${fmt(d.opt3Comm)}` },
+                  { l:`Holding (${d.opt3HoldMo}mo)`, v:`−${fmt(d.opt3Hold)}` },
+                ]},
+              ].map(card=>(
+                <div key={card.label} style={{ background:'#FAFAF8', borderRadius:6, padding:'8px 12px', borderTop:`3px solid ${card.color}` }}>
+                  <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+                    <div style={{ fontSize:11, color:'#9ca3af', textTransform:'uppercase', letterSpacing:0.6 }}>{card.label}</div>
+                    <div style={{ fontSize:16, fontWeight:700, fontFamily:'monospace', color:card.color }}>{fmt(card.value)}</div>
+                  </div>
+                  {card.overridden && (
+                    <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:8, marginTop:4, background:'#FEF3C7', border:'1px solid #FDE68A', borderRadius:4, padding:'4px 8px' }}>
+                      <span style={{ fontSize:10, color:'#92400E', fontWeight:700 }}>🔒 Override active — edits below won't change this number</span>
+                      <button onClick={()=>set(card.overrideField)({ target:{ value:'' } })} disabled={isAgentRole} style={{ fontSize:10, color:'#92400E', background:'none', border:'none', textDecoration:'underline', cursor: isAgentRole ? 'not-allowed' : 'pointer', fontFamily:'inherit', flexShrink:0, opacity: isAgentRole ? 0.6 : 1 }}>Clear</button>
+                    </div>
+                  )}
+                  <div style={{ marginTop:6, paddingTop:6, borderTop:'1px solid #F0EDE6', fontSize:10, color:'#6b7280', lineHeight:1.7 }}>
+                    {card.rows.map(r=>(
+                      <div key={r.l} style={{
+                        display:'flex', justifyContent:'space-between',
+                        ...(r.strong ? { borderTop:'1px solid #E5E1DB', marginTop:2, paddingTop:2, color:'#2C2C2C', fontWeight:700 } : {}),
+                      }}>
+                        <span>{r.l}</span><span style={{ fontFamily:'monospace' }}>{r.v}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div className="drawer-section">Repairs ({fmt(d.reno)} total)</div>
+          <table style={{ width:'100%', borderCollapse:'collapse' }}>
+            <thead>
+              <tr>
+                {['Item','Sq Ft','$/Sq Ft','Total',''].map((h,i)=>(
+                  <th key={h} style={{ textAlign:i===0?'left':i===4?'center':'center', fontSize:10, color:'#9ca3af', fontWeight:600, textTransform:'uppercase', letterSpacing:0.5, paddingBottom:4, width:i===4?24:undefined }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {repairs.map(r=>(
+                <tr key={r.id}>
+                  <td style={{ paddingBottom:6, paddingRight:6 }}><input style={{ ...inp, fontSize:12, opacity: isAgentRole ? 0.6 : 1 }} value={r.name||''} onChange={e=>updateRepair(r.id,'name',e.target.value)} disabled={isAgentRole} /></td>
+                  <td style={{ paddingBottom:6, paddingRight:6 }}><input style={{ ...monoInp, fontSize:12, textAlign:'center', opacity: isAgentRole ? 0.6 : 1 }} type="number" value={r.sqft||''} onChange={e=>updateRepair(r.id,'sqft',e.target.value)} disabled={isAgentRole} /></td>
+                  <td style={{ paddingBottom:6, paddingRight:6 }}><input style={{ ...monoInp, fontSize:12, textAlign:'center', opacity: isAgentRole ? 0.6 : 1 }} type="number" step="0.01" value={r.pricePerSqft||''} onChange={e=>updateRepair(r.id,'pricePerSqft',e.target.value)} disabled={isAgentRole} /></td>
+                  <td style={{ paddingBottom:6, paddingRight:6 }}>
+                    <div style={{ ...monoInp, fontSize:12, textAlign:'center', background:'#FAFAF8', color:'#2C2C2C', fontWeight:600, display:'flex', alignItems:'center', justifyContent:'center' }}>{r.cost?fmt(r.cost):'—'}</div>
+                  </td>
+                  <td style={{ paddingBottom:6, textAlign:'center' }}><button onClick={()=>removeRepair(r.id)} disabled={isAgentRole} style={{ background:'none', border:'none', color:'#D6D2CA', cursor: isAgentRole ? 'not-allowed' : 'pointer', fontSize:16, padding:0 }}>×</button></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <button onClick={addRepair} disabled={isAgentRole} style={{ background:'transparent', border:'1px dashed #D6D2CA', borderRadius:6, padding:'6px', color:'#9ca3af', fontSize:12, cursor: isAgentRole ? 'not-allowed' : 'pointer', fontFamily:'inherit', width:'100%', opacity: isAgentRole ? 0.6 : 1 }}>+ Add Line Item</button>
+    </>
+  )
+
+  const tabsToShow = isMobile ? [{ key:'valuation', label:'Valuation' }, ...TABS] : TABS
+
   return (
     <div style={{ display:'flex', flexDirection:'column', height:'100%', background:'#FAFAF8', fontFamily:'inherit' }}>
       <div style={{ background:'#fff', borderBottom:'2px solid #B8892A', padding: isMobile ? '12px 16px' : '14px 24px', display:'flex', alignItems:'center', gap:12, flexShrink:0 }}>
@@ -314,6 +422,7 @@ export default function PropertyFullView({ propertyId, onClose, isAgentRole=fals
         padding: isMobile ? 12 : 20, alignItems: isMobile ? undefined : 'stretch',
         overflowY: isMobile ? 'auto' : 'hidden',
       }}>
+        {!isMobile && (
         <div style={{ background:'#fff', borderRadius:10, border:'0.5px solid #D6D2CA', padding: isMobile ? 14 : 20, height: isMobile ? 'auto' : '100%', overflowY: isMobile ? 'visible' : 'auto', display:'flex', flexDirection:'column', gap:14, flexShrink:0 }}>
           <div className="drawer-section">Valuation</div>
           <Field label="After Renovation Value ($)">
@@ -416,10 +525,11 @@ export default function PropertyFullView({ propertyId, onClose, isAgentRole=fals
           </table>
           <button onClick={addRepair} disabled={isAgentRole} style={{ background:'transparent', border:'1px dashed #D6D2CA', borderRadius:6, padding:'6px', color:'#9ca3af', fontSize:12, cursor: isAgentRole ? 'not-allowed' : 'pointer', fontFamily:'inherit', width:'100%', opacity: isAgentRole ? 0.6 : 1 }}>+ Add Line Item</button>
         </div>
+        )}
 
         <div style={{ background:'#fff', borderRadius:10, border:'0.5px solid #D6D2CA', padding: isMobile ? 14 : 20, height: isMobile ? 'auto' : '100%', overflowY: isMobile ? 'visible' : 'auto', flexShrink:0 }}>
           <div style={{ display:'flex', gap:0, borderBottom:'2px solid #F0EDE6', marginBottom:16, overflowX: isMobile ? 'auto' : 'visible', WebkitOverflowScrolling:'touch' }}>
-            {TABS.map(t=>(
+            {tabsToShow.map(t=>(
               <button key={t.key} onClick={()=>setTab(t.key)} style={{
                 padding: isMobile ? '8px 12px' : '8px 18px', border:'none', background:'none', cursor:'pointer',
                 fontSize:12.5, fontWeight:tab===t.key?700:400, fontFamily:'inherit', whiteSpace:'nowrap', flexShrink:0,
@@ -430,6 +540,9 @@ export default function PropertyFullView({ propertyId, onClose, isAgentRole=fals
             ))}
           </div>
 
+          {tab==='valuation' && isMobile && (
+            <div style={{ display:'flex', flexDirection:'column', gap:14 }}>{valuationBody}</div>
+          )}
           {tab==='offer' && (
             !property.arv ? (
               <div style={{ fontSize:12, color:'#9ca3af', padding:'20px 0', textAlign:'center' }}>Set an ARV in Valuation to generate an offer.</div>
@@ -438,6 +551,15 @@ export default function PropertyFullView({ propertyId, onClose, isAgentRole=fals
                 <div style={{ fontSize:13, color:'#9ca3af', marginBottom:14 }}>No offer generated yet.</div>
                 <button onClick={regenerateOffer} style={{ background:'#2D6FAF', color:'#fff', border:'none', borderRadius:6, padding:'10px 20px', fontSize:13, fontWeight:700, cursor:'pointer', fontFamily:'inherit' }}>
                   Generate Offer
+                </button>
+              </div>
+            ) : isMobile ? (
+              <div style={{ textAlign:'center', padding:'30px 0' }}>
+                {offerGeneratedAt && (
+                  <div style={{ fontSize:10, color:'#9ca3af', marginBottom:14 }}>Generated {new Date(offerGeneratedAt).toLocaleString()}</div>
+                )}
+                <button onClick={()=>setShowOfferModal(true)} style={{ background:'#2D6FAF', color:'#fff', border:'none', borderRadius:8, padding:'12px 28px', fontSize:14, fontWeight:700, cursor:'pointer', fontFamily:'inherit' }}>
+                  View Offer
                 </button>
               </div>
             ) : (
@@ -507,6 +629,10 @@ export default function PropertyFullView({ propertyId, onClose, isAgentRole=fals
           {!offerSnapshot ? 'Generate Offer' : offerIsDirty ? 'Re-Generate Offer' : 'Most Recent'}
         </button>
       </div>
+
+      {showOfferModal && offerSnapshot && (
+        <ProposalModal property={offerSnapshot} onClose={()=>setShowOfferModal(false)} />
+      )}
     </div>
   )
 }

@@ -191,7 +191,7 @@ export function ConditionRatings({ propertyId }) {
     <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
       <div className="drawer-section">Condition Rating</div>
       <Field label="Reviewer Name"><input style={{ ...inp, background:'#FAFAF8', color:'#6b7280' }} value={email||''} disabled /></Field>
-      <input ref={fileInputRef} type="file" accept="image/*" capture="environment" style={{ display:'none' }} onChange={handleFile} />
+      <input ref={fileInputRef} type="file" accept="image/*" style={{ display:'none' }} onChange={handleFile} />
       {loading ? <div style={{ textAlign:'center', padding:12, color:'#9ca3af', fontSize:12 }}>Loading...</div> : (
         <div style={{ background:'#FAFAF8', border:'0.5px solid #D6D2CA', borderRadius:8, padding:'6px 12px' }}>
           {COND_CATS.map(cat => {
