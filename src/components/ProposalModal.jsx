@@ -126,11 +126,6 @@ const CSS = `
   /* ── SECTION TITLE ── */
   .sec-title { font-size:16px;font-weight:700;color:var(--blue);margin:14px 0 7px; }
 
-  /* ── VALUATION BOX ── */
-  .val-box { border:1px solid #d0d7e0;border-radius:4px;padding:10px 18px;display:grid;grid-template-columns:1fr 1fr;gap:10px; }
-  .val-label { font-size:10.5px;color:#888;margin-bottom:2px; }
-  .val-num   { font-size:25px;font-weight:800;color:var(--blue);line-height:1.1; }
-
   /* ── REPAIR TABLE ── */
   .reno-note { font-size:11px;font-style:italic;color:#555;margin-bottom:5px; }
   .reno-tbl  { width:100%;border-collapse:collapse;font-size:11px; }
@@ -211,12 +206,6 @@ export default function ProposalModal({ property, onClose, embedded=false }) {
       <div class="pg-address">${addr}</div>
       ${bedsBaths?`<div class="pg-sub">${bedsBaths}</div>`:''}
       ${sqft?`<div class="pg-sub">${sqft}</div>`:''}
-
-      <div class="sec-title">Property Valuation</div>
-      <div class="val-box">
-        <div><div class="val-label">After Renovation Value</div><div class="val-num">${d$(d.arv)}</div></div>
-        <div><div class="val-label">As-Is Market Value</div><div class="val-num">${d$(d.asisValue)}</div></div>
-      </div>
 
       ${repairs.length>0?`
         <div class="sec-title">Renovation Breakdown</div>
