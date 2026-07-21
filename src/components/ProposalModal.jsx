@@ -270,12 +270,12 @@ export default function ProposalModal({ property, onClose, embedded=false }) {
         <div class="opt-hdr"><div class="opt-title">OPTION 2 — AS-IS LISTING</div><div class="opt-sub">Sell on the Open Market</div></div>
         <div class="opt-body">
           <div class="opt-left">
-            <div class="price-lbl">List Price</div>
-            <div class="price-num">${d$(d.asisValue)}</div>
-            <div class="less-ttl">Less Costs:</div>
+            <div class="price-lbl">Net to Seller</div>
+            <div class="price-num">~${d$(d.opt2Net)}</div>
+            <div class="less-ttl">Calculated From:</div>
+            <div class="less-row" style="color:#333;font-weight:700;"><span>List Price:</span><span>${d$(d.asisValue)}</span></div>
             <div class="less-row"><span>Commission (${commPct}%):</span><span>${dn$(d.opt2Comm)}</span></div>
             <div class="less-row"><span>Holding (${d.holdOpt2Mo} mo):</span><span>${dn$(d.opt2Hold)}</span></div>
-            <div class="net-row"><span>Net to Seller:</span><span>~${d$(d.opt2Net)}</span></div>
           </div>
           <div class="opt-right">
             <div class="bul-ttl">Considerations</div>
@@ -293,13 +293,13 @@ export default function ProposalModal({ property, onClose, embedded=false }) {
         <div class="opt-hdr"><div class="opt-title">OPTION 3 — FULL RETAIL (After Renovation)</div><div class="opt-sub">Renovate First, Then List at Top of Market</div></div>
         <div class="opt-body">
           <div class="opt-left">
-            <div class="price-lbl">Projected Sale Price</div>
-            <div class="price-num">${d$(d.arv)}</div>
-            <div class="less-ttl">Less Costs:</div>
+            <div class="price-lbl">Net to Seller</div>
+            <div class="price-num">~${d$(d.opt3Net)}</div>
+            <div class="less-ttl">Calculated From:</div>
+            <div class="less-row" style="color:#333;font-weight:700;"><span>Projected Sale Price:</span><span>${d$(d.arv)}</span></div>
             <div class="less-row"><span>Repairs:</span><span>${d.reno > 0 ? dn$(d.reno) : "Move-In Ready"}</span></div>
             <div class="less-row"><span>Commission (${commPct}%):</span><span>${dn$(d.opt3Comm)}</span></div>
             <div class="less-row"><span>Holding (${d.holdOpt3Mo} mo):</span><span>${dn$(d.opt3Hold)}</span></div>
-            <div class="net-row"><span>Net to Seller:</span><span>~${d$(d.opt3Net)}</span></div>
           </div>
           <div class="opt-right">
             <div class="bul-ttl">Considerations</div>
