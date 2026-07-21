@@ -12,6 +12,7 @@ import LoanOverview from './LoanOverview.jsx'
 import RentOverview from './RentOverview.jsx'
 import PartnerLedgerModal from './PartnerLedgerModal.jsx'
 import PropertyFullView from './PropertyFullView.jsx'
+import PingModal from './PingModal.jsx'
 import { useIsMobile } from '../hooks/useIsMobile.js'
 
 // ── Type options (primary) ────────────────────────────────────────────────────
@@ -530,6 +531,8 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
   const [partnerPaybackTotal, setPartnerPaybackTotal] = useState(0)
   const [editingPhotosLink, setEditingPhotosLink] = useState(false)
   const [fullViewOpen, setFullViewOpen] = useState(false)
+  const [pingOpen, setPingOpen] = useState(false)
+  const [sendingOffer, setSendingOffer] = useState(false)
   const [agentList, setAgentList] = useState([])
 
   function nameFor(email) {
@@ -846,6 +849,19 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
     if (!isFormDirty()) { onClose(); return }
     if (confirm('Discard unsaved changes to this property?')) onClose()
   }
+  async function sendOfferToAgent() {
+    if (!form.agent_email || form.agent_email === '__outside_agent__' || sendingOffer) return
+    setSendingOffer(true)
+    const { error } = await supabase.from('cashoffer_notifications').insert({
+      property_id: form.id,
+      recipient_email: form.agent_email,
+      sender_email: currentUserEmail || null,
+      message: `Your offer for ${form.address || 'this property'} is ready to review.`,
+    })
+    if (error) { setSendingOffer(false); alert(`Could not send: ${error.message}`); return }
+    setTimeout(() => setSendingOffer(false), 2500)
+  }
+
   async function del() {
     if (!confirm('Delete this deal? This cannot be undone.')) return
     await supabase.from('cashoffer_properties').delete().eq('id',form.id)
@@ -1533,6 +1549,17 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
         </div>
       )}
 
+      {/* Ping modal — message any teammate about this property */}
+      {pingOpen && form.id && (
+        <PingModal
+          propertyId={form.id}
+          propertyAddress={form.address}
+          senderEmail={currentUserEmail}
+          agentList={agentList}
+          onClose={()=>setPingOpen(false)}
+        />
+      )}
+
       {/* Loan Tracker modal */}
       <LoanTracker
         propertyId={form.id}
@@ -1593,13 +1620,23 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
           Last saved {relTime(form.updated_at)}{form.updated_by ? ` by ${nameFor(form.updated_by)}` : ''}
         </span>
       ) : null}
-      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', flexWrap:'wrap', gap:8 }}>
         {!isNew && !isAgentRole ? (
           <button onClick={del} style={{ background:'#B91C1C', border:'1px solid #B91C1C', color:'#fff', fontSize:11, fontWeight:700, cursor:'pointer', fontFamily:'inherit', borderRadius:6, padding:'6px 12px' }}>
             Delete Property
           </button>
         ) : <span />}
-        <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+        <div style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
+          {!isNew && (
+            <button onClick={()=>setPingOpen(true)} title="Ping a teammate about this property" style={{ background:'#fff', border:'1px solid #D6D2CA', color:'#6b7280', borderRadius:6, padding:'8px 14px', fontSize:12, fontWeight:700, cursor:'pointer', fontFamily:'inherit', display:'flex', alignItems:'center', gap:6 }}>
+              🔔 Ping
+            </button>
+          )}
+          {!isNew && form.arv && form.agent_email && form.agent_email !== '__outside_agent__' && (
+            <button onClick={sendOfferToAgent} disabled={sendingOffer} style={{ background:'#fff', border:'1.5px solid #B8892A', color:'#B8892A', borderRadius:6, padding:'8px 14px', fontSize:12, fontWeight:700, cursor: sendingOffer ? 'default' : 'pointer', fontFamily:'inherit' }}>
+              {sendingOffer ? 'Sent!' : 'Send Offer to Agent'}
+            </button>
+          )}
           <Btn variant="outline" onClick={onClose}>Cancel</Btn>
           <Btn onClick={handleClose} disabled={!!lockedByOther}>Save</Btn>
         </div>
