@@ -248,7 +248,8 @@ export default function ProposalModal({ property, onClose, embedded=false }) {
             <div class="price-num" style="color:var(--green)">${d$(d.arv)}</div>
             <div class="less-ttl">Less Costs:</div>
             <div class="less-row"><span>Repairs:</span><span>${d.reno > 0 ? dn$(d.reno) : "Move-In Ready"}</span></div>
-            <div class="less-row"><span>Commission:</span><span>${dn$(d.commOfferAmt + d.commArvAmt)}</span></div>
+            <div class="less-row"><span>Commission (${(d.commOfferPct*100).toFixed(1).replace(/\.0$/,'')}% of offer):</span><span>${dn$(d.commOfferAmt)}</span></div>
+            <div class="less-row"><span>Commission (${(d.commArvPct*100).toFixed(1).replace(/\.0$/,'')}% of ARV):</span><span>${dn$(d.commArvAmt)}</span></div>
             <div class="less-row"><span>Holding (${d.cashHoldMo} mo):</span><span>${dn$(d.cashHold)}</span></div>
             <div class="less-row"><span>Profit Margin:</span><span>${dn$(d.profit)}</span></div>
             <div class="net-row" style="color:var(--green)"><span>Cash Offer:</span><span>${d$(d.cashOffer)}</span></div>
