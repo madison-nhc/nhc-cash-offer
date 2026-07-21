@@ -393,7 +393,9 @@ export function FloorPlanReaderModal({ propertyId, onClose, onSaved }) {
 
   async function apply() {
     if (!result) return
-    await supabase.from('cashoffer_properties').update({ floor_plan_data: result }).eq('id', propertyId)
+    const patch = { floor_plan_data: result }
+    if (result.combinedSqft != null) patch.sqft = result.combinedSqft
+    await supabase.from('cashoffer_properties').update(patch).eq('id', propertyId)
     onSaved && onSaved()
     onClose()
   }
@@ -403,7 +405,7 @@ export function FloorPlanReaderModal({ propertyId, onClose, onSaved }) {
       result ? (
         <div style={{ display:'flex', justifyContent:'flex-end', gap:8 }}>
           <Btn variant="outline" onClick={onClose}>Cancel</Btn>
-          <Btn onClick={apply}>Apply to Property</Btn>
+          <Btn onClick={apply}>Apply to Property (Sets Sq Ft)</Btn>
         </div>
       ) : (
         <div style={{ display:'flex', justifyContent:'flex-end', gap:8 }}>

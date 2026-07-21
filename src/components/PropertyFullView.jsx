@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase.js'
 import { calcOffers } from '../lib/valuation.js'
-import { Field, FieldRow, inp, monoInp, fmt, Modal } from './ui.jsx'
-import { TourSection, ConditionRatings, PropertyComments } from './PropertyTour.jsx'
+import { Field, FieldRow, inp, monoInp, fmt, Modal, relTime } from './ui.jsx'
+import { TourSection, ConditionRatings, PropertyComments, FloorPlanReaderModal } from './PropertyTour.jsx'
 import ProposalModal from './ProposalModal.jsx'
 import { useIsMobile } from '../hooks/useIsMobile.js'
 
@@ -183,7 +183,7 @@ function DriveTab({ propertyId, link, onSaved }) {
   )
 }
 
-export default function PropertyFullView({ propertyId, onClose, isAgentRole=false }) {
+export default function PropertyFullView({ propertyId, onClose, isAgentRole=false, currentUserEmail=null, agentList=[] }) {
   const isMobile = useIsMobile()
   const [property, setProperty] = useState(null)
   const [repairs, setRepairs] = useState([])
@@ -195,6 +195,13 @@ export default function PropertyFullView({ propertyId, onClose, isAgentRole=fals
   const [showOfferModal, setShowOfferModal] = useState(false)
   const saveTimer = useRef(null)
   const loadedRef = useRef(false)
+  const [fpOpen, setFpOpen] = useState(false)
+
+  function nameFor(email) {
+    if (!email) return ''
+    const a = agentList.find(a => a.email === email)
+    return a?.full_name || email
+  }
 
   useEffect(() => { load() }, [propertyId]) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -273,6 +280,7 @@ export default function PropertyFullView({ propertyId, onClose, isAgentRole=fals
       // Cleared number inputs land here as '' — Postgres numeric columns reject that, so
       // treat blank as "use the calc default" (null) rather than erroring the save.
       const patch = Object.fromEntries(Object.entries(rest).map(([k,v]) => [k, v==='' ? null : v]))
+      patch.updated_by = currentUserEmail || null
       await supabase.from('cashoffer_properties').update({ ...patch, repair_items }).eq('id', propertyId)
       setSavedAt(new Date())
     }, 700)
@@ -408,11 +416,28 @@ export default function PropertyFullView({ propertyId, onClose, isAgentRole=fals
 
   return (
     <div style={{ display:'flex', flexDirection:'column', height:'100%', background:'#FAFAF8', fontFamily:'inherit' }}>
-      <div style={{ background:'#fff', borderBottom:'2px solid #B8892A', padding: isMobile ? '12px 16px' : '14px 24px', display:'flex', alignItems:'center', gap:12, flexShrink:0 }}>
-        <img src="/nhc-logo.svg" alt="NHC" style={{ width:26, height:26, flexShrink:0 }} />
-        <div style={{ fontSize: isMobile ? 14 : 16, fontWeight:700, color:'#2C2C2C', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', paddingRight: isMobile && onClose ? 40 : 0 }}>{property.address || 'Property'}</div>
-        {!isMobile && (
-          <span style={{ marginLeft:'auto', fontSize:11, color:'#9ca3af', marginRight: onClose ? 36 : 0 }}>{savedAt ? `Saved ${savedAt.toLocaleTimeString()}` : ''}</span>
+      <div style={{ background:'#fff', borderBottom:'2px solid #B8892A', padding: isMobile ? '12px 16px' : '14px 24px', display:'flex', flexDirection: isMobile ? 'column' : 'row', alignItems: isMobile ? 'stretch' : 'center', gap: isMobile ? 4 : 12, flexShrink:0 }}>
+        <div style={{ display:'flex', alignItems:'center', gap:12 }}>
+          <img src="/nhc-logo.svg" alt="NHC" style={{ width:26, height:26, flexShrink:0 }} />
+          <div style={{ fontSize: isMobile ? 14 : 16, fontWeight:700, color:'#2C2C2C', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', paddingRight: isMobile && onClose ? 40 : 0 }}>{property.address || 'Property'}</div>
+          {!isMobile && (
+            <span style={{ marginLeft:'auto', fontSize:11, color:'#9ca3af', marginRight: onClose ? 36 : 0 }}>
+              {savedAt
+                ? `Saved ${savedAt.toLocaleTimeString()}`
+                : property.updated_at
+                  ? `Last saved ${relTime(property.updated_at)}${property.updated_by ? ` by ${nameFor(property.updated_by)}` : ''}`
+                  : ''}
+            </span>
+          )}
+        </div>
+        {isMobile && (
+          <span style={{ fontSize:10.5, color:'#9ca3af', paddingLeft:36 }}>
+            {savedAt
+              ? `Saved ${savedAt.toLocaleTimeString()}`
+              : property.updated_at
+                ? `Last saved ${relTime(property.updated_at)}${property.updated_by ? ` by ${nameFor(property.updated_by)}` : ''}`
+                : ''}
+          </span>
         )}
       </div>
 
@@ -571,7 +596,16 @@ export default function PropertyFullView({ propertyId, onClose, isAgentRole=fals
               </div>
             )
           )}
-          {tab==='tour' && <TourSection propertyId={propertyId} tourUrl={property.zillow_tour_url} onSaved={load} />}
+          {tab==='tour' && (
+            <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
+              <TourSection propertyId={propertyId} tourUrl={property.zillow_tour_url} onSaved={load} />
+              <button onClick={()=>setFpOpen(true)} style={{
+                background:'#2D6FAF', color:'#fff', border:'none', borderRadius:8, padding:'10px 14px',
+                fontSize:12.5, fontWeight:700, cursor:'pointer', fontFamily:'inherit', width:'100%',
+              }}>AI Floor Plan Reader (Est. Sq Ft)</button>
+              {fpOpen && <FloorPlanReaderModal propertyId={propertyId} onClose={()=>setFpOpen(false)} onSaved={load} />}
+            </div>
+          )}
           {tab==='condition' && <ConditionRatings propertyId={propertyId} />}
           {tab==='notes' && (
             <div style={{ display:'flex', flexDirection:'column', gap:20 }}>

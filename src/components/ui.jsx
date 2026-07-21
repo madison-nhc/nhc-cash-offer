@@ -116,6 +116,18 @@ export function PageWrap({ children, pad = true }) {
   )
 }
 
+export function relTime(iso) {
+  if (!iso) return ''
+  const diffMs = Date.now() - new Date(iso).getTime()
+  const mins = Math.round(diffMs / 60000)
+  if (mins < 1) return 'just now'
+  if (mins < 60) return `${mins}m ago`
+  const hrs = Math.round(mins / 60)
+  if (hrs < 24) return `${hrs}h ago`
+  const days = Math.round(hrs / 24)
+  return `${days}d ago`
+}
+
 export function FieldRow({ children, forceRow=false, gap=12 }) {
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 768
   return (

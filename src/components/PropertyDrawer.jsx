@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase.js'
-import { Field, FieldRow, inp, monoInp, Btn, fmt, fmtK, DatePicker, PAID_BY_OPTIONS, PARTNERS, calcOwed } from './ui.jsx'
+import { Field, FieldRow, inp, monoInp, Btn, fmt, fmtK, DatePicker, PAID_BY_OPTIONS, PARTNERS, calcOwed, relTime } from './ui.jsx'
 import { calcOffers } from '../lib/valuation.js'
 import Drawer from './Drawer.jsx'
 import AddressInput from './AddressInput.jsx'
@@ -201,18 +201,6 @@ const DEFAULT_REPAIRS = [
 // Truncate "123 Main Street, Lexington, KY 40502" → "123 Main Street"
 // Parses 'YYYY-MM-DD' manually (avoids new Date(str) timezone off-by-one) and
 // returns whole days between two such date strings, or null if either is missing.
-function relTime(iso) {
-  if (!iso) return ''
-  const diffMs = Date.now() - new Date(iso).getTime()
-  const mins = Math.round(diffMs / 60000)
-  if (mins < 1) return 'just now'
-  if (mins < 60) return `${mins}m ago`
-  const hrs = Math.round(mins / 60)
-  if (hrs < 24) return `${hrs}h ago`
-  const days = Math.round(hrs / 24)
-  return `${days}d ago`
-}
-
 function daysBetween(startStr, endStr) {
   if (!startStr || !endStr) return null
   const [sy,sm,sd] = startStr.split('-').map(Number)
@@ -543,6 +531,12 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
   const [editingPhotosLink, setEditingPhotosLink] = useState(false)
   const [fullViewOpen, setFullViewOpen] = useState(false)
   const [agentList, setAgentList] = useState([])
+
+  function nameFor(email) {
+    if (!email) return ''
+    const a = agentList.find(a => a.email === email)
+    return a?.full_name || email
+  }
 
   useEffect(() => {
     supabase.from('cashoffer_users').select('email,full_name,role').in('role',['agent','admin']).order('full_name')
@@ -1589,14 +1583,14 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
     <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
       {lockedByOther ? (
         <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:10, background:'#FFF3CD', border:'1px solid #E8DFC8', borderRadius:6, padding:'7px 12px' }}>
-          <span style={{ fontSize:12, color:'#856404', fontWeight:600 }}>🔒 {lockedByOther} is editing this property — read only</span>
+          <span style={{ fontSize:12, color:'#856404', fontWeight:600 }}>🔒 {nameFor(lockedByOther)} is editing this property — read only</span>
           {!isAgentRole && (
             <button onClick={()=>claimLock(true)} style={{ background:'none', border:'1px solid #B8892A', color:'#B8892A', borderRadius:4, padding:'3px 10px', fontSize:11, fontWeight:700, cursor:'pointer', fontFamily:'inherit', whiteSpace:'nowrap' }}>Take Over</button>
           )}
         </div>
       ) : form.updated_at ? (
         <span style={{ fontSize:11, color:'#9ca3af' }}>
-          Last saved {relTime(form.updated_at)}{form.updated_by ? ` by ${form.updated_by}` : ''}
+          Last saved {relTime(form.updated_at)}{form.updated_by ? ` by ${nameFor(form.updated_by)}` : ''}
         </span>
       ) : null}
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
@@ -1638,7 +1632,7 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
             color:'#6b7280', zIndex:20, display:'flex', alignItems:'center', justifyContent:'center',
           }}
         >&times;</button>
-        <PropertyFullView propertyId={form.id} onClose={()=>setFullViewOpen(false)} isAgentRole={isAgentRole} />
+        <PropertyFullView propertyId={form.id} onClose={()=>setFullViewOpen(false)} isAgentRole={isAgentRole} currentUserEmail={currentUserEmail} agentList={agentList} />
       </div>
     </div>
   )
