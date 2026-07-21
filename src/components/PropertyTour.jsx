@@ -42,7 +42,6 @@ function useSessionEmail() {
 export function TourSection({ propertyId, tourUrl, onSaved }) {
   const [editing, setEditing] = useState(!tourUrl)
   const [draft, setDraft] = useState(tourUrl || '')
-  const [view, setView] = useState('pano')
   const [saving, setSaving] = useState(false)
 
   useEffect(() => { setDraft(tourUrl || ''); setEditing(!tourUrl) }, [propertyId]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -72,26 +71,18 @@ export function TourSection({ propertyId, tourUrl, onSaved }) {
         <>
           <div style={{ display:'flex', gap:6, alignItems:'stretch' }}>
             <button
-              onClick={()=>window.open(tourEmbedUrl(tourUrl, view), 'nhc_tour', 'width=1400,height=950,noopener,noreferrer')}
+              onClick={()=>window.open(tourEmbedUrl(tourUrl, 'pano'), 'nhc_tour', 'width=1400,height=950,noopener,noreferrer')}
               style={{ flex:1, background:'#fff', border:'1.5px solid #2D6FAF', borderRadius:8, padding:'10px 16px', cursor:'pointer', fontFamily:'inherit', display:'flex', alignItems:'center', justifyContent:'space-between' }}
             >
               <div style={{ textAlign:'left' }}>
                 <div style={{ fontSize:13, fontWeight:700, color:'#2D6FAF' }}>Open 3D Tour - Large View</div>
-                <div style={{ fontSize:11, color:'#9ca3af', marginTop:2 }}>Opens the Zillow tour in a separate window</div>
+                <div style={{ fontSize:11, color:'#9ca3af', marginTop:2 }}>Opens the Zillow tour in a separate window — use Zillow's own floor plan icon there to see the floor plan</div>
               </div>
               <span style={{ fontSize:18, color:'#2D6FAF' }}>&#8599;</span>
             </button>
             <button onClick={()=>setEditing(true)} title="Edit tour link" style={{ width:40, background:'#fff', border:'1.5px solid #D6D2CA', borderRadius:8, cursor:'pointer', fontSize:15, color:'#9ca3af', flexShrink:0 }}>&#9998;</button>
           </div>
-          <div style={{ display:'flex', gap:6 }}>
-            {[{ v:'pano', label:'Panorama Tour' }, { v:'floorplan', label:'Floor Plan' }].map(t=>(
-              <button key={t.v} onClick={()=>setView(t.v)} style={{
-                border:`1px solid ${view===t.v?'#2D6FAF':'#D6D2CA'}`, background: view===t.v?'#2D6FAF18':'#fff',
-                color: view===t.v?'#2D6FAF':'#6b7280', borderRadius:6, padding:'5px 12px', fontSize:11, fontWeight:700, cursor:'pointer', fontFamily:'inherit',
-              }}>{t.label}</button>
-            ))}
-          </div>
-          <iframe title="Zillow 3D Tour" src={tourEmbedUrl(tourUrl, view)} style={{ width:'100%', height:380, border:'0.5px solid #D6D2CA', borderRadius:8 }} allow="fullscreen; gyroscope; accelerometer" allowFullScreen loading="lazy" />
+          <iframe title="Zillow 3D Tour" src={tourEmbedUrl(tourUrl, 'pano')} style={{ width:'100%', height:380, border:'0.5px solid #D6D2CA', borderRadius:8 }} allow="fullscreen; gyroscope; accelerometer" allowFullScreen loading="lazy" />
         </>
       )}
     </div>
@@ -418,7 +409,7 @@ export function FloorPlanReaderModal({ propertyId, onClose, onSaved }) {
       {!result && (
         <>
           <div style={{ background:'#FAFAF8', border:'1px solid #D6D2CA', borderRadius:8, padding:'12px 14px', fontSize:12.5, lineHeight:1.6, marginBottom:14 }}>
-            Switch the Zillow tour to Floor Plan view above, screenshot each floor (Win+Shift+S or Cmd+Shift+4), then upload the screenshots below. Click <b>+ Add Floor</b> for basements or upper floors.
+            Click <b>Open 3D Tour - Large View</b> above, then use Zillow's own floor plan icon inside that window to switch to the floor plan view. Screenshot each floor (Win+Shift+S or Cmd+Shift+4), then upload the screenshots below. Click <b>+ Add Floor</b> for basements or upper floors.
           </div>
           {slots.map((s, i) => (
             <div key={i} style={{ background:'#fff', border:'0.5px solid #D6D2CA', borderRadius:8, padding:'10px 14px', marginBottom:8 }}>
