@@ -244,15 +244,15 @@ export default function ProposalModal({ property, onClose, embedded=false }) {
         <div class="opt-hdr"><div class="opt-title">OPTION 1 — CASH OFFER</div><div class="opt-sub">Fast, As-Is, No Hassle</div></div>
         <div class="opt-body">
           <div class="opt-left">
-            <div class="price-lbl">After Renovation Value</div>
-            <div class="price-num" style="color:var(--green)">${d$(d.arv)}</div>
-            <div class="less-ttl">Less Costs:</div>
+            <div class="price-lbl">Net to Seller</div>
+            <div class="price-num" style="color:var(--green)">${d$(d.cashOffer)}</div>
+            <div class="less-ttl">Calculated From:</div>
+            <div class="less-row" style="color:#333;font-weight:700;"><span>After Renovation Value:</span><span>${d$(d.arv)}</span></div>
             <div class="less-row"><span>Repairs:</span><span>${d.reno > 0 ? dn$(d.reno) : "Move-In Ready"}</span></div>
             <div class="less-row"><span>Commission (${(d.commOfferPct*100).toFixed(1).replace(/\.0$/,'')}% of offer):</span><span>${dn$(d.commOfferAmt)}</span></div>
             <div class="less-row"><span>Commission (${(d.commArvPct*100).toFixed(1).replace(/\.0$/,'')}% of ARV):</span><span>${dn$(d.commArvAmt)}</span></div>
             <div class="less-row"><span>Holding (${d.cashHoldMo} mo):</span><span>${dn$(d.cashHold)}</span></div>
             <div class="less-row"><span>Profit Margin:</span><span>${dn$(d.profit)}</span></div>
-            <div class="net-row" style="color:var(--green)"><span>Cash Offer:</span><span>${d$(d.cashOffer)}</span></div>
           </div>
           <div class="opt-right">
             <div class="bul-ttl">Highlights</div>
