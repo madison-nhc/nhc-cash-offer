@@ -118,6 +118,7 @@ export function ConditionRatings({ propertyId }) {
 
   function rowFor(cat) { return rows.find(r => r.category === cat && !r.is_custom) }
   const customRows = rows.filter(r => r.is_custom)
+  function photosFor(r) { return (r?.photos && r.photos.length) ? r.photos : (r?.photo ? [r.photo] : []) }
 
   async function rate(cat, rating, existing) {
     const payload = { property_id: propertyId, category: cat, rating, updated_by: email || 'Unknown', updated_at: new Date().toISOString() }
@@ -135,36 +136,50 @@ export function ConditionRatings({ propertyId }) {
     fileInputRef.current.click()
   }
 
-  function handleFile(e) {
-    const f = e.target.files[0]
-    const target = photoTargetRef.current
-    if (!f || !target) return
-    if (!f.type.startsWith('image/')) { alert('Please choose an image file.'); return }
-    const rd = new FileReader()
-    rd.onload = () => {
-      const img = new Image()
-      img.onload = async () => {
-        const max = 900, scale = Math.min(1, max / Math.max(img.width, img.height))
-        const cv = document.createElement('canvas')
-        cv.width = Math.round(img.width * scale); cv.height = Math.round(img.height * scale)
-        cv.getContext('2d').drawImage(img, 0, 0, cv.width, cv.height)
-        const photo = cv.toDataURL('image/jpeg', 0.72)
-        const { existing, cat } = target
-        if (existing) {
-          await supabase.from('cashoffer_condition_ratings').update({ photo }).eq('id', existing.id)
-        } else {
-          await supabase.from('cashoffer_condition_ratings').insert({ property_id: propertyId, category: cat, photo })
+  function compressFile(f) {
+    return new Promise((resolve, reject) => {
+      if (!f.type.startsWith('image/')) { reject(new Error('not an image')); return }
+      const rd = new FileReader()
+      rd.onload = () => {
+        const img = new Image()
+        img.onload = () => {
+          const max = 900, scale = Math.min(1, max / Math.max(img.width, img.height))
+          const cv = document.createElement('canvas')
+          cv.width = Math.round(img.width * scale); cv.height = Math.round(img.height * scale)
+          cv.getContext('2d').drawImage(img, 0, 0, cv.width, cv.height)
+          resolve(cv.toDataURL('image/jpeg', 0.72))
         }
-        load()
+        img.onerror = reject
+        img.src = rd.result
       }
-      img.src = rd.result
-    }
-    rd.readAsDataURL(f)
+      rd.onerror = reject
+      rd.readAsDataURL(f)
+    })
   }
 
-  async function removePhoto(existing) {
+  async function handleFile(e) {
+    const files = Array.from(e.target.files || [])
+    const target = photoTargetRef.current
+    if (!files.length || !target) return
+    const imageFiles = files.filter(f => f.type.startsWith('image/'))
+    if (!imageFiles.length) { alert('Please choose an image file.'); return }
+    const newPhotos = await Promise.all(imageFiles.map(compressFile))
+    const { existing, cat } = target
+    const currentPhotos = existing?.photos || (existing?.photo ? [existing.photo] : [])
+    const photos = [...currentPhotos, ...newPhotos]
+    if (existing) {
+      await supabase.from('cashoffer_condition_ratings').update({ photos }).eq('id', existing.id)
+    } else {
+      await supabase.from('cashoffer_condition_ratings').insert({ property_id: propertyId, category: cat, photos })
+    }
+    load()
+  }
+
+  async function removePhoto(existing, index) {
     if (!existing) return
-    await supabase.from('cashoffer_condition_ratings').update({ photo: null }).eq('id', existing.id)
+    const currentPhotos = existing.photos || (existing.photo ? [existing.photo] : [])
+    const photos = currentPhotos.filter((_, i) => i !== index)
+    await supabase.from('cashoffer_condition_ratings').update({ photos, photo: null }).eq('id', existing.id)
     load()
   }
 
@@ -191,7 +206,7 @@ export function ConditionRatings({ propertyId }) {
     <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
       <div className="drawer-section">Condition Rating</div>
       <Field label="Reviewer Name"><input style={{ ...inp, background:'#FAFAF8', color:'#6b7280' }} value={email||''} disabled /></Field>
-      <input ref={fileInputRef} type="file" accept="image/*" style={{ display:'none' }} onChange={handleFile} />
+      <input ref={fileInputRef} type="file" accept="image/*" multiple style={{ display:'none' }} onChange={handleFile} />
       {loading ? <div style={{ textAlign:'center', padding:12, color:'#9ca3af', fontSize:12 }}>Loading...</div> : (
         <div style={{ background:'#FAFAF8', border:'0.5px solid #D6D2CA', borderRadius:8, padding:'6px 12px' }}>
           {COND_CATS.map(cat => {
@@ -202,13 +217,13 @@ export function ConditionRatings({ propertyId }) {
                   {cat}
                   {r?.rating && <span style={{ display:'block', fontSize:10, color:'#9ca3af' }}>{r.updated_by} - {relTime(r.updated_at)}</span>}
                 </div>
-                <div style={{ display:'flex', gap:4, alignItems:'center' }}>
-                  {r?.photo && (
-                    <div style={{ position:'relative' }}>
-                      <img src={r.photo} alt={cat} onClick={()=>setViewPhoto({ photo:r.photo, label:cat })} style={{ width:32, height:32, objectFit:'cover', borderRadius:5, border:'1px solid #D6D2CA', cursor:'pointer' }} />
-                      <button onClick={()=>removePhoto(r)} style={{ position:'absolute', top:-6, right:-6, width:14, height:14, borderRadius:'50%', background:'#fff', border:'1px solid #D6D2CA', fontSize:8, padding:0, cursor:'pointer', color:'#9ca3af' }}>&times;</button>
+                <div style={{ display:'flex', gap:4, alignItems:'center', flexWrap:'wrap' }}>
+                  {photosFor(r).map((p, i) => (
+                    <div key={i} style={{ position:'relative' }}>
+                      <img src={p} alt={cat} onClick={()=>setViewPhoto({ photos:photosFor(r), index:i, label:cat })} style={{ width:32, height:32, objectFit:'cover', borderRadius:5, border:'1px solid #D6D2CA', cursor:'pointer' }} />
+                      <button onClick={()=>removePhoto(r, i)} style={{ position:'absolute', top:-6, right:-6, width:14, height:14, borderRadius:'50%', background:'#fff', border:'1px solid #D6D2CA', fontSize:8, padding:0, cursor:'pointer', color:'#9ca3af' }}>&times;</button>
                     </div>
-                  )}
+                  ))}
                   <button onClick={()=>openPhotoPicker(r, cat)} style={{ width:26, height:26, border:'1px solid #D6D2CA', background:'#fff', borderRadius:5, fontSize:12, cursor:'pointer' }}>&#128247;</button>
                   {RATINGS.map(rt=>(
                     <button key={rt} onClick={()=>rate(cat, rt, r)} style={{
@@ -223,13 +238,13 @@ export function ConditionRatings({ propertyId }) {
           {customRows.map(r => (
             <div key={r.id} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:8, padding:'8px 0', borderBottom:'1px solid #F0EDE6', flexWrap:'wrap' }}>
               <input style={{ ...inp, flex:1, minWidth:130, fontSize:12.5, padding:'4px 8px' }} placeholder="e.g. Pool, Generator..." defaultValue={r.label||''} onBlur={e=>renameCustom(r, e.target.value)} />
-              <div style={{ display:'flex', gap:4, alignItems:'center' }}>
-                {r.photo && (
-                  <div style={{ position:'relative' }}>
-                    <img src={r.photo} alt={r.label} onClick={()=>setViewPhoto({ photo:r.photo, label:r.label||'Custom item' })} style={{ width:32, height:32, objectFit:'cover', borderRadius:5, border:'1px solid #D6D2CA', cursor:'pointer' }} />
-                    <button onClick={()=>removePhoto(r)} style={{ position:'absolute', top:-6, right:-6, width:14, height:14, borderRadius:'50%', background:'#fff', border:'1px solid #D6D2CA', fontSize:8, padding:0, cursor:'pointer', color:'#9ca3af' }}>&times;</button>
+              <div style={{ display:'flex', gap:4, alignItems:'center', flexWrap:'wrap' }}>
+                {photosFor(r).map((p, i) => (
+                  <div key={i} style={{ position:'relative' }}>
+                    <img src={p} alt={r.label} onClick={()=>setViewPhoto({ photos:photosFor(r), index:i, label:r.label||'Custom item' })} style={{ width:32, height:32, objectFit:'cover', borderRadius:5, border:'1px solid #D6D2CA', cursor:'pointer' }} />
+                    <button onClick={()=>removePhoto(r, i)} style={{ position:'absolute', top:-6, right:-6, width:14, height:14, borderRadius:'50%', background:'#fff', border:'1px solid #D6D2CA', fontSize:8, padding:0, cursor:'pointer', color:'#9ca3af' }}>&times;</button>
                   </div>
-                )}
+                ))}
                 <button onClick={()=>openPhotoPicker(r, r.category)} style={{ width:26, height:26, border:'1px solid #D6D2CA', background:'#fff', borderRadius:5, fontSize:12, cursor:'pointer' }}>&#128247;</button>
                 {RATINGS.map(rt=>(
                   <button key={rt} onClick={()=>rate(r.category, rt, r)} style={{
@@ -246,8 +261,22 @@ export function ConditionRatings({ propertyId }) {
       <button onClick={addCustom} style={{ background:'transparent', border:'1px dashed #D6D2CA', borderRadius:6, padding:'7px', color:'#9ca3af', fontSize:12, cursor:'pointer', fontFamily:'inherit' }}>+ Add Custom Item</button>
       <div style={{ borderRadius:8, padding:'10px 14px', textAlign:'center', fontWeight:700, fontSize:13, color:overall.color, background:overall.color+'12', border:`1px solid ${overall.color}40` }}>{overall.label}</div>
       {viewPhoto && (
-        <Modal title={viewPhoto.label} onClose={()=>setViewPhoto(null)} width={640}>
-          <img src={viewPhoto.photo} alt={viewPhoto.label} style={{ width:'100%', borderRadius:8, display:'block' }} />
+        <Modal title={`${viewPhoto.label}${viewPhoto.photos.length > 1 ? `  (${viewPhoto.index+1} / ${viewPhoto.photos.length})` : ''}`} onClose={()=>setViewPhoto(null)} width={640}>
+          <div style={{ position:'relative' }}>
+            <img src={viewPhoto.photos[viewPhoto.index]} alt={viewPhoto.label} style={{ width:'100%', borderRadius:8, display:'block' }} />
+            {viewPhoto.photos.length > 1 && (
+              <>
+                <button onClick={()=>setViewPhoto(v=>({ ...v, index:(v.index-1+v.photos.length)%v.photos.length }))} style={{
+                  position:'absolute', left:8, top:'50%', transform:'translateY(-50%)', width:32, height:32, borderRadius:'50%',
+                  background:'rgba(255,255,255,0.9)', border:'1px solid #D6D2CA', fontSize:15, cursor:'pointer', color:'#6b7280',
+                }}>&#8249;</button>
+                <button onClick={()=>setViewPhoto(v=>({ ...v, index:(v.index+1)%v.photos.length }))} style={{
+                  position:'absolute', right:8, top:'50%', transform:'translateY(-50%)', width:32, height:32, borderRadius:'50%',
+                  background:'rgba(255,255,255,0.9)', border:'1px solid #D6D2CA', fontSize:15, cursor:'pointer', color:'#6b7280',
+                }}>&#8250;</button>
+              </>
+            )}
+          </div>
         </Modal>
       )}
     </div>
