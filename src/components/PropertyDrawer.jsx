@@ -201,6 +201,18 @@ const DEFAULT_REPAIRS = [
 // Truncate "123 Main Street, Lexington, KY 40502" → "123 Main Street"
 // Parses 'YYYY-MM-DD' manually (avoids new Date(str) timezone off-by-one) and
 // returns whole days between two such date strings, or null if either is missing.
+function relTime(iso) {
+  if (!iso) return ''
+  const diffMs = Date.now() - new Date(iso).getTime()
+  const mins = Math.round(diffMs / 60000)
+  if (mins < 1) return 'just now'
+  if (mins < 60) return `${mins}m ago`
+  const hrs = Math.round(mins / 60)
+  if (hrs < 24) return `${hrs}h ago`
+  const days = Math.round(hrs / 24)
+  return `${days}d ago`
+}
+
 function daysBetween(startStr, endStr) {
   if (!startStr || !endStr) return null
   const [sy,sm,sd] = startStr.split('-').map(Number)
@@ -603,6 +615,52 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
   // An agent editing an existing deal only gets the Analyzer tab and can't touch
   // Owner/Type/Stage classification or delete — everything else stays admin/viewer-only.
   const restrictedAgent = isAgentRole && !isNew
+
+  // Record locking — who (if anyone) else is editing this property right now
+  const [lockedByOther, setLockedByOther] = useState(null)
+  const ownLock = useRef(false)
+  const LOCK_STALE_MS = 5 * 60 * 1000
+
+  async function claimLock(force = false) {
+    if (!form.id || !currentUserEmail) return
+    const cutoff = new Date(Date.now() - LOCK_STALE_MS).toISOString()
+    let q = supabase.from('cashoffer_properties')
+      .update({ locked_by: currentUserEmail, locked_at: new Date().toISOString() })
+      .eq('id', form.id)
+    if (!force) q = q.or(`locked_by.is.null,locked_by.eq.${currentUserEmail},locked_at.lt.${cutoff}`)
+    const { data } = await q.select('id')
+    if (data && data.length) {
+      ownLock.current = true
+      setLockedByOther(null)
+    } else {
+      const { data: row } = await supabase.from('cashoffer_properties')
+        .select('locked_by, locked_at').eq('id', form.id).single()
+      if (row?.locked_by && row.locked_by !== currentUserEmail) setLockedByOther(row.locked_by)
+    }
+  }
+
+  // Claim on open, heartbeat while open, release on close/switch
+  useEffect(() => {
+    if (!form.id || !currentUserEmail) { setLockedByOther(null); return }
+    claimLock()
+    const hb = setInterval(() => {
+      if (ownLock.current) {
+        supabase.from('cashoffer_properties')
+          .update({ locked_at: new Date().toISOString() })
+          .eq('id', form.id).eq('locked_by', currentUserEmail).then(() => {})
+      }
+    }, 120000)
+    return () => {
+      clearInterval(hb)
+      if (ownLock.current) {
+        supabase.from('cashoffer_properties')
+          .update({ locked_by: null, locked_at: null })
+          .eq('id', form.id).eq('locked_by', currentUserEmail).then(() => {})
+        ownLock.current = false
+      }
+    }
+  }, [form.id, currentUserEmail]) // eslint-disable-line react-hooks/exhaustive-deps
+
   const type       = form.type || 'Analyzing'
   const listingType = form.listing_type || 'As-Is'
   const disp    = form.stage === 'Lost' ? 'lost' : TYPE_TO_DISP[type] // derived — kept in sync for Sold/Rehabs/PackageDeals pages
@@ -676,9 +734,11 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
 
   async function save() {
     if (!form.address) return
+    if (lockedByOther) { alert(`This property is currently being edited by ${lockedByOther}. Your changes were not saved.`); return false }
     const rehab = rehabCost !== null ? rehabCost : (form.rehab_cost||null)
     const payload = {
       address:form.address,
+      updated_by: currentUserEmail || null,
       beds: isMultiUnit ? (unitTotals.beds||null) : (form.beds||null),
       baths: isMultiUnit ? (unitTotals.baths||null) : (form.baths||null),
       seller_name:form.seller_name||null, seller_fub_link:form.seller_fub_link||null,
@@ -831,7 +891,11 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
   const poLabel = form.post_occupancy ? 'Post-Occ' : null
 
   const innerContent = (
-    <>
+    <div style={{
+      pointerEvents: lockedByOther ? 'none' : 'auto',
+      opacity: lockedByOther ? 0.55 : 1,
+      transition: 'opacity 0.15s',
+    }}>
       {/* ── Tab bar ── */}
       <div style={{ display:'flex', gap:0, borderBottom:'2px solid #F0EDE6', marginBottom:16, marginTop:8, position:'sticky', top:0, background:'#fff', zIndex:5 }}>
         {TABS.map(t=>{
@@ -1518,19 +1582,33 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
       )}
 
 
-    </>
+    </div>
   )
 
   const footerContent = (
-    <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-      {!isNew && !isAgentRole ? (
-        <button onClick={del} style={{ background:'#B91C1C', border:'1px solid #B91C1C', color:'#fff', fontSize:11, fontWeight:700, cursor:'pointer', fontFamily:'inherit', borderRadius:6, padding:'6px 12px' }}>
-          Delete Property
-        </button>
-      ) : <span />}
-      <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-        <Btn variant="outline" onClick={onClose}>Cancel</Btn>
-        <Btn onClick={handleClose}>Save</Btn>
+    <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+      {lockedByOther ? (
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:10, background:'#FFF3CD', border:'1px solid #E8DFC8', borderRadius:6, padding:'7px 12px' }}>
+          <span style={{ fontSize:12, color:'#856404', fontWeight:600 }}>🔒 {lockedByOther} is editing this property — read only</span>
+          {!isAgentRole && (
+            <button onClick={()=>claimLock(true)} style={{ background:'none', border:'1px solid #B8892A', color:'#B8892A', borderRadius:4, padding:'3px 10px', fontSize:11, fontWeight:700, cursor:'pointer', fontFamily:'inherit', whiteSpace:'nowrap' }}>Take Over</button>
+          )}
+        </div>
+      ) : form.updated_at ? (
+        <span style={{ fontSize:11, color:'#9ca3af' }}>
+          Last saved {relTime(form.updated_at)}{form.updated_by ? ` by ${form.updated_by}` : ''}
+        </span>
+      ) : null}
+      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+        {!isNew && !isAgentRole ? (
+          <button onClick={del} style={{ background:'#B91C1C', border:'1px solid #B91C1C', color:'#fff', fontSize:11, fontWeight:700, cursor:'pointer', fontFamily:'inherit', borderRadius:6, padding:'6px 12px' }}>
+            Delete Property
+          </button>
+        ) : <span />}
+        <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+          <Btn variant="outline" onClick={onClose}>Cancel</Btn>
+          <Btn onClick={handleClose} disabled={!!lockedByOther}>Save</Btn>
+        </div>
       </div>
     </div>
   )
