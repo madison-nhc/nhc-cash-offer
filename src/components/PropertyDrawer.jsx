@@ -12,6 +12,7 @@ import LoanOverview from './LoanOverview.jsx'
 import RentOverview from './RentOverview.jsx'
 import PartnerLedgerModal from './PartnerLedgerModal.jsx'
 import PropertyFullView from './PropertyFullView.jsx'
+import { useIsMobile } from '../hooks/useIsMobile.js'
 
 // ── Type options (primary) ────────────────────────────────────────────────────
 const TYPE_OPTIONS = [
@@ -515,6 +516,7 @@ function Toggle({ on, onToggle, label, sub }) {
 }
 
 export default function PropertyDrawer({ property, open, onClose, onSave, mailings=[], onViewOffer, inlineMode=false, initialTab='analyzer', openRentTracker=false, currentUserEmail=null, isAgentRole=false }) {
+  const isFullViewMobile = useIsMobile()
   const [form, setForm]           = useState({})
   const [repairs, setRepairs]     = useState([])
   const [tab, setTab]             = useState('analyzer')
@@ -1538,19 +1540,22 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
       onClick={e => e.target === e.currentTarget && setFullViewOpen(false)}
       style={{
         position:'fixed', inset:0, background:'rgba(0,0,0,0.55)',
-        zIndex:300, display:'flex', alignItems:'center', justifyContent:'center', padding:20,
+        zIndex:300, display:'flex', alignItems:'center', justifyContent:'center',
+        padding: isFullViewMobile ? 0 : 20,
       }}
     >
       <div style={{
-        background:'#FAFAF8', borderRadius:12, width:'100%', maxWidth:1400, height:'92vh',
+        background:'#FAFAF8', borderRadius: isFullViewMobile ? 0 : 12, width:'100%',
+        maxWidth: isFullViewMobile ? '100%' : 1400, height: isFullViewMobile ? '100dvh' : '92vh',
         display:'flex', flexDirection:'column', overflow:'hidden',
-        boxShadow:'0 24px 70px rgba(0,0,0,0.35)', position:'relative',
+        boxShadow: isFullViewMobile ? 'none' : '0 24px 70px rgba(0,0,0,0.35)', position:'relative',
       }}>
         <button
           onClick={() => setFullViewOpen(false)}
           title="Close"
           style={{
-            position:'absolute', top:14, right:16, width:32, height:32, borderRadius:'50%',
+            position:'absolute', top: isFullViewMobile ? 10 : 14, right: isFullViewMobile ? 12 : 16,
+            width:32, height:32, borderRadius:'50%',
             background:'#fff', border:'1px solid #D6D2CA', fontSize:16, cursor:'pointer',
             color:'#6b7280', zIndex:20, display:'flex', alignItems:'center', justifyContent:'center',
           }}

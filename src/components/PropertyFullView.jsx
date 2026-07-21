@@ -4,6 +4,7 @@ import { calcOffers } from '../lib/valuation.js'
 import { Field, FieldRow, inp, monoInp, fmt, Modal } from './ui.jsx'
 import { TourSection, ConditionRatings, PropertyComments } from './PropertyTour.jsx'
 import ProposalModal from './ProposalModal.jsx'
+import { useIsMobile } from '../hooks/useIsMobile.js'
 
 const DEFAULT_REPAIRS = [
   { name:'Flooring', sqft:'', pricePerSqft:'', cost:'' },
@@ -183,6 +184,7 @@ function DriveTab({ propertyId, link, onSaved }) {
 }
 
 export default function PropertyFullView({ propertyId, onClose, isAgentRole=false }) {
+  const isMobile = useIsMobile()
   const [property, setProperty] = useState(null)
   const [repairs, setRepairs] = useState([])
   const [tab, setTab] = useState('offer')
@@ -298,14 +300,21 @@ export default function PropertyFullView({ propertyId, onClose, isAgentRole=fals
 
   return (
     <div style={{ display:'flex', flexDirection:'column', height:'100%', background:'#FAFAF8', fontFamily:'inherit' }}>
-      <div style={{ background:'#fff', borderBottom:'2px solid #B8892A', padding:'14px 24px', display:'flex', alignItems:'center', gap:12, flexShrink:0 }}>
-        <img src="/nhc-logo.svg" alt="NHC" style={{ width:26, height:26 }} />
-        <div style={{ fontSize:16, fontWeight:700, color:'#2C2C2C' }}>{property.address || 'Property'}</div>
-        <span style={{ marginLeft:'auto', fontSize:11, color:'#9ca3af', marginRight: onClose ? 36 : 0 }}>{savedAt ? `Saved ${savedAt.toLocaleTimeString()}` : ''}</span>
+      <div style={{ background:'#fff', borderBottom:'2px solid #B8892A', padding: isMobile ? '12px 16px' : '14px 24px', display:'flex', alignItems:'center', gap:12, flexShrink:0 }}>
+        <img src="/nhc-logo.svg" alt="NHC" style={{ width:26, height:26, flexShrink:0 }} />
+        <div style={{ fontSize: isMobile ? 14 : 16, fontWeight:700, color:'#2C2C2C', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', paddingRight: isMobile && onClose ? 40 : 0 }}>{property.address || 'Property'}</div>
+        {!isMobile && (
+          <span style={{ marginLeft:'auto', fontSize:11, color:'#9ca3af', marginRight: onClose ? 36 : 0 }}>{savedAt ? `Saved ${savedAt.toLocaleTimeString()}` : ''}</span>
+        )}
       </div>
 
-      <div style={{ flex:1, minHeight:0, display:'grid', gridTemplateColumns:'minmax(380px, 460px) 1fr', gap:20, padding:20, alignItems:'stretch' }}>
-        <div style={{ background:'#fff', borderRadius:10, border:'0.5px solid #D6D2CA', padding:20, height:'100%', overflowY:'auto', display:'flex', flexDirection:'column', gap:14 }}>
+      <div style={{
+        flex:1, minHeight:0, display: isMobile ? 'flex' : 'grid', flexDirection: isMobile ? 'column' : undefined,
+        gridTemplateColumns: isMobile ? undefined : 'minmax(380px, 460px) 1fr', gap: isMobile ? 12 : 20,
+        padding: isMobile ? 12 : 20, alignItems: isMobile ? undefined : 'stretch',
+        overflowY: isMobile ? 'auto' : 'hidden',
+      }}>
+        <div style={{ background:'#fff', borderRadius:10, border:'0.5px solid #D6D2CA', padding: isMobile ? 14 : 20, height: isMobile ? 'auto' : '100%', overflowY: isMobile ? 'visible' : 'auto', display:'flex', flexDirection:'column', gap:14, flexShrink:0 }}>
           <div className="drawer-section">Valuation</div>
           <Field label="After Renovation Value ($)">
             <input style={{ ...monoInp, borderLeft:'3px solid #D97825', opacity: isAgentRole ? 0.6 : 1 }} type="number" value={property.arv??''} onChange={set('arv')} disabled={isAgentRole} />
@@ -408,12 +417,12 @@ export default function PropertyFullView({ propertyId, onClose, isAgentRole=fals
           <button onClick={addRepair} disabled={isAgentRole} style={{ background:'transparent', border:'1px dashed #D6D2CA', borderRadius:6, padding:'6px', color:'#9ca3af', fontSize:12, cursor: isAgentRole ? 'not-allowed' : 'pointer', fontFamily:'inherit', width:'100%', opacity: isAgentRole ? 0.6 : 1 }}>+ Add Line Item</button>
         </div>
 
-        <div style={{ background:'#fff', borderRadius:10, border:'0.5px solid #D6D2CA', padding:20, height:'100%', overflowY:'auto' }}>
-          <div style={{ display:'flex', gap:0, borderBottom:'2px solid #F0EDE6', marginBottom:16 }}>
+        <div style={{ background:'#fff', borderRadius:10, border:'0.5px solid #D6D2CA', padding: isMobile ? 14 : 20, height: isMobile ? 'auto' : '100%', overflowY: isMobile ? 'visible' : 'auto', flexShrink:0 }}>
+          <div style={{ display:'flex', gap:0, borderBottom:'2px solid #F0EDE6', marginBottom:16, overflowX: isMobile ? 'auto' : 'visible', WebkitOverflowScrolling:'touch' }}>
             {TABS.map(t=>(
               <button key={t.key} onClick={()=>setTab(t.key)} style={{
-                padding:'8px 18px', border:'none', background:'none', cursor:'pointer',
-                fontSize:12.5, fontWeight:tab===t.key?700:400, fontFamily:'inherit',
+                padding: isMobile ? '8px 12px' : '8px 18px', border:'none', background:'none', cursor:'pointer',
+                fontSize:12.5, fontWeight:tab===t.key?700:400, fontFamily:'inherit', whiteSpace:'nowrap', flexShrink:0,
                 color:tab===t.key?'#B8892A':'#6b7280',
                 borderBottom:tab===t.key?'2px solid #B8892A':'2px solid transparent',
                 marginBottom:-2, letterSpacing:0.4,
@@ -455,24 +464,31 @@ export default function PropertyFullView({ propertyId, onClose, isAgentRole=fals
         </div>
       </div>
 
-      <div style={{ flexShrink:0, background:'#fff', borderTop:'2px solid #B8892A', padding:'12px 24px', display:'flex', justifyContent:'flex-end', alignItems:'center', gap:12, boxShadow:'0 -4px 14px rgba(0,0,0,0.06)' }}>
+      <div style={{
+        flexShrink:0, background:'#fff', borderTop:'2px solid #B8892A',
+        padding: isMobile ? '10px 14px' : '12px 24px', display:'flex',
+        justifyContent: isMobile ? 'flex-start' : 'flex-end', alignItems:'center',
+        gap: isMobile ? 8 : 12, flexWrap: isMobile ? 'wrap' : 'nowrap',
+        boxShadow:'0 -4px 14px rgba(0,0,0,0.06)',
+      }}>
         {!isAgentRole && property.agent_email && property.agent_email !== '__outside_agent__' && (
           <button
             onClick={notifyAgent}
             disabled={notifying}
             style={{
-              marginRight:'auto', background:'#fff', border:'1.5px solid #B8892A', color:'#B8892A',
-              borderRadius:6, padding:'10px 16px', cursor: notifying ? 'default' : 'pointer',
+              marginRight: isMobile ? 0 : 'auto', background:'#fff', border:'1.5px solid #B8892A', color:'#B8892A',
+              borderRadius:6, padding: isMobile ? '8px 12px' : '10px 16px', cursor: notifying ? 'default' : 'pointer',
               fontSize:12.5, fontWeight:700, fontFamily:'inherit', display:'flex', alignItems:'center', gap:6,
+              order: isMobile ? 2 : 0,
             }}>
             🔔 {notifying ? 'Sent!' : 'Notify Agent'}
           </button>
         )}
         {offerIsDirty && (
-          <span style={{ fontSize:11, color:'#92400E', fontWeight:700 }}>⚠ Offer is out of date</span>
+          <span style={{ fontSize:11, color:'#92400E', fontWeight:700, order: isMobile ? 1 : 0, width: isMobile ? '100%' : undefined }}>⚠ Offer is out of date</span>
         )}
         {offerSnapshot && !offerIsDirty && (
-          <span style={{ fontSize:11, color:'#9ca3af', fontWeight:600 }}>✓ Offer is up to date</span>
+          <span style={{ fontSize:11, color:'#9ca3af', fontWeight:600, order: isMobile ? 1 : 0, width: isMobile ? '100%' : undefined }}>✓ Offer is up to date</span>
         )}
         <button
           onClick={()=>{ regenerateOffer(); setTab('offer') }}
@@ -483,9 +499,10 @@ export default function PropertyFullView({ propertyId, onClose, isAgentRole=fals
               : offerIsDirty ? '#D97825'
               : '#2D6FAF',
             color: (offerSnapshot && !offerIsDirty && property.arv) ? '#9ca3af' : '#fff',
-            border:'none', borderRadius:6, padding:'11px 24px',
+            border:'none', borderRadius:6, padding: isMobile ? '10px 18px' : '11px 24px',
             cursor: (property.arv && !(offerSnapshot && !offerIsDirty)) ? 'pointer' : 'not-allowed',
             fontSize:13, fontWeight:700, fontFamily:'inherit',
+            order: isMobile ? 3 : 0, flex: isMobile ? 1 : undefined,
           }}>
           {!offerSnapshot ? 'Generate Offer' : offerIsDirty ? 'Re-Generate Offer' : 'Most Recent'}
         </button>
