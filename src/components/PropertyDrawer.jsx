@@ -1004,11 +1004,11 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
 
   const TABS = restrictedAgent ? [{ key:'analyzer', label:'Analyzer' }] : [
     { key:'analyzer',    label:'Analyzer' },
-    ...(type==='Retail Listing' ? [] : [{ key:'acquisition', label:'Acquisition' }]),
+    ...(type==='Retail Listing' ? [] : [{ key:'acquisition', label:'Purchase' }]),
     ...(showLoanTab ? [{ key:'loan', label:'Loan' }] : []),
     { key:'rehab',       label:'Renovation' },
     ...(showRentTab ? [{ key:'rent', label:'Lease' }] : []),
-    { key:'disposition', label: type==='Retail Listing' ? 'Listing' : 'Disposition' },
+    { key:'disposition', label: type==='Retail Listing' ? 'Listing' : 'Sold' },
   ]
 
   // Disposition is always accessible — no gating on type/stage.
@@ -1257,6 +1257,21 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
       {/* ══════════════ ACQUISITION TAB ══════════════ */}
       {tab==='acquisition' && (
         <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
+          <div className="drawer-section">Linked Records</div>
+          <LinkedOpsDealField
+            propertyId={form.id} propertyAddress={form.address} role="acquisition" label="Linked Ops Hub Deal (Acquisition)"
+            onApply={linked => {
+              const price = linked.volume || linked.list_price || null
+              const commission = linked.commission_flat_fee || (price && linked.commission_rate ? price*linked.commission_rate/100 : null)
+              setForm(f=>({
+                ...f,
+                purchase_price: price != null ? String(price) : f.purchase_price,
+                commission_pct: linked.commission_rate || linked.commission_pct || f.commission_pct,
+                commission_earned: commission != null ? commission.toFixed(2) : f.commission_earned,
+              }))
+            }}
+          />
+
           <Toggle
             on={form.acquisition_type==='Pre-Owned'}
             onToggle={()=>setVal('acquisition_type', form.acquisition_type==='Pre-Owned' ? 'Purchased' : 'Pre-Owned')}
@@ -1283,21 +1298,6 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
                 <Field label="Purchase Price"><MoneyInput value={form.purchase_price} onChange={set('purchase_price')} /></Field>
                 <Field label="Purchase Date"><DatePicker style={inp} value={form.purchase_date||''} onChange={set('purchase_date')} /></Field>
               </FieldRow>
-
-              <div className="drawer-section">Linked Records</div>
-              <LinkedOpsDealField
-                propertyId={form.id} propertyAddress={form.address} role="acquisition" label="Linked Ops Hub Deal (Acquisition)"
-                onApply={linked => {
-                  const price = linked.volume || linked.list_price || null
-                  const commission = linked.commission_flat_fee || (price && linked.commission_rate ? price*linked.commission_rate/100 : null)
-                  setForm(f=>({
-                    ...f,
-                    purchase_price: price != null ? String(price) : f.purchase_price,
-                    commission_pct: linked.commission_rate || linked.commission_pct || f.commission_pct,
-                    commission_earned: commission != null ? commission.toFixed(2) : f.commission_earned,
-                  }))
-                }}
-              />
 
               <div className="drawer-section">Down Payment</div>
               <div style={{ fontSize:11, color:'#9ca3af', marginTop:-8 }}>
@@ -1486,7 +1486,7 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
             <div className="drawer-section">Linked Records</div>
             <LinkedOpsDealField
               propertyId={form.id} propertyAddress={form.address} role="disposition"
-              label={disp==='listing' ? 'Linked Ops Hub Deal (Listing)' : 'Linked Ops Hub Deal (Disposition)'}
+              label={disp==='listing' ? 'Linked Ops Hub Deal (Listing)' : 'Linked Ops Hub Deal (Sold)'}
               onApply={linked => {
                 const price = linked.volume || linked.list_price || null
                 const sellerPct = linked.commission_rate || linked.commission_pct || null
