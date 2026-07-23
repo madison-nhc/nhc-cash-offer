@@ -54,7 +54,7 @@ const STAGE_COLOR = {
 // link (if any) with a small card pulling NHC Commission + Sale/Purchase Price for
 // viewing, plus a search box to link/relink/unlink. Writes happen immediately (not
 // gated behind the drawer's main Save button) since this is a cross-table relationship.
-function LinkedOpsDealField({ propertyId, propertyAddress, role, label }) {
+function LinkedOpsDealField({ propertyId, propertyAddress, role, label, onApply }) {
   const [linked, setLinked] = useState(undefined) // undefined = loading, null = none
   const [query, setQuery] = useState('')
   const [results, setResults] = useState([])
@@ -62,7 +62,7 @@ function LinkedOpsDealField({ propertyId, propertyAddress, role, label }) {
   const [loading, setLoading] = useState(false)
   const wrapRef = useRef(null)
 
-  const SELECT_COLS = 'id, client_name, property_address, status, primary_agent, deal_type, volume, commission_pct, commission_flat_fee, commission_rate, list_price, closing_date'
+  const SELECT_COLS = 'id, client_name, property_address, status, primary_agent, deal_type, volume, commission_pct, commission_flat_fee, commission_rate, list_price, closing_date, co_op_agent'
 
   async function loadLinked() {
     if (!propertyId) { setLinked(null); return }
@@ -134,8 +134,18 @@ function LinkedOpsDealField({ propertyId, propertyAddress, role, label }) {
               <div style={{ fontSize: 11, color: '#888', marginTop: 2 }}>
                 {linked.deal_type} · {linked.status}{linked.primary_agent ? ` · ${linked.primary_agent}` : ''}
               </div>
+              {linked.co_op_agent && (
+                <div style={{ fontSize: 10.5, color: '#B8892A', marginTop: 2 }}>Co-op agent: {linked.co_op_agent}</div>
+              )}
             </div>
             <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+              {onApply && (priceAmt != null || commissionAmt != null) && (
+                <button
+                  onClick={() => onApply(linked)}
+                  title="Copy price, commission, and co-op agent from this Ops Hub deal into the property"
+                  style={{ background: '#3B6D11', border: 'none', borderRadius: 6, padding: '6px 10px', fontSize: 11, fontWeight: 700, color: '#fff', cursor: 'pointer' }}
+                >↻ Pull In</button>
+              )}
               <button
                 onClick={() => window.open(`https://ops.nhcnow.com/?page=pipeline&deal=${linked.id}`, '_blank', 'noopener,noreferrer')}
                 style={{ background: '#B8892A', border: 'none', borderRadius: 6, padding: '6px 10px', fontSize: 11, fontWeight: 700, color: '#fff', cursor: 'pointer' }}
@@ -980,16 +990,17 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
   useEffect(() => {
     if (tab==='loan' && !showLoanTab) setTab('analyzer')
     if (tab==='rent' && !showRentTab) setTab('analyzer')
+    if (tab==='acquisition' && type==='Retail Listing') setTab('analyzer')
     if (restrictedAgent && tab!=='analyzer') setTab('analyzer')
   }, [showLoanTab, showRentTab, restrictedAgent]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const TABS = restrictedAgent ? [{ key:'analyzer', label:'Analyzer' }] : [
     { key:'analyzer',    label:'Analyzer' },
-    { key:'acquisition', label:'Acquisition' },
+    ...(type==='Retail Listing' ? [] : [{ key:'acquisition', label:'Acquisition' }]),
     ...(showLoanTab ? [{ key:'loan', label:'Loan' }] : []),
     { key:'rehab',       label:'Renovation' },
     ...(showRentTab ? [{ key:'rent', label:'Lease' }] : []),
-    { key:'disposition', label:'Disposition' },
+    { key:'disposition', label: type==='Retail Listing' ? 'Listing' : 'Disposition' },
   ]
 
   // Disposition is always accessible — no gating on type/stage.
@@ -1261,7 +1272,19 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
               </FieldRow>
 
               <div className="drawer-section">Linked Records</div>
-              <LinkedOpsDealField propertyId={form.id} propertyAddress={form.address} role="acquisition" label="Linked Ops Hub Deal (Acquisition)" />
+              <LinkedOpsDealField
+                propertyId={form.id} propertyAddress={form.address} role="acquisition" label="Linked Ops Hub Deal (Acquisition)"
+                onApply={linked => {
+                  const price = linked.volume || linked.list_price || null
+                  const commission = linked.commission_flat_fee || (price && linked.commission_rate ? price*linked.commission_rate/100 : null)
+                  setForm(f=>({
+                    ...f,
+                    purchase_price: price != null ? String(price) : f.purchase_price,
+                    commission_pct: linked.commission_rate || linked.commission_pct || f.commission_pct,
+                    commission_earned: commission != null ? commission.toFixed(2) : f.commission_earned,
+                  }))
+                }}
+              />
 
               <div className="drawer-section">Down Payment</div>
               <div style={{ fontSize:11, color:'#9ca3af', marginTop:-8 }}>
@@ -1476,7 +1499,26 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
 
           {disp && (<>
             <div className="drawer-section">Linked Records</div>
-            <LinkedOpsDealField propertyId={form.id} propertyAddress={form.address} role="disposition" label="Linked Ops Hub Deal (Disposition)" />
+            <LinkedOpsDealField
+              propertyId={form.id} propertyAddress={form.address} role="disposition"
+              label={disp==='listing' ? 'Linked Ops Hub Deal (Listing)' : 'Linked Ops Hub Deal (Disposition)'}
+              onApply={linked => {
+                const price = linked.volume || linked.list_price || null
+                const sellerPct = linked.commission_rate || linked.commission_pct || null
+                const sellerAmt = linked.commission_flat_fee || (price && sellerPct ? price*sellerPct/100 : null)
+                setForm(f=>({
+                  ...f,
+                  sale_price: price != null ? String(price) : f.sale_price,
+                  sale_commission_seller_pct: sellerPct != null ? String(sellerPct) : f.sale_commission_seller_pct,
+                  sale_commission_seller_amt: sellerAmt != null ? sellerAmt.toFixed(2) : f.sale_commission_seller_amt,
+                  sale_buyer_agent_outside: linked.co_op_agent ? true : f.sale_buyer_agent_outside,
+                  sale_buyer_agent_company: linked.co_op_agent || f.sale_buyer_agent_company,
+                  // Retail Listing's older single-field commission stays in sync too
+                  commission_pct: sellerPct != null ? String(sellerPct) : f.commission_pct,
+                  commission_earned: sellerAmt != null ? sellerAmt.toFixed(2) : f.commission_earned,
+                }))
+              }}
+            />
           </>)}
 
           {/* ── LISTING ── */}
@@ -1492,24 +1534,13 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
                 <input style={monoInp} type="number" value={form.bpv_rehab_fee||''} onChange={set('bpv_rehab_fee')} />
               </Field>
             )}
-            <div className="drawer-section">NHC Commission</div>
-            <Field label="Commission %">
-              <input style={monoInp} type="number" value={form.commission_pct||''}
-                onChange={e=>{ const e2=calcCommission(e.target.value,form.sale_price||form.arv); setForm(f=>({...f,commission_pct:e.target.value,commission_earned:e2?e2.toFixed(2):f.commission_earned})) }} />
-            </Field>
-            <Field label="Commission"><MoneyInput value={form.commission_earned} onChange={set('commission_earned')} /></Field>
             <div className="drawer-section">Sale</div>
             <FieldRow>
               <Field label="Sale Price ($)"><input style={monoInp} type="number" value={form.sale_price||''} onChange={set('sale_price')} /></Field>
               <Field label="Close Date"><DatePicker style={inp} value={form.disposition_date||''} onChange={set('disposition_date')} /></Field>
             </FieldRow>
             <Field label="Days on Market"><input style={monoInp} type="number" value={form.days_on_market||''} onChange={set('days_on_market')} /></Field>
-            {(form.commission_earned||form.sale_price) && (
-              <div style={{ display:'flex', gap:8, marginTop:4 }}>
-                {form.commission_earned && <ProfitBox label="NHC Commission" value={fmt(form.commission_earned)} color="#3B6D11" />}
-                {form.sale_price && <ProfitBox label="Sale Price" value={fmt(form.sale_price)} color="#2D6FAF" />}
-              </div>
-            )}
+            <CommissionSplit form={form} setForm={setForm} calcCommission={calcCommission} monoInp={monoInp} inp={inp} />
           </>)}
 
           {/* ── WHOLESALE ── */}
