@@ -53,6 +53,12 @@ export default function Users({ isAdmin, userEmail }) {
     if (error) setError(error.message)
   }
 
+  async function togglePropertyOwner(email, value) {
+    setUsers(prev => prev.map(u => u.email === email ? { ...u, is_property_owner: value } : u))
+    const { error } = await supabase.from('cashoffer_users').update({ is_property_owner: value }).eq('email', email)
+    if (error) setError(error.message)
+  }
+
   async function removeUser(email) {
     if (email === userEmail) { alert("You can't remove your own access."); return }
     if (!confirm(`Remove ${email}'s access to Cash Offer Hub?`)) return
@@ -85,6 +91,7 @@ export default function Users({ isAdmin, userEmail }) {
               <th style={{ textAlign: 'left', padding: '10px 14px', fontSize: 11, color: '#888', textTransform: 'uppercase', letterSpacing: 0.5 }}>Name</th>
               <th style={{ textAlign: 'left', padding: '10px 14px', fontSize: 11, color: '#888', textTransform: 'uppercase', letterSpacing: 0.5 }}>Email</th>
               <th style={{ textAlign: 'left', padding: '10px 14px', fontSize: 11, color: '#888', textTransform: 'uppercase', letterSpacing: 0.5 }}>Role</th>
+              <th style={{ textAlign: 'center', padding: '10px 14px', fontSize: 11, color: '#888', textTransform: 'uppercase', letterSpacing: 0.5 }}>Property Owner</th>
               <th style={{ padding: '10px 14px' }}></th>
             </tr>
           </thead>
@@ -112,6 +119,14 @@ export default function Users({ isAdmin, userEmail }) {
                     <option value="viewer">Viewer</option>
                   </select>
                 </td>
+                <td style={{ padding: '10px 14px', textAlign: 'center' }}>
+                  <input
+                    type="checkbox"
+                    checked={!!u.is_property_owner}
+                    onChange={e => togglePropertyOwner(u.email, e.target.checked)}
+                    style={{ width: 16, height: 16, cursor: 'pointer', accentColor: GOLD }}
+                  />
+                </td>
                 <td style={{ padding: '10px 14px', textAlign: 'right' }}>
                   <button
                     onClick={() => removeUser(u.email)}
@@ -126,7 +141,7 @@ export default function Users({ isAdmin, userEmail }) {
               </tr>
             ))}
             {users.length === 0 && (
-              <tr><td colSpan={4} style={{ padding: '20px 14px', textAlign: 'center', color: '#bbb' }}>No users yet.</td></tr>
+              <tr><td colSpan={5} style={{ padding: '20px 14px', textAlign: 'center', color: '#bbb' }}>No users yet.</td></tr>
             )}
           </tbody>
         </table>

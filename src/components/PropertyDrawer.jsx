@@ -534,6 +534,7 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
   const [pingOpen, setPingOpen] = useState(false)
   const [sendingOffer, setSendingOffer] = useState(false)
   const [agentList, setAgentList] = useState([])
+  const [ownerUserList, setOwnerUserList] = useState([])
   const [entityList, setEntityList] = useState([])
 
   function nameFor(email) {
@@ -545,6 +546,8 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
   useEffect(() => {
     supabase.from('cashoffer_users').select('email,full_name,role').in('role',['agent','admin']).order('full_name')
       .then(({ data }) => setAgentList(data || []))
+    supabase.from('cashoffer_users').select('email,full_name').eq('is_property_owner', true).order('full_name')
+      .then(({ data }) => setOwnerUserList(data || []))
     supabase.from('cashoffer_entities').select('id,name').order('name')
       .then(({ data }) => setEntityList(data || []))
   }, [])
@@ -1692,75 +1695,46 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
       headerActions={null}
       subtitle={
         <div style={{ display:'flex', alignItems:'flex-end', gap:10, marginTop:8, flexWrap:'wrap' }}>
-          {/* Owner picker — Person (any signed-in user) or Business (an LLC/entity), shown
-              on cards via the legacy `owner` text field kept in sync for compatibility */}
+          {/* Owner picker — a single list combining people flagged as Property Owners
+              (Users page) and businesses (Business page). Value is prefixed so we know
+              which table it came from; legacy `owner` text field kept in sync for the
+              existing card display across Rehabs/Holds/Listings/Wholesale/Sold. */}
           <div style={{ display:'flex', flexDirection:'column', gap:2 }}>
             <span style={{ fontSize:9, fontWeight:700, color:'#9ca3af', textTransform:'uppercase', letterSpacing:0.6 }}>Owner</span>
-            <div style={{ display:'flex', gap:4 }}>
-              <div style={{ display:'flex', border:'1.5px solid #D6D2CA', borderRadius:6, overflow:'hidden' }}>
-                {['person','business'].map(mode => (
-                  <button
-                    key={mode}
-                    type="button"
-                    onClick={e=>{
-                      e.stopPropagation()
-                      if (restrictedAgent) return
-                      if (mode === 'business') {
-                        const firstEntity = entityList[0]
-                        setForm(f=>({ ...f, owner_entity_id: firstEntity?.id || null, owner_user_email: null, owner: firstEntity?.name || f.owner }))
-                      } else {
-                        const firstUser = agentList[0]
-                        setForm(f=>({ ...f, owner_user_email: firstUser?.email || null, owner_entity_id: null, owner: firstUser?.full_name || f.owner }))
-                      }
-                    }}
-                    disabled={restrictedAgent}
-                    style={{
-                      border:'none', padding:'3px 8px', fontSize:10, fontWeight:700, cursor: restrictedAgent ? 'not-allowed' : 'pointer',
-                      fontFamily:'inherit', textTransform:'uppercase', letterSpacing:0.4,
-                      background: (form.owner_entity_id ? 'business' : 'person') === mode ? '#B8892A' : '#fff',
-                      color: (form.owner_entity_id ? 'business' : 'person') === mode ? '#fff' : '#6b7280',
-                    }}
-                  >{mode === 'person' ? 'Person' : 'Business'}</button>
-                ))}
-              </div>
-              {form.owner_entity_id ? (
-                <select
-                  value={form.owner_entity_id}
-                  onClick={e=>e.stopPropagation()}
-                  onChange={e=>{
-                    const ent = entityList.find(x=>x.id===e.target.value)
-                    setForm(f=>({ ...f, owner_entity_id: e.target.value, owner: ent?.name || f.owner }))
-                  }}
-                  disabled={restrictedAgent}
-                  style={{
-                    border:'1.5px solid #D6D2CA', borderRadius:6, padding:'3px 8px',
-                    fontSize:11, fontWeight:600, fontFamily:'inherit', color:'#6b7280', background:'#fff',
-                    cursor: restrictedAgent ? 'not-allowed' : 'pointer', outline:'none',
-                    opacity: restrictedAgent ? 0.6 : 1,
-                  }}>
-                  {entityList.length === 0 && <option value="">No businesses yet</option>}
-                  {entityList.map(ent=><option key={ent.id} value={ent.id}>{ent.name}</option>)}
-                </select>
-              ) : (
-                <select
-                  value={form.owner_user_email||''}
-                  onClick={e=>e.stopPropagation()}
-                  onChange={e=>{
-                    const u = agentList.find(x=>x.email===e.target.value)
-                    setForm(f=>({ ...f, owner_user_email: e.target.value, owner: u?.full_name || f.owner }))
-                  }}
-                  disabled={restrictedAgent}
-                  style={{
-                    border:'1.5px solid #D6D2CA', borderRadius:6, padding:'3px 8px',
-                    fontSize:11, fontWeight:600, fontFamily:'inherit', color:'#6b7280', background:'#fff',
-                    cursor: restrictedAgent ? 'not-allowed' : 'pointer', outline:'none',
-                    opacity: restrictedAgent ? 0.6 : 1,
-                  }}>
-                  <option value="">Select owner...</option>
-                  {agentList.map(a=><option key={a.email} value={a.email}>{a.full_name||a.email}</option>)}
-                </select>
+            <select
+              value={form.owner_entity_id ? `entity:${form.owner_entity_id}` : form.owner_user_email ? `user:${form.owner_user_email}` : ''}
+              onClick={e=>e.stopPropagation()}
+              onChange={e=>{
+                const val = e.target.value
+                if (!val) { setForm(f=>({ ...f, owner_user_email:null, owner_entity_id:null })); return }
+                const [kind, id] = val.split(':')
+                if (kind === 'entity') {
+                  const ent = entityList.find(x=>x.id===id)
+                  setForm(f=>({ ...f, owner_entity_id:id, owner_user_email:null, owner: ent?.name || f.owner }))
+                } else {
+                  const u = ownerUserList.find(x=>x.email===id)
+                  setForm(f=>({ ...f, owner_user_email:id, owner_entity_id:null, owner: u?.full_name || f.owner }))
+                }
+              }}
+              disabled={restrictedAgent}
+              style={{
+                border:'1.5px solid #D6D2CA', borderRadius:6, padding:'3px 8px',
+                fontSize:11, fontWeight:600, fontFamily:'inherit', color:'#6b7280', background:'#fff',
+                cursor: restrictedAgent ? 'not-allowed' : 'pointer', outline:'none',
+                opacity: restrictedAgent ? 0.6 : 1,
+              }}>
+              <option value="">Select owner...</option>
+              {ownerUserList.length > 0 && (
+                <optgroup label="People">
+                  {ownerUserList.map(u=><option key={u.email} value={`user:${u.email}`}>{u.full_name||u.email}</option>)}
+                </optgroup>
               )}
-            </div>
+              {entityList.length > 0 && (
+                <optgroup label="Businesses">
+                  {entityList.map(ent=><option key={ent.id} value={`entity:${ent.id}`}>{ent.name}</option>)}
+                </optgroup>
+              )}
+            </select>
           </div>
 
           {/* Agent dropdown — who's working this deal */}
