@@ -48,11 +48,13 @@ const STAGE_COLOR = {
 }
 
 // Search-and-link to a matching Ops Hub deal (pipeline_deals.cashoffer_property_id
-// points back at this property). Shows the current link (if any) with a button to
-// open it in Ops Hub, plus a search box to link/relink/unlink. Writes happen
-// immediately (not gated behind the drawer's main Save button) since this is a
-// cross-table relationship, not a field on this property row.
-function LinkedOpsDealField({ propertyId, propertyAddress }) {
+// points back at this property, tagged with a role so a property can carry two
+// separate links: the Acquisition-side deal (buying it) and the Disposition-side
+// deal (selling it) — each is a different Ops Hub transaction). Shows the current
+// link (if any) with a small card pulling NHC Commission + Sale/Purchase Price for
+// viewing, plus a search box to link/relink/unlink. Writes happen immediately (not
+// gated behind the drawer's main Save button) since this is a cross-table relationship.
+function LinkedOpsDealField({ propertyId, propertyAddress, role, label }) {
   const [linked, setLinked] = useState(undefined) // undefined = loading, null = none
   const [query, setQuery] = useState('')
   const [results, setResults] = useState([])
@@ -60,16 +62,19 @@ function LinkedOpsDealField({ propertyId, propertyAddress }) {
   const [loading, setLoading] = useState(false)
   const wrapRef = useRef(null)
 
+  const SELECT_COLS = 'id, client_name, property_address, status, primary_agent, deal_type, volume, commission_pct, commission_flat_fee, commission_rate, list_price, closing_date'
+
   async function loadLinked() {
     if (!propertyId) { setLinked(null); return }
     const { data } = await supabase.from('pipeline_deals')
-      .select('id, client_name, property_address, status, primary_agent, deal_type')
+      .select(SELECT_COLS)
       .eq('cashoffer_property_id', propertyId)
+      .eq('cashoffer_link_role', role)
       .maybeSingle()
     setLinked(data || null)
   }
 
-  useEffect(() => { loadLinked() }, [propertyId]) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { loadLinked() }, [propertyId, role]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     function handler(e) { if (wrapRef.current && !wrapRef.current.contains(e.target)) setOpen(false) }
@@ -81,7 +86,7 @@ function LinkedOpsDealField({ propertyId, propertyAddress }) {
     if (!q || q.trim().length < 2) { setResults([]); setOpen(false); return }
     setLoading(true)
     const { data } = await supabase.from('pipeline_deals')
-      .select('id, client_name, property_address, status, primary_agent, deal_type')
+      .select(SELECT_COLS)
       .or(`client_name.ilike.%${q}%,property_address.ilike.%${q}%`)
       .limit(8)
     setResults(data || [])
@@ -96,7 +101,7 @@ function LinkedOpsDealField({ propertyId, propertyAddress }) {
   }
 
   async function linkDeal(dealId) {
-    await supabase.from('pipeline_deals').update({ cashoffer_property_id: propertyId }).eq('id', dealId)
+    await supabase.from('pipeline_deals').update({ cashoffer_property_id: propertyId, cashoffer_link_role: role }).eq('id', dealId)
     setOpen(false)
     setQuery('')
     setResults([])
@@ -105,33 +110,55 @@ function LinkedOpsDealField({ propertyId, propertyAddress }) {
 
   async function unlink() {
     if (!linked) return
-    await supabase.from('pipeline_deals').update({ cashoffer_property_id: null }).eq('id', linked.id)
+    await supabase.from('pipeline_deals').update({ cashoffer_property_id: null, cashoffer_link_role: null }).eq('id', linked.id)
     setLinked(null)
   }
+
+  // NHC Commission: prefer a flat fee if one was set, otherwise compute from rate × volume
+  const commissionAmt = linked ? (linked.commission_flat_fee || (linked.volume && linked.commission_rate ? linked.volume * linked.commission_rate / 100 : null)) : null
+  const priceAmt = linked ? (linked.volume || linked.list_price) : null
 
   return (
     <div>
       <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 5 }}>
-        Linked Ops Hub Deal
+        {label}
       </label>
 
       {linked === undefined ? (
         <div style={{ fontSize: 12, color: '#9ca3af' }}>Loading…</div>
       ) : linked ? (
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, background: '#FAF6EF', border: '0.5px solid #E8DFC8', borderRadius: 6, padding: '8px 10px' }}>
-          <div style={{ minWidth: 0 }}>
-            <div style={{ fontSize: 13, fontWeight: 700, color: '#2C2C2C' }}>{linked.client_name || linked.property_address || '—'}</div>
-            <div style={{ fontSize: 11, color: '#888', marginTop: 2 }}>
-              {linked.deal_type} · {linked.status}{linked.primary_agent ? ` · ${linked.primary_agent}` : ''}
+        <div style={{ background: '#FAF6EF', border: '0.5px solid #E8DFC8', borderRadius: 6, padding: '8px 10px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+            <div style={{ minWidth: 0 }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: '#2C2C2C' }}>{linked.client_name || linked.property_address || '—'}</div>
+              <div style={{ fontSize: 11, color: '#888', marginTop: 2 }}>
+                {linked.deal_type} · {linked.status}{linked.primary_agent ? ` · ${linked.primary_agent}` : ''}
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+              <button
+                onClick={() => window.open(`https://ops.nhcnow.com/?page=pipeline&deal=${linked.id}`, '_blank', 'noopener,noreferrer')}
+                style={{ background: '#B8892A', border: 'none', borderRadius: 6, padding: '6px 10px', fontSize: 11, fontWeight: 700, color: '#fff', cursor: 'pointer' }}
+              >↗ Open in Ops Hub</button>
+              <button onClick={unlink} title="Unlink" style={{ background: 'none', border: '1px solid #D6D2CA', borderRadius: 6, color: '#9ca3af', cursor: 'pointer', width: 28 }}>×</button>
             </div>
           </div>
-          <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
-            <button
-              onClick={() => window.open(`https://ops.nhcnow.com/?page=pipeline&deal=${linked.id}`, '_blank', 'noopener,noreferrer')}
-              style={{ background: '#B8892A', border: 'none', borderRadius: 6, padding: '6px 10px', fontSize: 11, fontWeight: 700, color: '#fff', cursor: 'pointer' }}
-            >↗ Open in Ops Hub</button>
-            <button onClick={unlink} title="Unlink" style={{ background: 'none', border: '1px solid #D6D2CA', borderRadius: 6, color: '#9ca3af', cursor: 'pointer', width: 28 }}>×</button>
-          </div>
+          {(priceAmt || commissionAmt != null) && (
+            <div style={{ display: 'flex', gap: 8, marginTop: 8, paddingTop: 8, borderTop: '1px solid #EFE7D3' }}>
+              {priceAmt != null && (
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 9, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: 0.5 }}>Sale / Purchase Price</div>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: '#2C2C2C', fontFamily: 'monospace' }}>{fmt(priceAmt)}</div>
+                </div>
+              )}
+              {commissionAmt != null && (
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 9, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: 0.5 }}>NHC Commission</div>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: '#B8892A', fontFamily: 'monospace' }}>{fmt(commissionAmt)}</div>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       ) : (
         <div ref={wrapRef} style={{ position: 'relative' }}>
@@ -1199,9 +1226,6 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
               View Offer PDF
             </button>
           )}
-          <div className="drawer-section">Linked Records</div>
-          <LinkedOpsDealField propertyId={form.id} propertyAddress={form.address} />
-
           <Field label="Notes"><textarea style={{ ...inp, minHeight:56, resize:'vertical' }} value={form.nhc_notes||''} onChange={set('nhc_notes')} /></Field>
         </div>
       )}
@@ -1235,6 +1259,9 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
                 <Field label="Purchase Price"><MoneyInput value={form.purchase_price} onChange={set('purchase_price')} /></Field>
                 <Field label="Purchase Date"><DatePicker style={inp} value={form.purchase_date||''} onChange={set('purchase_date')} /></Field>
               </FieldRow>
+
+              <div className="drawer-section">Linked Records</div>
+              <LinkedOpsDealField propertyId={form.id} propertyAddress={form.address} role="acquisition" label="Linked Ops Hub Deal (Acquisition)" />
 
               <div className="drawer-section">Down Payment</div>
               <div style={{ fontSize:11, color:'#9ca3af', marginTop:-8 }}>
@@ -1446,6 +1473,11 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
               Set a type in the header above to see relevant fields.
             </div>
           )}
+
+          {disp && (<>
+            <div className="drawer-section">Linked Records</div>
+            <LinkedOpsDealField propertyId={form.id} propertyAddress={form.address} role="disposition" label="Linked Ops Hub Deal (Disposition)" />
+          </>)}
 
           {/* ── LISTING ── */}
           {disp==='listing' && (<>
