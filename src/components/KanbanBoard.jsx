@@ -106,7 +106,7 @@ export default function KanbanBoard({ columns, items, columnFor, onOpen, onDrop,
   }
 
   return (
-    <div style={{ display:'flex', gap:12, overflowX:'auto', paddingBottom:8, alignItems:'flex-start' }}>
+    <div style={{ display:'flex', gap:12, overflowX:'auto', paddingBottom:8, alignItems:'stretch' }}>
       {columns.map(col => {
         const colItems = items.filter(p => columnFor(p) === col.key)
         return (
@@ -117,7 +117,8 @@ export default function KanbanBoard({ columns, items, columnFor, onOpen, onDrop,
             onDrop={col.locked ? undefined : e => handleDrop(e, col.key)}
             style={{
               flex:`0 0 ${columnWidth}px`, minWidth:columnWidth,
-              background: dragOverCol===col.key ? '#fef9f0' : col.exit ? '#FAFAF8' : '#F0EDE6',
+              display:'flex', flexDirection:'column',
+              background: dragOverCol===col.key ? '#fef9f0' : 'transparent',
               border: col.exit ? '1.5px dashed #D6D2CA' : 'none',
               borderRadius:8, padding:10, transition:'background 0.1s',
             }}
@@ -132,7 +133,7 @@ export default function KanbanBoard({ columns, items, columnFor, onOpen, onDrop,
               {!col.exit && <span style={{ fontSize:11, fontWeight:700, color:'#2C2C2C', background:'#E8E4DB', borderRadius:999, padding:'1px 8px' }}>{colItems.length}</span>}
             </div>
             {col.hint && <div style={{ fontSize:10, color:'#9ca3af', margin:'-4px 0 8px', padding:'0 2px' }}>{col.hint}</div>}
-            <div style={{ minHeight:40 }}>
+            <div style={{ minHeight:40, flex:1 }}>
               {colItems.map(p => (
                 <div
                   key={p.id}
