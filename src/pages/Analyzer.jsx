@@ -330,7 +330,7 @@ export default function Analyzer({ openPropertyId, openInPackage, onOpenedTarget
                           <span style={{ fontSize:11, fontWeight:600, color:'#9ca3af' }}>Lost</span>
                         )}
                         {p.stage && p.stage!=='Analyzing' && (
-                          <span style={{ fontSize:11, fontWeight:600, color: p.stage==='Under Contract'?'#2D6FAF':'#B8892A' }}>{p.stage}</span>
+                          <span style={{ fontSize:11, fontWeight:600, color: p.stage==='Pending'?'#2D6FAF':'#B8892A' }}>{p.stage}</span>
                         )}
                         {p.post_occupancy && <div style={{ fontSize:10, color:'#B8892A', marginTop:1 }}>{p.post_occupancy==='owner'?'Post-Occ: Owner':'Post-Occ: Renting Back'}</div>}
                       </td>

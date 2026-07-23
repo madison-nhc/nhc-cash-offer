@@ -15,7 +15,7 @@ const PROMO_ZONES = [
 ]
 
 const BOARD_COLUMNS = [
-  { key:'Under Contract', color:'#2D6FAF' },
+  { key:'Pending', color:'#2D6FAF' },
   { key:'Assigned',       color:'#6b21a8' },
   { key:'Closed',         color:'#3B6D11' },  // drop opens drawer on Disposition; closed deals stay visible here
 ]
@@ -47,7 +47,7 @@ export default function Wholesale({ isAgentRole=false, currentUserEmail=null }) 
     setLoading(false)
   }
 
-  const columnFor = p => p.stage || 'Under Contract'
+  const columnFor = p => p.stage || 'Pending'
 
   async function handleDrop(id, columnKey) {
     const { error } = await supabase.from('cashoffer_properties').update({ stage: columnKey }).eq('id', id)
@@ -160,6 +160,7 @@ export default function Wholesale({ isAgentRole=false, currentUserEmail=null }) 
         ) : (
           <>
             <KanbanBoard
+              columnWidth={320}
               columns={BOARD_COLUMNS}
               items={properties}
               columnFor={columnFor}

@@ -22,7 +22,7 @@ const PROMO_ZONES = [
 const BOARD_COLUMNS = [
   { key:'Off Market',     color:'#9ca3af' },
   { key:'Listed',         color:'#3B6D11', label:'On the Market' },
-  { key:'Under Contract', color:'#2D6FAF' },
+  { key:'Pending', color:'#2D6FAF' },
 ]
 
 // All market columns are valid for every type shown on this page
@@ -54,7 +54,7 @@ export default function Listings({ isAgentRole=false, currentUserEmail=null }) {
     setLoading(true)
     let propQuery = supabase.from('cashoffer_properties').select('*')
       // Active listings only — no sold_date and no disposition_date
-      .or('type.eq."Retail Listing",and(type.in.(Flip,Hold),stage.in.("Off Market","Listed","Under Contract"))')
+      .or('type.eq."Retail Listing",and(type.in.(Flip,Hold),stage.in.("Off Market","Listed","Pending"))')
       .not('stage', 'in', '("Sold","Closed","Cancelled / Expired","Reno In Progress","Reno Completed")')
     if (isAgentRole) propQuery = propQuery.eq('agent_email', currentUserEmail)
     propQuery = propQuery.order('list_date', { ascending: false })
@@ -209,6 +209,7 @@ export default function Listings({ isAgentRole=false, currentUserEmail=null }) {
         ) : (
           <>
             <KanbanBoard
+              columnWidth={320}
               columns={BOARD_COLUMNS}
               items={shown}
               columnFor={columnFor}

@@ -192,6 +192,7 @@ export default function Holds({ isAgentRole=false, currentUserEmail=null }) {
         ) : (
           <>
             <KanbanBoard
+              columnWidth={320}
               columns={BOARD_COLUMNS}
               items={boardItems}
               columnFor={columnFor}

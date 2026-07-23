@@ -34,14 +34,14 @@ const TYPE_TO_DISP = { 'Analyzing':null, 'Renovation':'renovation', 'Flip':'flip
 const STAGE_BY_TYPE = {
   'Analyzing':      ['New Lead','Needs Cash Offer','Offer Submitted','Offer Accepted','Lost'],
   'Renovation':     ['Purchased','Renovation'],
-  'Flip':           ['Off Market','Listed','Under Contract','Sold'],
+  'Flip':           ['Off Market','Listed','Pending','Sold'],
   'Hold':           ['Vacant','Rent Ready','Rental Listed','Leased','Listed','Sold'],
-  'Retail Listing': { 'As-Is':['Off Market','Listed','Under Contract','Sold','Cancelled / Expired'], 'Reno':['Reno In Progress','Reno Completed','Off Market','Listed','Under Contract','Sold','Cancelled / Expired'] },
-  'Wholesale':      ['Under Contract','Assigned','Closed','Cancelled'],
+  'Retail Listing': { 'As-Is':['Off Market','Listed','Pending','Sold','Cancelled / Expired'], 'Reno':['Reno In Progress','Reno Completed','Off Market','Listed','Pending','Sold','Cancelled / Expired'] },
+  'Wholesale':      ['Pending','Assigned','Closed','Cancelled'],
 }
 const STAGE_COLOR = {
   'New Lead':'#9ca3af', 'Needs Cash Offer':'#D97825', 'Offer Submitted':'#B8892A', 'Offer Accepted':'#3B6D11', 'Off Market':'#9ca3af',
-  Purchased:'#D97825', Renovation:'#6b21a8', Rehab:'#6b21a8', Listed:'#3B6D11', 'Under Contract':'#2D6FAF', Sold:'#3B6D11',
+  Purchased:'#D97825', Renovation:'#6b21a8', Rehab:'#6b21a8', Listed:'#3B6D11', 'Pending':'#2D6FAF', Sold:'#3B6D11',
   Vacant:'#D97825', 'Rent Ready':'#B8892A', 'Rental Listed':'#2D6FAF', Leased:'#3B6D11', 'Reno In Progress':'#D97825', 'Reno Completed':'#B8892A',
   Assigned:'#6b21a8', Closed:'#3B6D11',
   Lost:'#9ca3af', 'Cancelled / Expired':'#9ca3af', Cancelled:'#9ca3af',
@@ -1815,7 +1815,11 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
     <>
     <Drawer open={open} onClose={guardedClose} hideCloseButton width={580} footer={footerContent}
       title={form.address || 'New Property'}
-      headerActions={null}
+      headerActions={!isNew && (
+        <button onClick={()=>setPingOpen(true)} title="Ping a teammate about this property" style={{ background:'#fff', border:'1px solid #D6D2CA', color:'#6b7280', borderRadius:6, padding:'6px 12px', fontSize:12, fontWeight:700, cursor:'pointer', fontFamily:'inherit', display:'flex', alignItems:'center', gap:6, whiteSpace:'nowrap' }}>
+          🔔 Ping
+        </button>
+      )}
       subtitle={
         <div style={{ display:'flex', alignItems:'flex-end', gap:10, marginTop:8, flexWrap:'wrap' }}>
           {/* Owner picker — a single list combining people flagged as Property Owners

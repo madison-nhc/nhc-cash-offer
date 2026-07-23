@@ -32,7 +32,7 @@ export function shortStreet(address) {
 export const PROMO_PAYLOADS = {
   'Renovation':     { type:'Renovation',     stage:'Purchased',      disposition:'renovation' },
   'Retail Listing': { type:'Retail Listing', stage:'Off Market',     disposition:'listing' },
-  'Wholesale':      { type:'Wholesale',      stage:'Under Contract', disposition:'wholesale' },
+  'Wholesale':      { type:'Wholesale',      stage:'Pending', disposition:'wholesale' },
   'Analyzing':      { type:'Analyzing',      stage:'New Lead',       disposition:null },
 }
 
@@ -91,7 +91,7 @@ export function MoneyBurst({ x, y }) {
 //     positive moves (promotions, Sold) from negative ones (Dead, Cancelled).
 //   onPromote: async (itemId, zoneKey, {x,y}) => void — called on drop; x/y are
 //     the drop coordinates (for celebration effects).
-export default function KanbanBoard({ columns, items, columnFor, onOpen, onDrop, renderCard, promoZones, onPromote }) {
+export default function KanbanBoard({ columns, items, columnFor, onOpen, onDrop, renderCard, promoZones, onPromote, columnWidth = 260 }) {
   const [dragOverCol, setDragOverCol] = useState(null)
   const [dragging, setDragging] = useState(false)
   const [overZone, setOverZone] = useState(null)
@@ -116,7 +116,7 @@ export default function KanbanBoard({ columns, items, columnFor, onOpen, onDrop,
             onDragLeave={col.locked ? undefined : () => setDragOverCol(null)}
             onDrop={col.locked ? undefined : e => handleDrop(e, col.key)}
             style={{
-              flex:'0 0 260px', minWidth:260,
+              flex:`0 0 ${columnWidth}px`, minWidth:columnWidth,
               background: dragOverCol===col.key ? '#fef9f0' : col.exit ? '#FAFAF8' : '#F0EDE6',
               border: col.exit ? '1.5px dashed #D6D2CA' : 'none',
               borderRadius:8, padding:10, transition:'background 0.1s',
