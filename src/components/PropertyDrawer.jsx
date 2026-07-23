@@ -29,14 +29,13 @@ const TYPE_COLOR = Object.fromEntries(TYPE_OPTIONS.map(t=>[t.value,t.color]))
 // Legacy disposition <-> new type mapping (disposition kept in sync for Sold/Rehabs/PackageDeals pages)
 const TYPE_TO_DISP = { 'Analyzing':null, 'Renovation':'renovation', 'Flip':'flip', 'Hold':'hold', 'Retail Listing':'listing', 'Wholesale':'wholesale' }
 
-// Stages scoped per type — As-Is Retail Listing skips the two Reno stages.
-// Renovation is the owned pre-fork phase; Flip/Hold are its results.
+// Stages scoped per type.
 const STAGE_BY_TYPE = {
   'Analyzing':      ['New Lead','Needs Cash Offer','Offer Submitted','Offer Accepted','Lost'],
   'Renovation':     ['Purchased','Renovation'],
   'Flip':           ['Off Market','Listed','Pending','Sold'],
   'Hold':           ['Vacant','Rent Ready','Rental Listed','Leased','Listed','Sold'],
-  'Retail Listing': { 'As-Is':['Off Market','Listed','Pending','Sold','Cancelled / Expired'], 'Reno':['Reno In Progress','Reno Completed','Off Market','Listed','Pending','Sold','Cancelled / Expired'] },
+  'Retail Listing': ['Off Market','Listed','Pending','Sold','Cancelled / Expired'],
   'Wholesale':      ['Pending','Assigned','Closed','Cancelled'],
 }
 const STAGE_COLOR = {
@@ -83,11 +82,25 @@ function LinkedOpsDealField({ propertyId, propertyAddress, role, label, onApply 
   }, [])
 
   async function search(q) {
-    if (!q || q.trim().length < 2) { setResults([]); setOpen(false); return }
+    if (!q || q.trim().length < 2) { loadRecommended(); return }
     setLoading(true)
     const { data } = await supabase.from('pipeline_deals')
       .select(SELECT_COLS)
       .or(`client_name.ilike.%${q}%,property_address.ilike.%${q}%`)
+      .limit(8)
+    setResults(data || [])
+    setOpen(true)
+    setLoading(false)
+  }
+
+  // Shown on focus, before the user types anything — most recent open deals,
+  // so there's usually something worth clicking without having to know the exact name.
+  async function loadRecommended() {
+    setLoading(true)
+    const { data } = await supabase.from('pipeline_deals')
+      .select(SELECT_COLS)
+      .eq('is_archived', false)
+      .order('created_at', { ascending: false })
       .limit(8)
     setResults(data || [])
     setOpen(true)
@@ -176,16 +189,21 @@ function LinkedOpsDealField({ propertyId, propertyAddress, role, label, onApply 
             style={inp}
             value={query}
             onChange={handleChange}
-            onFocus={() => { if (results.length > 0) setOpen(true) }}
+            onFocus={() => { if (results.length > 0) setOpen(true); else loadRecommended() }}
             placeholder={propertyAddress ? `Search by client or "${propertyAddress}"` : 'Search Ops Hub by client name or address'}
           />
-          {open && (loading || results.length > 0) && (
+          {open && (loading || results.length > 0 || query.trim().length < 2) && (
             <div style={{
               position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 500, marginTop: 4,
               background: '#fff', border: '1px solid #E0DDD6', borderRadius: 8,
               boxShadow: '0 6px 20px rgba(0,0,0,0.14)', maxHeight: 240, overflowY: 'auto',
             }}>
-              {loading && <div style={{ padding: '10px 12px', fontSize: 12, color: '#9ca3af' }}>Searching…</div>}
+              {!loading && results.length > 0 && (
+                <div style={{ padding: '7px 12px', fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: 0.5, background: '#FAFAF8', borderBottom: '1px solid #F0EDE6' }}>
+                  {query.trim().length < 2 ? 'Recent Deals' : 'Matching Deals'}
+                </div>
+              )}
+              {loading && <div style={{ padding: '10px 12px', fontSize: 12, color: '#9ca3af' }}>Loading…</div>}
               {!loading && results.length === 0 && (
                 <div style={{ padding: '10px 12px', fontSize: 12, color: '#9ca3af' }}>No matching Ops Hub deals</div>
               )}
@@ -211,11 +229,8 @@ function LinkedOpsDealField({ propertyId, propertyAddress, role, label, onApply 
   )
 }
 
-function stagesForType(type, listingType) {
-  const s = STAGE_BY_TYPE[type]
-  if (!s) return []
-  if (type==='Retail Listing') return s[listingType||'As-Is']
-  return s
+function stagesForType(type) {
+  return STAGE_BY_TYPE[type] || []
 }
 
 // ── Rehab stages ──────────────────────────────────────────────────────────────
@@ -770,9 +785,8 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
   }, [form.id, currentUserEmail]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const type       = form.type || 'Analyzing'
-  const listingType = form.listing_type || 'As-Is'
   const disp    = form.stage === 'Lost' ? 'lost' : TYPE_TO_DISP[type] // derived — kept in sync for Sold/Rehabs/PackageDeals pages
-  const scopedStages = stagesForType(type, listingType)
+  const scopedStages = stagesForType(type)
   const stage   = form.stage || (scopedStages[0] || null)
   const typeColor  = TYPE_COLOR[type] || '#9ca3af'
   const stageColor = STAGE_COLOR[stage] || '#9ca3af'
@@ -784,9 +798,8 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
       const isNewProperty = property.id !== lastPropertyId.current
       lastPropertyId.current = property.id
       const t = property.type || 'Analyzing'
-      const lt = property.listing_type || 'As-Is'
-      const stages = stagesForType(t, lt)
-      const nextForm = { ...property, type:t, listing_type:lt, stage: property.stage || stages[0] || null }
+      const stages = stagesForType(t)
+      const nextForm = { ...property, type:t, stage: property.stage || stages[0] || null }
       const nextRepairs = property.repair_items?.length
         ? property.repair_items.map((r,i)=>({...r,id:i}))
         : DEFAULT_REPAIRS.map((r,i)=>({...r,id:i}))
@@ -805,15 +818,10 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
     }
   }, [property]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // When type or listing_type changes, snap stage to the first valid stage for the new scope
+  // When type changes, snap stage to the first valid stage for the new scope
   function setType(newType) {
-    const lt = newType==='Retail Listing' ? (form.listing_type||'As-Is') : null
-    const stages = stagesForType(newType, lt)
-    setForm(f=>({ ...f, type:newType, listing_type:lt, stage: stages[0] || null }))
-  }
-  function setListingType(lt) {
-    const stages = stagesForType('Retail Listing', lt)
-    setForm(f=>({ ...f, listing_type:lt, stage: stages[0] || null }))
+    const stages = stagesForType(newType)
+    setForm(f=>({ ...f, type:newType, stage: stages[0] || null }))
   }
 
   const set    = k => e => setForm(f=>({...f,[k]:e.target.value}))
@@ -885,7 +893,7 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
       purchase_date:form.purchase_date||null, sold_date:form.sold_date||null,
       offer_date:form.offer_date||null,
       disposition:disp, disposition_date:form.disposition_date||null,
-      type:type, listing_type:type==='Retail Listing'?listingType:null,
+      type:type, listing_type:null,
       bpv_rehab_fee:form.bpv_rehab_fee||null,
       wholesale_fee:form.wholesale_fee||null, wholesale_buyer:form.wholesale_buyer||null,
       lost_reason:form.lost_reason||null, list_date:form.list_date||null,
@@ -1384,39 +1392,11 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
       {/* ══════════════ REHAB TAB ══════════════ */}
       {tab==='rehab' && (() => {
         // Active renovation work only happens as type='Renovation' (stage set in the drawer
-        // header) or a client-funded Reno listing (stage set here, since that's not a full
-        // Renovation-type deal). Everything else (Flip/Hold/Wholesale/As-Is Listing) has
-        // already forked past renovation — show history only, no editable stage/date controls.
-        const isClientReno = type==='Retail Listing' && form.listing_type==='Reno'
-        const activeRenovation = type==='Renovation' || isClientReno
+        // header). Everything else (Flip/Hold/Wholesale/Retail Listing) has already forked
+        // past renovation — show history only, no editable stage/date controls.
+        const activeRenovation = type==='Renovation'
         return (
         <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
-          {isClientReno && (
-          <FieldRow>
-            <Field label="Renovation Stage">
-              <select
-                value={form.rehab_stage||'Not Started'}
-                onChange={e=>{
-                  const rs = e.target.value
-                  setForm(f=>({
-                    ...f, rehab_stage:rs,
-                    // Client Reno listings: deal stage follows the work
-                    ...(['Reno In Progress','Reno Completed'].includes(f.stage)
-                      ? { stage: rs==='Complete' ? 'Reno Completed' : 'Reno In Progress' } : {}),
-                  }))
-                }}
-                style={{
-                  ...inp, fontWeight:700, color:'#fff',
-                  background: REHAB_COLOR[form.rehab_stage||'Not Started'],
-                  border:`1.5px solid ${REHAB_COLOR[form.rehab_stage||'Not Started']}`,
-                }}
-              >
-                {REHAB_STAGES.map(st=><option key={st} value={st} style={{ background:'#fff', color:'#2C2C2C', fontWeight:400 }}>{st}</option>)}
-              </select>
-            </Field>
-          </FieldRow>
-          )}
-
           {activeRenovation ? (<>
             <FieldRow>
               <Field label="Renovation Start Date">
@@ -1534,11 +1514,6 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
               <Field label="Offer Date"><DatePicker style={inp} value={form.offer_date||''} onChange={set('offer_date')} /></Field>
             </FieldRow>
             <Field label="ARV / List Price ($)"><input style={monoInp} type="number" value={form.arv||''} onChange={set('arv')} /></Field>
-            {listingType==='Reno' && (
-              <Field label="BPV Rehab Fee ($) — placeholder, not yet wired to logic">
-                <input style={monoInp} type="number" value={form.bpv_rehab_fee||''} onChange={set('bpv_rehab_fee')} />
-              </Field>
-            )}
             <div className="drawer-section">Sale</div>
             <FieldRow>
               <Field label="Sale Price ($)"><input style={monoInp} type="number" value={form.sale_price||''} onChange={set('sale_price')} /></Field>
@@ -1901,25 +1876,6 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
               {TYPE_OPTIONS.map(t=><option key={t.value} value={t.value}>{t.label || t.value}</option>)}
             </select>
           </div>
-
-          {/* As-Is / Reno toggle — Retail Listing only */}
-          {type==='Retail Listing' && (
-            <div style={{ display:'flex', flexDirection:'column', gap:2 }}>
-              <span style={{ fontSize:9, fontWeight:700, color:'#9ca3af', textTransform:'uppercase', letterSpacing:0.6 }}>Listing Type</span>
-              <select
-                value={listingType}
-                onChange={e=>setListingType(e.target.value)}
-                onClick={e=>e.stopPropagation()}
-                style={{
-                  border:'1.5px solid #D6D2CA', borderRadius:6, padding:'3px 8px',
-                  fontSize:11, fontWeight:600, fontFamily:'inherit', color:'#6b7280', background:'#fff',
-                  cursor:'pointer', outline:'none',
-                }}>
-                <option value="As-Is">As-Is</option>
-                <option value="Reno">Reno</option>
-              </select>
-            </div>
-          )}
 
           {/* Scoped stage dropdown — hidden for Analyzing/Lost which have no stages.
               Renovation deals show the WORK stages (rehab_stage); the coarse deal
