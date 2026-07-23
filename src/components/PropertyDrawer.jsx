@@ -1237,6 +1237,11 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
               View Offer PDF
             </button>
           )}
+          {!isNew && form.arv && form.agent_email && form.agent_email !== '__outside_agent__' && (
+            <button onClick={sendOfferToAgent} disabled={sendingOffer} style={{ background:'#fff', border:'1.5px solid #B8892A', color:'#B8892A', borderRadius:6, padding:'10px 16px', cursor: sendingOffer ? 'default' : 'pointer', fontSize:13, fontWeight:700, fontFamily:'inherit', width:'100%' }}>
+              {sendingOffer ? 'Sent!' : 'Send Offer to Agent'}
+            </button>
+          )}
           <Field label="Notes"><textarea style={{ ...inp, minHeight:56, resize:'vertical' }} value={form.nhc_notes||''} onChange={set('nhc_notes')} /></Field>
         </div>
       )}
@@ -1760,11 +1765,6 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
           {!isNew && (
             <button onClick={()=>setPingOpen(true)} title="Ping a teammate about this property" style={{ background:'#fff', border:'1px solid #D6D2CA', color:'#6b7280', borderRadius:6, padding:'8px 14px', fontSize:12, fontWeight:700, cursor:'pointer', fontFamily:'inherit', display:'flex', alignItems:'center', gap:6 }}>
               🔔 Ping
-            </button>
-          )}
-          {!isNew && form.arv && form.agent_email && form.agent_email !== '__outside_agent__' && (
-            <button onClick={sendOfferToAgent} disabled={sendingOffer} style={{ background:'#fff', border:'1.5px solid #B8892A', color:'#B8892A', borderRadius:6, padding:'8px 14px', fontSize:12, fontWeight:700, cursor: sendingOffer ? 'default' : 'pointer', fontFamily:'inherit' }}>
-              {sendingOffer ? 'Sent!' : 'Send Offer to Agent'}
             </button>
           )}
           <Btn variant="outline" onClick={onClose}>Cancel</Btn>
