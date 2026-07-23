@@ -516,6 +516,74 @@ function Toggle({ on, onToggle, label, sub }) {
   )
 }
 
+// Splits the total sale-side commission into Seller (listing) and Buyer (co-op) portions.
+// Not all of the buyer-side commission is NHC revenue — if another company's agent brought
+// the buyer, that portion is paid out to them, so it's flagged here rather than assumed to
+// all be BPV/NHC income. Total (both portions combined) is what ProfitWaterfall deducts from
+// the sale proceeds, since that money leaves the deal either way.
+function CommissionSplit({ form, setForm, calcCommission, monoInp, inp }) {
+  function updatePct(side, pct) {
+    const amt = calcCommission(pct, form.sale_price)
+    setForm(f => ({
+      ...f,
+      [`sale_commission_${side}_pct`]: pct,
+      [`sale_commission_${side}_amt`]: amt ? amt.toFixed(2) : f[`sale_commission_${side}_amt`],
+    }))
+  }
+  function updateAmt(side, amt) {
+    setForm(f => ({ ...f, [`sale_commission_${side}_amt`]: amt }))
+  }
+
+  const sellerAmt = parseFloat(form.sale_commission_seller_amt) || 0
+  const buyerAmt = parseFloat(form.sale_commission_buyer_amt) || 0
+  const totalAmt = sellerAmt + buyerAmt
+
+  return (
+    <>
+      <FieldRow>
+        <Field label="Seller Commission % (Listing side — NHC)">
+          <input style={monoInp} type="number" value={form.sale_commission_seller_pct||''}
+            onChange={e=>updatePct('seller', e.target.value)} />
+        </Field>
+        <Field label="Seller Commission ($)">
+          <MoneyInput value={form.sale_commission_seller_amt} onChange={v=>updateAmt('seller', v)} />
+        </Field>
+      </FieldRow>
+      <FieldRow>
+        <Field label="Buyer Commission % (Co-op side)">
+          <input style={monoInp} type="number" value={form.sale_commission_buyer_pct||''}
+            onChange={e=>updatePct('buyer', e.target.value)} />
+        </Field>
+        <Field label="Buyer Commission ($)">
+          <MoneyInput value={form.sale_commission_buyer_amt} onChange={v=>updateAmt('buyer', v)} />
+        </Field>
+      </FieldRow>
+      <Toggle
+        on={!!form.sale_buyer_agent_outside}
+        onToggle={()=>setForm(f=>({ ...f, sale_buyer_agent_outside: !f.sale_buyer_agent_outside }))}
+        label="Buyer's agent is from another company"
+        sub="When on, the buyer-side commission is paid out and isn't NHC/BPV revenue"
+      />
+      {form.sale_buyer_agent_outside && (
+        <Field label="Outside Buyer's Agent / Company">
+          <input style={inp} value={form.sale_buyer_agent_company||''}
+            onChange={e=>setForm(f=>({ ...f, sale_buyer_agent_company: e.target.value }))} />
+        </Field>
+      )}
+      <div style={{ display:'flex', justifyContent:'space-between', fontSize:12, color:'#6b7280', padding:'8px 2px 2px', borderTop:'1px dashed #E5E1D8', marginTop:6 }}>
+        <span>Total Commission (deducted from sale)</span>
+        <span style={{ fontWeight:700, color:'#2C2C2C' }}>${totalAmt.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}</span>
+      </div>
+      {form.sale_buyer_agent_outside && (
+        <div style={{ display:'flex', justifyContent:'space-between', fontSize:11.5, color:'#B8892A', padding:'2px 2px 0' }}>
+          <span>NHC/BPV Revenue (Seller side only)</span>
+          <span style={{ fontWeight:700 }}>${sellerAmt.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}</span>
+        </div>
+      )}
+    </>
+  )
+}
+
 export default function PropertyDrawer({ property, open, onClose, onSave, mailings=[], onViewOffer, inlineMode=false, initialTab='analyzer', openRentTracker=false, currentUserEmail=null, isAgentRole=false }) {
   const isFullViewMobile = useIsMobile()
   const [form, setForm]           = useState({})
@@ -762,7 +830,11 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
       mailing_id:form.mailing_id||null,
       source:form.source||null,
       commission_pct:form.commission_pct||null, commission_earned:form.commission_earned||null,
-      sale_commission_pct:form.sale_commission_pct||null, sale_commission_earned:form.sale_commission_earned||null,
+      sale_commission_pct: (parseFloat(form.sale_commission_seller_pct)||0) + (parseFloat(form.sale_commission_buyer_pct)||0) || form.sale_commission_pct || null,
+      sale_commission_earned: ((parseFloat(form.sale_commission_seller_amt)||0) + (parseFloat(form.sale_commission_buyer_amt)||0)) || form.sale_commission_earned || null,
+      sale_commission_seller_pct:form.sale_commission_seller_pct||null, sale_commission_seller_amt:form.sale_commission_seller_amt||null,
+      sale_commission_buyer_pct:form.sale_commission_buyer_pct||null, sale_commission_buyer_amt:form.sale_commission_buyer_amt||null,
+      sale_buyer_agent_outside:form.sale_buyer_agent_outside||false, sale_buyer_agent_company:form.sale_buyer_agent_company||null,
       capital_gains_pct:form.capital_gains_pct||null, capital_gains_override:form.capital_gains_override||null,
       commission_min:form.commission_min||5000,
       nhc_notes:form.nhc_notes||null,
@@ -1464,16 +1536,10 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
               <Field label="Sale Price"><MoneyInput value={form.sale_price} onChange={set('sale_price')} /></Field>
               <Field label="Sale Date"><DatePicker style={inp} value={form.sale_date||''} onChange={set('sale_date')} /></Field>
             </FieldRow>
-            <FieldRow>
-              <Field label="Commission % (on Sale)">
-                <input style={monoInp} type="number" value={form.sale_commission_pct||''}
-                  onChange={e=>{ const e2=calcCommission(e.target.value,form.sale_price); setForm(f=>({...f,sale_commission_pct:e.target.value,sale_commission_earned:e2?e2.toFixed(2):f.sale_commission_earned})) }} />
-              </Field>
-              <Field label="Commission ($)"><MoneyInput value={form.sale_commission_earned} onChange={set('sale_commission_earned')} /></Field>
-            </FieldRow>
+            <CommissionSplit form={form} setForm={setForm} calcCommission={calcCommission} monoInp={monoInp} inp={inp} />
             {form.sale_price && (
               <ProfitWaterfall
-                salePrice={form.sale_price} commission={form.sale_commission_earned}
+                salePrice={form.sale_price} commission={(parseFloat(form.sale_commission_seller_amt)||0) + (parseFloat(form.sale_commission_buyer_amt)||0)}
                 loanPayoff={loanPayoffTotal} partnerPayback={partnerPaybackTotal}
                 capGainsPct={form.capital_gains_pct} capGainsOverride={form.capital_gains_override}
                 onCapGainsPctChange={v=>setForm(f=>({...f,capital_gains_pct:v}))}
@@ -1515,17 +1581,11 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
                   <Field label="Sale Price ($)"><input style={monoInp} type="number" value={form.sale_price||''} onChange={set('sale_price')} /></Field>
                   <Field label="Sale Date"><DatePicker style={inp} value={form.sale_date||''} onChange={set('sale_date')} /></Field>
                 </FieldRow>
-                <FieldRow>
-                  <Field label="Commission % (on Sale)">
-                    <input style={monoInp} type="number" value={form.sale_commission_pct||''}
-                      onChange={e=>{ const e2=calcCommission(e.target.value,form.sale_price); setForm(f=>({...f,sale_commission_pct:e.target.value,sale_commission_earned:e2?e2.toFixed(2):f.sale_commission_earned})) }} />
-                  </Field>
-                  <Field label="Commission ($)"><MoneyInput value={form.sale_commission_earned} onChange={set('sale_commission_earned')} /></Field>
-                </FieldRow>
+                <CommissionSplit form={form} setForm={setForm} calcCommission={calcCommission} monoInp={monoInp} inp={inp} />
                 {form.sale_price && (
                   <div style={{ marginTop:10 }}>
                     <ProfitWaterfall
-                      salePrice={form.sale_price} commission={form.sale_commission_earned}
+                      salePrice={form.sale_price} commission={(parseFloat(form.sale_commission_seller_amt)||0) + (parseFloat(form.sale_commission_buyer_amt)||0)}
                       loanPayoff={loanPayoffTotal} partnerPayback={partnerPaybackTotal}
                       capGainsPct={form.capital_gains_pct} capGainsOverride={form.capital_gains_override}
                       onCapGainsPctChange={v=>setForm(f=>({...f,capital_gains_pct:v}))}
