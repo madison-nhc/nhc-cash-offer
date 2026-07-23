@@ -17,6 +17,7 @@ import OpsLog from './pages/OpsLog.jsx'
 import PropertyFullView from './components/PropertyFullView.jsx'
 import LoginPage from './pages/LoginPage.jsx'
 import Users from './pages/Users.jsx'
+import ToolsHome from './pages/ToolsHome.jsx'
 
 function GlobalSearch({ onSelect, mobile }) {
   const [query, setQuery] = useState('')
@@ -123,8 +124,14 @@ const OPS_TABS = [
   { id:'opslog',     label:'Improvements',     short:'Improvements', path:'/ops-log' },
   { id:'users',      label:'Users',            short:'Users',     path:'/users' },
 ]
-const TABS = [...MARKETING_TABS, ...PIPELINE_TABS, ...OPS_TABS]
-const ALL_ROUTES = TABS
+const TOOLS_TAB = { id:'tools', label:'Tools', short:'Tools', path:'/tools' }
+// TABS is what renders as top-level nav buttons — the individual Ops utilities are
+// grouped behind the single Tools card page instead of each getting their own tab.
+const TABS = [...MARKETING_TABS, ...PIPELINE_TABS, TOOLS_TAB]
+// ALL_ROUTES keeps every real route resolvable (so /vendors, /users etc. still work
+// as direct links / from card clicks), even though they don't have their own nav button.
+const ALL_ROUTES = [...MARKETING_TABS, ...PIPELINE_TABS, ...OPS_TABS, TOOLS_TAB]
+const OPS_TAB_IDS = OPS_TABS.map(t => t.id)
 
 function tabForPath(pathname) {
   const match = ALL_ROUTES.find(t => t.path === pathname)
@@ -335,8 +342,6 @@ function AuthedApp({ isAdmin, isAgentRole, userEmail }) {
     }
   }
 
-  const visibleOpsTabs = OPS_TABS.filter(t => t.id !== 'users' || isAdmin)
-
   const pages = {
     analyzer:  <Analyzer openPropertyId={targetProperty?.id} openInPackage={!!targetProperty?.package_id} onOpenedTarget={() => setTargetProperty(null)} onOpenNew={() => setNewPropertyOpen(true)} isAgentRole={isAgentRole} currentUserEmail={userEmail} />,
     rehabs:    <Rehabs onOpenSupplies={() => navigate('supplies')} isAgentRole={isAgentRole} currentUserEmail={userEmail} />,
@@ -351,6 +356,7 @@ function AuthedApp({ isAdmin, isAgentRole, userEmail }) {
     inventory: <Inventory />,
     opslog:    <OpsLog />,
     users:     <Users isAdmin={isAdmin} userEmail={userEmail} />,
+    tools:     <ToolsHome onNavigate={navigate} isAdmin={isAdmin} />,
   }
 
   return (
@@ -388,18 +394,21 @@ function AuthedApp({ isAdmin, isAgentRole, userEmail }) {
                     border:'1px solid #E8E5DE', borderRadius:8, boxShadow:'0 8px 24px rgba(0,0,0,0.12)',
                     zIndex:151, minWidth:200, maxHeight:'70vh', overflowY:'auto', padding:6,
                   }}>
-                    {[MARKETING_TABS, PIPELINE_TABS, visibleOpsTabs].map((group, gi) => (
+                    {[MARKETING_TABS, PIPELINE_TABS, [TOOLS_TAB]].map((group, gi) => (
                       <div key={gi}>
                         {gi > 0 && <div style={{ height:1, background:'#F0EDE6', margin:'6px 4px' }} />}
-                        {group.map(t => (
-                          <button key={t.id} onClick={() => navigate(t.id)} style={{
-                            display:'block', width:'100%', textAlign:'left', background: active === t.id ? '#B8892A' : 'transparent',
-                            color: active === t.id ? '#fff' : '#2C2C2C', border:'none', borderRadius:5, padding:'8px 10px',
-                            cursor:'pointer', fontSize:13, fontWeight: active === t.id ? 700 : 400, fontFamily:'inherit',
-                          }}>
-                            {t.label}
-                          </button>
-                        ))}
+                        {group.map(t => {
+                          const isActive = active === t.id || (t.id === 'tools' && OPS_TAB_IDS.includes(active))
+                          return (
+                            <button key={t.id} onClick={() => navigate(t.id)} style={{
+                              display:'block', width:'100%', textAlign:'left', background: isActive ? '#B8892A' : 'transparent',
+                              color: isActive ? '#fff' : '#2C2C2C', border:'none', borderRadius:5, padding:'8px 10px',
+                              cursor:'pointer', fontSize:13, fontWeight: isActive ? 700 : 400, fontFamily:'inherit',
+                            }}>
+                              {t.label}
+                            </button>
+                          )
+                        })}
                       </div>
                     ))}
                   </div>
@@ -434,17 +443,15 @@ function AuthedApp({ isAdmin, isAgentRole, userEmail }) {
                 </button>
               ))}
               <div style={{ width:1, height:20, background:'#D6D2CA', margin:'0 8px', flexShrink:0 }} />
-              {visibleOpsTabs.map(t => (
-                <button key={t.id} onClick={() => navigate(t.id)} style={{
-                  background: active === t.id ? '#B8892A' : 'transparent',
-                  color: active === t.id ? '#fff' : '#6b7280',
-                  border:'none', borderRadius:4, padding:'5px 12px',
-                  cursor:'pointer', fontSize:12, fontWeight: active === t.id ? 700 : 400,
-                  letterSpacing:0.3, whiteSpace:'nowrap', fontFamily:'inherit', transition:'all 0.15s', flexShrink:0,
-                }}>
-                  {t.label}
-                </button>
-              ))}
+              <button onClick={() => navigate('tools')} style={{
+                background: (active === 'tools' || OPS_TAB_IDS.includes(active)) ? '#B8892A' : 'transparent',
+                color: (active === 'tools' || OPS_TAB_IDS.includes(active)) ? '#fff' : '#6b7280',
+                border:'none', borderRadius:4, padding:'5px 12px',
+                cursor:'pointer', fontSize:12, fontWeight: (active === 'tools' || OPS_TAB_IDS.includes(active)) ? 700 : 400,
+                letterSpacing:0.3, whiteSpace:'nowrap', fontFamily:'inherit', transition:'all 0.15s', flexShrink:0,
+              }}>
+                Tools
+              </button>
             </div>
           )}
 
@@ -570,15 +577,13 @@ function AuthedApp({ isAdmin, isAgentRole, userEmail }) {
               }}>{t.short}</button>
             ))}
             <div style={{ width:1, height:20, background:'#D6D2CA', margin:'0 4px', flexShrink:0 }} />
-            {visibleOpsTabs.map(t => (
-              <button key={t.id} onClick={() => navigate(t.id)} style={{
-                background: active === t.id ? '#B8892A' : '#F0EDE6',
-                color: active === t.id ? '#fff' : '#6b7280',
-                border:'none', borderRadius:20, padding:'5px 14px',
-                cursor:'pointer', fontSize:12, fontWeight: active === t.id ? 700 : 500,
-                whiteSpace:'nowrap', fontFamily:'inherit', flexShrink:0, transition:'all 0.15s'
-              }}>{t.short}</button>
-            ))}
+            <button onClick={() => navigate('tools')} style={{
+              background: (active === 'tools' || OPS_TAB_IDS.includes(active)) ? '#B8892A' : '#F0EDE6',
+              color: (active === 'tools' || OPS_TAB_IDS.includes(active)) ? '#fff' : '#6b7280',
+              border:'none', borderRadius:20, padding:'5px 14px',
+              cursor:'pointer', fontSize:12, fontWeight: (active === 'tools' || OPS_TAB_IDS.includes(active)) ? 700 : 500,
+              whiteSpace:'nowrap', fontFamily:'inherit', flexShrink:0, transition:'all 0.15s'
+            }}>Tools</button>
           </div>
         )}
 
