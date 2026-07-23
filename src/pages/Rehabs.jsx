@@ -273,7 +273,7 @@ export default function Rehabs({ onOpenSupplies, isAgentRole=false, currentUserE
         ) : (
           <>
             <KanbanBoard
-              columnWidth={320}
+              columnWidth={420}
               columns={BOARD_COLUMNS}
               items={filtered}
               columnFor={columnFor}

@@ -209,7 +209,7 @@ export default function Listings({ isAgentRole=false, currentUserEmail=null }) {
         ) : (
           <>
             <KanbanBoard
-              columnWidth={320}
+              columnWidth={420}
               columns={BOARD_COLUMNS}
               items={shown}
               columnFor={columnFor}

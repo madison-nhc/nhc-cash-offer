@@ -160,7 +160,7 @@ export default function Wholesale({ isAgentRole=false, currentUserEmail=null }) 
         ) : (
           <>
             <KanbanBoard
-              columnWidth={320}
+              columnWidth={420}
               columns={BOARD_COLUMNS}
               items={properties}
               columnFor={columnFor}
