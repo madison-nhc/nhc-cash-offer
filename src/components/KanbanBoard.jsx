@@ -12,10 +12,10 @@ export const cardChip = (color='#B8892A', bg='#FBF6EA', border='#E8D9B5') => ({
   whiteSpace:'nowrap', flexShrink:0,
 })
 export const cardBtn = {
-  marginTop:8, width:'100%', padding:'5px 0', border:'0.5px solid #D6D2CA',
-  borderRadius:6, background:'#FAF8F4', color:'#6b7280', fontSize:10.5,
+  marginTop:8, width:'100%', padding:'6px 0', border:'none',
+  borderRadius:6, background:'#B8892A', color:'#fff', fontSize:10.5,
   fontWeight:700, letterSpacing:0.4, textTransform:'uppercase',
-  cursor:'pointer', fontFamily:'inherit',
+  cursor:'pointer', fontFamily:'inherit', display:'flex', alignItems:'center', justifyContent:'center', gap:6,
 }
 
 
@@ -116,7 +116,7 @@ export default function KanbanBoard({ columns, items, columnFor, onOpen, onDrop,
             onDragLeave={col.locked ? undefined : () => setDragOverCol(null)}
             onDrop={col.locked ? undefined : e => handleDrop(e, col.key)}
             style={{
-              flex:`0 0 ${columnWidth}px`, minWidth:columnWidth,
+              flex:`1 1 ${columnWidth}px`, minWidth:220, maxWidth:columnWidth,
               display:'flex', flexDirection:'column',
               background: dragOverCol===col.key ? '#fef9f0' : 'transparent',
               border: col.exit ? '1.5px dashed #D6D2CA' : 'none',

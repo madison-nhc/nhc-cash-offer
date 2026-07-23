@@ -131,7 +131,7 @@ export default function Holds({ isAgentRole=false, currentUserEmail=null }) {
         ) : (
           <div style={{ fontSize:10, color:'#9ca3af', fontStyle:'italic', textAlign:'center', margin:'2px 0 8px' }}>No lease yet</div>
         )}
-        <button style={cardBtn} onClick={e => { e.stopPropagation(); setDrawerTab('rent'); setAutoOpenLease(true); setDrawer(p) }}>Lease Dashboard</button>
+        <button style={cardBtn} onClick={e => { e.stopPropagation(); setDrawerTab('rent'); setAutoOpenLease(true); setDrawer(p) }}>🔑 Lease Dashboard</button>
       </>
     )
   }

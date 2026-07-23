@@ -193,7 +193,7 @@ export default function Rehabs({ onOpenSupplies, isAgentRole=false, currentUserE
           {p.type === 'Retail Listing' && <span style={cardPill(badge.color, '#F0EDE6')}>{badge.text}</span>}
           {daysActive !== null && <span style={{ fontSize:10, color: daysActive > 60 ? '#B91C1C' : '#9ca3af' }}>Day {daysActive + 1}</span>}
         </div>
-        <button style={cardBtn} onClick={e => { e.stopPropagation(); setDashboard(p) }}>Renovation Dashboard</button>
+        <button style={cardBtn} onClick={e => { e.stopPropagation(); setDashboard(p) }}>🔨 Renovation Dashboard</button>
       </>
     )
   }

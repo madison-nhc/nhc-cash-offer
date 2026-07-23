@@ -92,7 +92,7 @@ function analyzerCardContent(p, onViewOffer) {
         )}
       </div>
       {cashOffer ? (
-        <button style={cardBtn} onClick={e => { e.stopPropagation(); onViewOffer(p) }}>View Offer PDF</button>
+        <button style={cardBtn} onClick={e => { e.stopPropagation(); onViewOffer(p) }}>📄 View Offer PDF</button>
       ) : null}
     </>
   )
