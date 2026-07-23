@@ -17,6 +17,7 @@ import OpsLog from './pages/OpsLog.jsx'
 import PropertyFullView from './components/PropertyFullView.jsx'
 import LoginPage from './pages/LoginPage.jsx'
 import Users from './pages/Users.jsx'
+import Business from './pages/Business.jsx'
 import ToolsHome from './pages/ToolsHome.jsx'
 
 function GlobalSearch({ onSelect, mobile }) {
@@ -123,6 +124,7 @@ const OPS_TABS = [
   { id:'inventory',  label:'Inventory',        short:'Inventory', path:'/inventory' },
   { id:'opslog',     label:'Improvements',     short:'Improvements', path:'/ops-log' },
   { id:'users',      label:'Users',            short:'Users',     path:'/users' },
+  { id:'business',   label:'Business',         short:'Business',  path:'/business' },
 ]
 const TOOLS_TAB = { id:'tools', label:'Tools', short:'Tools', path:'/tools' }
 // TABS is what renders as top-level nav buttons — the individual Ops utilities are
@@ -356,6 +358,7 @@ function AuthedApp({ isAdmin, isAgentRole, userEmail }) {
     inventory: <Inventory />,
     opslog:    <OpsLog />,
     users:     <Users isAdmin={isAdmin} userEmail={userEmail} />,
+    business:  <Business isAdmin={isAdmin} />,
     tools:     <ToolsHome onNavigate={navigate} isAdmin={isAdmin} />,
   }
 

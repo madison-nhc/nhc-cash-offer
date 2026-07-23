@@ -45,6 +45,12 @@ export default function ToolsHome({ onNavigate, isAdmin }) {
             description="Manage who can sign into Cash Offer Hub and their role."
             onClick={() => onNavigate('users')}
           />
+          <OverviewCard
+            icon="🏢"
+            title="Business"
+            description="Manage companies and LLCs (like BE Property Ventures) that can own properties, and the people behind each one."
+            onClick={() => onNavigate('business')}
+          />
         </OverviewSection>
       )}
     </div>
