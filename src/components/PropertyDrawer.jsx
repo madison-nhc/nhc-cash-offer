@@ -729,6 +729,105 @@ function HeaderPillSelect({ value, onSelect, sections, disabled, title, color, h
 // or for Retail Listing, which is never 'Analyzing' to begin with. Owner combines people
 // flagged as Property Owners (Users page) and businesses (Business page); legacy `owner`
 // text field kept in sync for the existing card display across Rehabs/Holds/Listings/Wholesale/Sold.
+// Read-only Follow Up Boss preview — pulls the person ID out of the stored
+// FUB link (".../people/view/70490") and hits the shared /api/fub-contact
+// serverless function (never calls FUB directly from the browser). Auto-fetches
+// once per property open; refresh button re-pulls on demand. Mirrors the Ops
+// Hub Deal Workspace's FUB card so the two apps feel the same.
+function FubPreviewPanel({ fubLink }) {
+  const [data, setData] = useState(null)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState(null)
+
+  const personId = (fubLink || '').match(/(\d+)\/?$/)?.[1] || null
+
+  async function load() {
+    setLoading(true)
+    setError(null)
+    try {
+      const res = await fetch(`/api/fub-contact?id=${personId}`)
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error || 'Lookup failed')
+      setData(json)
+    } catch (e) {
+      setError(e.message)
+    }
+    setLoading(false)
+  }
+
+  useEffect(() => {
+    setData(null)
+    if (personId) load()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [personId])
+
+  if (!personId) return null
+
+  const initials = (data?.person?.name || '')
+    .split(' ').filter(Boolean).slice(0, 2).map(w => w[0]).join('').toUpperCase()
+
+  return (
+    <div style={{ background:'#fff', border:'1px solid #E8E5DE', borderRadius:10, overflow:'hidden', boxShadow:'0 1px 3px rgba(0,0,0,0.05)' }}>
+      <div style={{ background:'#B8892A', height:3 }} />
+      <div style={{ padding:'12px 14px' }}>
+        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:10 }}>
+          <span style={{ fontSize:10, fontWeight:700, color:'#B8892A', textTransform:'uppercase', letterSpacing:0.6 }}>Follow Up Boss</span>
+          <button onClick={load} disabled={loading} title="Refresh" style={{ background:'none', border:'none', cursor: loading ? 'default' : 'pointer', color:'#9ca3af', fontSize:13 }}>{loading ? '…' : '↻'}</button>
+        </div>
+        {loading && <div style={{ fontSize:12, color:'#9ca3af' }}>Loading…</div>}
+        {error && <div style={{ fontSize:12, color:'#B22020', fontWeight:600 }}>⚠ {error}</div>}
+        {data?.person && (
+          <>
+            <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:10 }}>
+              <div style={{ width:34, height:34, borderRadius:'50%', background:'#F7F5F0', border:'1px solid #E8E5DE', display:'flex', alignItems:'center', justifyContent:'center', fontSize:12, fontWeight:700, color:'#B8892A', flexShrink:0 }}>
+                {initials || '?'}
+              </div>
+              <div style={{ minWidth:0 }}>
+                <div style={{ fontSize:13, fontWeight:700, color:'#2C2C2C', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
+                  {data.person.name || 'No name on file'}
+                </div>
+                {data.person.phone && <div style={{ fontSize:11, color:'#888' }}>{data.person.phone}</div>}
+                {data.person.email && <div style={{ fontSize:11, color:'#888', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{data.person.email}</div>}
+              </div>
+            </div>
+            {(data.person.stage || data.person.source || data.person.assignedTo) && (
+              <div style={{ fontSize:11, color:'#666', lineHeight:1.7, marginBottom: data.activity?.length ? 10 : 0 }}>
+                {data.person.stage && <div>Stage: <span style={{ fontWeight:600, color:'#2C2C2C' }}>{data.person.stage}</span></div>}
+                {data.person.source && <div>Source: <span style={{ fontWeight:600, color:'#2C2C2C' }}>{data.person.source}</span></div>}
+                {data.person.assignedTo && <div>Assigned: <span style={{ fontWeight:600, color:'#2C2C2C' }}>{data.person.assignedTo}</span></div>}
+              </div>
+            )}
+          </>
+        )}
+        {data?.activity?.length > 0 && (() => {
+          const last = data.activity[0]
+          return (
+            <div style={{ borderTop:'0.5px solid #F0EDE6', paddingTop:8 }}>
+              <div style={{ fontSize:9, fontWeight:700, color:'#bbb', textTransform:'uppercase', letterSpacing:0.5, marginBottom:4 }}>Last Contact</div>
+              <div style={{ fontSize:11, color:'#666' }}>
+                <span style={{ color:'#999' }}>
+                  {new Date(last.date).toLocaleString('en-US', { month:'short', day:'numeric', hour:'numeric', minute:'2-digit' })}
+                </span>
+                {last.text && <span> — {String(last.text).slice(0, 90)}</span>}
+              </div>
+            </div>
+          )
+        })()}
+        {data && !data.person && !error && <div style={{ fontSize:12, color:'#9ca3af' }}>No contact info found for this link.</div>}
+        {(data?.person || data?.activity?.length > 0) && (
+          <div style={{ marginTop:10 }}>
+            <button
+              onClick={() => window.open(fubLink, 'nhc_fub', 'width=1400,height=950,noopener,noreferrer')}
+              style={{ width:'100%', background:'#E0A526', color:'#fff', border:'none', borderRadius:6, padding:'8px 0', fontSize:12, fontWeight:700, cursor:'pointer', fontFamily:'inherit' }}>
+              ↗ Open in FUB
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
 function OwnerAgentPicker({ form, setForm, set, entityList, ownerUserList, agentList, restrictedAgent, ownerDisabled=false }) {
   const ownerLocked = restrictedAgent || ownerDisabled
   const ownerValue = form.owner_entity_id ? `entity:${form.owner_entity_id}` : form.owner_user_email ? `user:${form.owner_user_email}` : form.owner==='Client' ? 'client' : ''
@@ -1219,6 +1318,9 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
               )}
             </div>
           </Field>
+
+          {form.seller_fub_link && <FubPreviewPanel fubLink={form.seller_fub_link} />}
+
           <FieldRow>
             <Field label="Source">
               <select style={inp} value={form.source||''} onChange={set('source')}>
