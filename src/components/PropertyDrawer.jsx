@@ -1157,6 +1157,7 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
   }, [showLoanTab, showRentTab, restrictedAgent]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const TABS = restrictedAgent ? [{ key:'analyzer', label:'Analyzer' }] : [
+    { key:'source',      label:'Source' },
     { key:'analyzer',    label:'Analyzer' },
     ...(type==='Retail Listing' ? [] : [{ key:'acquisition', label:'Purchase' }]),
     ...(showLoanTab ? [{ key:'loan', label:'Loan' }] : []),
@@ -1202,6 +1203,40 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
           )
         })}
       </div>
+
+      {/* ══════════════ SOURCE TAB ══════════════ */}
+      {tab==='source' && (
+        <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
+          <div className="drawer-section">Source</div>
+          <Field label="FUB Link">
+            <div style={{ display:'flex', gap:6 }}>
+              <input style={inp} placeholder="https://…" value={form.seller_fub_link||''} onChange={set('seller_fub_link')} />
+              {form.seller_fub_link && (
+                <button
+                  onClick={() => window.open(form.seller_fub_link, 'nhc_fub', 'width=1400,height=950,noopener,noreferrer')}
+                  style={{ background:'#fff', border:'1.5px solid #2D6FAF', borderRadius:8, padding:'0 12px', cursor:'pointer', color:'#2D6FAF', fontSize:14, flexShrink:0 }}
+                >↗</button>
+              )}
+            </div>
+          </Field>
+          <FieldRow>
+            <Field label="Source">
+              <select style={inp} value={form.source||''} onChange={set('source')}>
+                <option value="">— Select —</option>
+                {['Sphere','Networking','Facebook','Instagram','Google','Referral','Mailers','Sign Call','Website','Other'].map(s=><option key={s} value={s}>{s}</option>)}
+              </select>
+            </Field>
+            {form.source==='Mailers' && (
+              <Field label="Which Mailer?">
+                <select style={inp} value={form.mailing_id||''} onChange={set('mailing_id')}>
+                  <option value="">Unattributed / older campaign</option>
+                  {mailings.map(m=><option key={m.id} value={m.id}>{m.campaign_name?.replace(/^Campaign \d+ — /,'')} {m.drop_date?`(${m.drop_date})`:''}</option>)}
+                </select>
+              </Field>
+            )}
+          </FieldRow>
+        </div>
+      )}
 
       {/* ══════════════ ANALYZER TAB ══════════════ */}
       {tab==='analyzer' && (
@@ -1307,43 +1342,6 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
               </div>
             </div>
           )}
-          <div className="drawer-section">Owner / Seller</div>
-          {form.owner && (
-            <div style={{ fontSize:11.5, color:'#B8892A', fontWeight:600, marginTop:-8 }}>
-              Owned by {form.owner}
-            </div>
-          )}
-          <FieldRow>
-            <Field label="Name"><input style={inp} value={form.seller_name||''} onChange={set('seller_name')} /></Field>
-            <Field label="FUB Link">
-              <div style={{ display:'flex', gap:6 }}>
-                <input style={inp} placeholder="https://…" value={form.seller_fub_link||''} onChange={set('seller_fub_link')} />
-                {form.seller_fub_link && (
-                  <button
-                    onClick={() => window.open(form.seller_fub_link, 'nhc_fub', 'width=1400,height=950,noopener,noreferrer')}
-                    style={{ background:'#fff', border:'1.5px solid #2D6FAF', borderRadius:8, padding:'0 12px', cursor:'pointer', color:'#2D6FAF', fontSize:14, flexShrink:0 }}
-                  >↗</button>
-                )}
-              </div>
-            </Field>
-          </FieldRow>
-          <FieldRow>
-            <Field label="Source">
-              <select style={inp} value={form.source||''} onChange={set('source')}>
-                <option value="">— Select —</option>
-                {['Sphere','Networking','Facebook','Instagram','Google','Referral','Mailers','Sign Call','Website','Other'].map(s=><option key={s} value={s}>{s}</option>)}
-              </select>
-            </Field>
-            {form.source==='Mailers' && (
-              <Field label="Which Mailer?">
-                <select style={inp} value={form.mailing_id||''} onChange={set('mailing_id')}>
-                  <option value="">Unattributed / older campaign</option>
-                  {mailings.map(m=><option key={m.id} value={m.id}>{m.campaign_name?.replace(/^Campaign \d+ — /,'')} {m.drop_date?`(${m.drop_date})`:''}</option>)}
-                </select>
-              </Field>
-            )}
-          </FieldRow>
-
           <div className="drawer-section">Valuation</div>
 
           {form.arv && (
