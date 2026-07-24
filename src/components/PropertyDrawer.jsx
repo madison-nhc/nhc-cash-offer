@@ -10,6 +10,7 @@ import LoanTracker from './LoanTracker.jsx'
 import RentTracker from './RentTracker.jsx'
 import LoanOverview from './LoanOverview.jsx'
 import RentOverview from './RentOverview.jsx'
+import { CardStatBox } from './KanbanBoard.jsx'
 import PartnerLedgerModal from './PartnerLedgerModal.jsx'
 import PropertyFullView from './PropertyFullView.jsx'
 import PingModal from './PingModal.jsx'
@@ -46,12 +47,24 @@ const STAGE_COLOR = {
   Lost:'#9ca3af', 'Cancelled / Expired':'#9ca3af', Cancelled:'#9ca3af',
 }
 
+const OPS_STATUS_COLOR = {
+  'New Deal':'#6b7280', 'Listing Signed':'#6b21a8', 'Coming Soon':'#D97825', 'Active Listing':'#2D6FAF',
+  'Pending':'#D97825', 'Closed':'#3B6D11', 'Withdrawn':'#B91C1C', 'Lost':'#B91C1C',
+}
+
+// The street-number + street-name portion of an address, used to find likely-matching
+// Ops Hub deals for this exact property without requiring an exact string match.
+function streetPart(address) {
+  if (!address) return ''
+  return address.split(',')[0].trim()
+}
+
 // Search-and-link to a matching Ops Hub deal (pipeline_deals.cashoffer_property_id
 // points back at this property, tagged with a role so a property can carry two
 // separate links: the Acquisition-side deal (buying it) and the Disposition-side
 // deal (selling it) — each is a different Ops Hub transaction). Shows the current
-// link (if any) with a small card pulling NHC Commission + Sale/Purchase Price for
-// viewing, plus a search box to link/relink/unlink. Writes happen immediately (not
+// link (if any) with a small card showing Deal Stage, Agent, and a stage-appropriate
+// price (List/Pending/Sale) + commission if entered. Writes happen immediately (not
 // gated behind the drawer's main Save button) since this is a cross-table relationship.
 function LinkedOpsDealField({ propertyId, propertyAddress, role, label, onApply }) {
   const [linked, setLinked] = useState(undefined) // undefined = loading, null = none
@@ -61,7 +74,7 @@ function LinkedOpsDealField({ propertyId, propertyAddress, role, label, onApply 
   const [loading, setLoading] = useState(false)
   const wrapRef = useRef(null)
 
-  const SELECT_COLS = 'id, client_name, property_address, status, primary_agent, deal_type, volume, commission_pct, commission_flat_fee, commission_rate, list_price, closing_date, co_op_agent'
+  const SELECT_COLS = 'id, client_name, property_address, status, primary_agent, deal_type, volume, list_price, original_list_price, commission_pct, commission_flat_fee, commission_rate, closing_date'
 
   async function loadLinked() {
     if (!propertyId) { setLinked(null); return }
@@ -81,28 +94,49 @@ function LinkedOpsDealField({ propertyId, propertyAddress, role, label, onApply 
     return () => document.removeEventListener('mousedown', handler)
   }, [])
 
+  // Address is the primary match — client name is a fallback only. Address hits are
+  // sorted to the top since that's almost always what identifies the right deal.
   async function search(q) {
     if (!q || q.trim().length < 2) { loadRecommended(); return }
     setLoading(true)
     const { data } = await supabase.from('pipeline_deals')
       .select(SELECT_COLS)
-      .or(`client_name.ilike.%${q}%,property_address.ilike.%${q}%`)
-      .limit(8)
-    setResults(data || [])
+      .or(`property_address.ilike.%${q}%,client_name.ilike.%${q}%`)
+      .limit(10)
+    const sorted = (data || []).sort((a, b) => {
+      const aAddr = a.property_address?.toLowerCase().includes(q.toLowerCase()) ? 0 : 1
+      const bAddr = b.property_address?.toLowerCase().includes(q.toLowerCase()) ? 0 : 1
+      return aAddr - bAddr
+    }).slice(0, 8)
+    setResults(sorted)
     setOpen(true)
     setLoading(false)
   }
 
-  // Shown on focus, before the user types anything — most recent open deals,
-  // so there's usually something worth clicking without having to know the exact name.
+  // Shown on focus, before typing — deals whose address matches this property's own
+  // address, since that's the overwhelmingly likely candidate. Falls back to recent
+  // deals generally if nothing matches (e.g. this property hasn't been listed in Ops yet).
   async function loadRecommended() {
     setLoading(true)
-    const { data } = await supabase.from('pipeline_deals')
-      .select(SELECT_COLS)
-      .eq('is_archived', false)
-      .order('created_at', { ascending: false })
-      .limit(8)
-    setResults(data || [])
+    const street = streetPart(propertyAddress)
+    let data = []
+    if (street) {
+      const { data: addrMatches } = await supabase.from('pipeline_deals')
+        .select(SELECT_COLS)
+        .ilike('property_address', `%${street}%`)
+        .order('created_at', { ascending: false })
+        .limit(8)
+      data = addrMatches || []
+    }
+    if (data.length === 0) {
+      const { data: recent } = await supabase.from('pipeline_deals')
+        .select(SELECT_COLS)
+        .eq('is_archived', false)
+        .order('created_at', { ascending: false })
+        .limit(8)
+      data = recent || []
+    }
+    setResults(data)
     setOpen(true)
     setLoading(false)
   }
@@ -127,9 +161,15 @@ function LinkedOpsDealField({ propertyId, propertyAddress, role, label, onApply 
     setLinked(null)
   }
 
-  // NHC Commission: prefer a flat fee if one was set, otherwise compute from rate × volume
-  const commissionAmt = linked ? (linked.commission_flat_fee || (linked.volume && linked.commission_rate ? linked.volume * linked.commission_rate / 100 : null)) : null
-  const priceAmt = linked ? (linked.volume || linked.list_price) : null
+  const isClosed = linked?.status === 'Closed'
+  // NHC Commission: prefer a flat fee if one was set, otherwise compute from rate × the
+  // stage-appropriate price. Only shown if actually entered on the Ops side.
+  const priceLabel = linked?.status === 'Closed' ? 'Sale Price'
+    : linked?.status === 'Pending' ? 'Pending Price'
+    : (linked?.status === 'Active Listing' || linked?.status === 'Listing Signed' || linked?.status === 'Coming Soon' || linked?.status === 'New Deal') ? 'List Price'
+    : 'Price'
+  const priceAmt = linked ? (linked.volume || linked.list_price || linked.original_list_price) : null
+  const commissionAmt = linked ? (linked.commission_flat_fee || (priceAmt && linked.commission_rate ? priceAmt * linked.commission_rate / 100 : null)) : null
 
   return (
     <div>
@@ -141,47 +181,40 @@ function LinkedOpsDealField({ propertyId, propertyAddress, role, label, onApply 
         <div style={{ fontSize: 12, color: '#9ca3af' }}>Loading…</div>
       ) : linked ? (
         <div style={{ background: '#FAF6EF', border: '0.5px solid #E8DFC8', borderRadius: 6, padding: '8px 10px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
             <div style={{ minWidth: 0 }}>
               <div style={{ fontSize: 13, fontWeight: 700, color: '#2C2C2C' }}>{linked.client_name || linked.property_address || '—'}</div>
               <div style={{ fontSize: 11, color: '#888', marginTop: 2 }}>
-                {linked.deal_type} · {linked.status}{linked.primary_agent ? ` · ${linked.primary_agent}` : ''}
+                {linked.deal_type}{linked.primary_agent ? ` · ${linked.primary_agent}` : ''}
               </div>
-              {linked.co_op_agent && (
-                <div style={{ fontSize: 10.5, color: '#B8892A', marginTop: 2 }}>Co-op agent: {linked.co_op_agent}</div>
-              )}
             </div>
-            <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
-              {onApply && (priceAmt != null || commissionAmt != null) && (
-                <button
-                  onClick={() => onApply(linked)}
-                  title="Copy price, commission, and co-op agent from this Ops Hub deal into the property"
-                  style={{ background: '#3B6D11', border: 'none', borderRadius: 6, padding: '6px 10px', fontSize: 11, fontWeight: 700, color: '#fff', cursor: 'pointer' }}
-                >↻ Pull In</button>
-              )}
-              <button
-                onClick={() => window.open(`https://ops.nhcnow.com/?page=pipeline&deal=${linked.id}`, '_blank', 'noopener,noreferrer')}
-                style={{ background: '#B8892A', border: 'none', borderRadius: 6, padding: '6px 10px', fontSize: 11, fontWeight: 700, color: '#fff', cursor: 'pointer' }}
-              >↗ Open in Ops Hub</button>
-              <button onClick={unlink} title="Unlink" style={{ background: 'none', border: '1px solid #D6D2CA', borderRadius: 6, color: '#9ca3af', cursor: 'pointer', width: 28 }}>×</button>
-            </div>
+            <span style={{ flexShrink:0, fontSize:9, fontWeight:700, color:'#fff', background: OPS_STATUS_COLOR[linked.status] || '#6b7280', borderRadius:5, padding:'3px 8px', textTransform:'uppercase', letterSpacing:0.4, whiteSpace:'nowrap' }}>
+              {linked.status}
+            </span>
           </div>
+
           {(priceAmt || commissionAmt != null) && (
-            <div style={{ display: 'flex', gap: 8, marginTop: 8, paddingTop: 8, borderTop: '1px solid #EFE7D3' }}>
-              {priceAmt != null && (
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 9, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: 0.5 }}>Sale / Purchase Price</div>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: '#2C2C2C', fontFamily: 'monospace' }}>{fmt(priceAmt)}</div>
-                </div>
-              )}
-              {commissionAmt != null && (
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 9, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: 0.5 }}>NHC Commission</div>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: '#B8892A', fontFamily: 'monospace' }}>{fmt(commissionAmt)}</div>
-                </div>
-              )}
+            <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
+              {priceAmt != null && <CardStatBox label={priceLabel} value={fmt(priceAmt)} color="#2C2C2C" bg="#F0EDE6" />}
+              {commissionAmt != null && <CardStatBox label="NHC Commission" value={fmt(commissionAmt)} color="#B8892A" bg="#FBF6EA" />}
             </div>
           )}
+
+          <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
+            {onApply && (
+              <button
+                onClick={() => isClosed && onApply(linked)}
+                disabled={!isClosed}
+                title={isClosed ? 'Copy price and commission from this Ops Hub deal into the property' : 'Available once this Ops Hub deal is Closed'}
+                style={{ flex:1, background: isClosed ? '#3B6D11' : '#E5E1DB', border: 'none', borderRadius: 6, padding: '6px 10px', fontSize: 11, fontWeight: 700, color: isClosed ? '#fff' : '#9ca3af', cursor: isClosed ? 'pointer' : 'not-allowed' }}
+              >↻ Pull In{!isClosed ? ' (once Closed)' : ''}</button>
+            )}
+            <button
+              onClick={() => window.open(`https://ops.nhcnow.com/?page=pipeline&deal=${linked.id}`, '_blank', 'noopener,noreferrer')}
+              style={{ background: '#B8892A', border: 'none', borderRadius: 6, padding: '6px 10px', fontSize: 11, fontWeight: 700, color: '#fff', cursor: 'pointer', whiteSpace:'nowrap' }}
+            >↗ Open in Ops Hub</button>
+            <button onClick={unlink} title="Unlink" style={{ background: 'none', border: '1px solid #D6D2CA', borderRadius: 6, color: '#9ca3af', cursor: 'pointer', width: 28, flexShrink:0 }}>×</button>
+          </div>
         </div>
       ) : (
         <div ref={wrapRef} style={{ position: 'relative' }}>
@@ -190,7 +223,7 @@ function LinkedOpsDealField({ propertyId, propertyAddress, role, label, onApply 
             value={query}
             onChange={handleChange}
             onFocus={() => { if (results.length > 0) setOpen(true); else loadRecommended() }}
-            placeholder={propertyAddress ? `Search by client or "${propertyAddress}"` : 'Search Ops Hub by client name or address'}
+            placeholder={propertyAddress ? `Search by address or client — try "${streetPart(propertyAddress)}"` : 'Search Ops Hub by address or client name'}
           />
           {open && (loading || results.length > 0 || query.trim().length < 2) && (
             <div style={{
@@ -200,7 +233,7 @@ function LinkedOpsDealField({ propertyId, propertyAddress, role, label, onApply 
             }}>
               {!loading && results.length > 0 && (
                 <div style={{ padding: '7px 12px', fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: 0.5, background: '#FAFAF8', borderBottom: '1px solid #F0EDE6' }}>
-                  {query.trim().length < 2 ? 'Recent Deals' : 'Matching Deals'}
+                  {query.trim().length < 2 ? 'Matching This Address' : 'Matching Deals'}
                 </div>
               )}
               {loading && <div style={{ padding: '10px 12px', fontSize: 12, color: '#9ca3af' }}>Loading…</div>}
@@ -215,9 +248,9 @@ function LinkedOpsDealField({ propertyId, propertyAddress, role, label, onApply 
                   onMouseEnter={e => e.currentTarget.style.background = '#FAFAF8'}
                   onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                 >
-                  <div style={{ fontSize: 13, fontWeight: 700, color: '#2C2C2C' }}>{d.client_name || '—'}</div>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: '#2C2C2C' }}>{d.property_address || d.client_name || '—'}</div>
                   <div style={{ fontSize: 11, color: '#888', marginTop: 2 }}>
-                    {d.property_address || 'No address'} · {d.deal_type} · {d.status}
+                    {d.client_name || 'No client'} · {d.deal_type} · {d.status}
                   </div>
                 </div>
               ))}
@@ -568,68 +601,30 @@ function Toggle({ on, onToggle, label, sub }) {
   )
 }
 
-// Splits the total sale-side commission into Seller (listing) and Buyer (co-op) portions.
-// Not all of the buyer-side commission is NHC revenue — if another company's agent brought
-// the buyer, that portion is paid out to them, so it's flagged here rather than assumed to
-// all be BPV/NHC income. Total (both portions combined) is what ProfitWaterfall deducts from
-// the sale proceeds, since that money leaves the deal either way.
-function CommissionSplit({ form, setForm, calcCommission, monoInp, inp }) {
-  function updatePct(side, pct) {
-    const amt = calcCommission(pct, form.sale_price)
-    setForm(f => ({
-      ...f,
-      [`sale_commission_${side}_pct`]: pct,
-      [`sale_commission_${side}_amt`]: amt ? amt.toFixed(2) : f[`sale_commission_${side}_amt`],
-    }))
-  }
-  function updateAmt(side, amt) {
-    setForm(f => ({ ...f, [`sale_commission_${side}_amt`]: amt }))
-  }
-
-  const sellerAmt = parseFloat(form.sale_commission_seller_amt) || 0
-  const buyerAmt = parseFloat(form.sale_commission_buyer_amt) || 0
-  const totalAmt = sellerAmt + buyerAmt
+// NHC Commission and Co-op Commission — both plain dollar fields. Percentages aren't
+// tracked here anymore since the Linked Ops Hub Deal's Pull In button already supplies
+// the real NHC commission dollar amount once the deal is Closed. Co-op commission has
+// no % field either — it still needs manual entry since Ops doesn't track that dollar
+// figure at all (it only names the co-op agent, not what they were paid).
+function SaleCommission({ form, setForm }) {
+  const nhcAmt = parseFloat(form.sale_commission_seller_amt) || 0
+  const coopAmt = parseFloat(form.sale_commission_buyer_amt) || 0
+  const totalAmt = nhcAmt + coopAmt
 
   return (
     <>
       <FieldRow>
-        <Field label="Seller Commission % (Listing side — NHC)">
-          <input style={monoInp} type="number" value={form.sale_commission_seller_pct||''}
-            onChange={e=>updatePct('seller', e.target.value)} />
+        <Field label="NHC Commission ($)">
+          <MoneyInput value={form.sale_commission_seller_amt} onChange={v=>setForm(f=>({ ...f, sale_commission_seller_amt:v }))} />
         </Field>
-        <Field label="Seller Commission ($)">
-          <MoneyInput value={form.sale_commission_seller_amt} onChange={v=>updateAmt('seller', v)} />
-        </Field>
-      </FieldRow>
-      <FieldRow>
-        <Field label="Buyer Commission % (Co-op side)">
-          <input style={monoInp} type="number" value={form.sale_commission_buyer_pct||''}
-            onChange={e=>updatePct('buyer', e.target.value)} />
-        </Field>
-        <Field label="Buyer Commission ($)">
-          <MoneyInput value={form.sale_commission_buyer_amt} onChange={v=>updateAmt('buyer', v)} />
+        <Field label="Co-op Commission ($) — not tracked in Ops">
+          <MoneyInput value={form.sale_commission_buyer_amt} onChange={v=>setForm(f=>({ ...f, sale_commission_buyer_amt:v }))} />
         </Field>
       </FieldRow>
-      <Toggle
-        on={!!form.sale_buyer_agent_outside}
-        onToggle={()=>setForm(f=>({ ...f, sale_buyer_agent_outside: !f.sale_buyer_agent_outside }))}
-        label="Buyer's agent is from another company"
-        sub="When on, the buyer-side commission is paid out and isn't NHC/BPV revenue"
-      />
-      {form.sale_buyer_agent_outside && (
-        <Field label="Outside Buyer's Agent / Company">
-          <input style={inp} value={form.sale_buyer_agent_company||''}
-            onChange={e=>setForm(f=>({ ...f, sale_buyer_agent_company: e.target.value }))} />
-        </Field>
-      )}
-      <div style={{ display:'flex', justifyContent:'space-between', fontSize:12, color:'#6b7280', padding:'8px 2px 2px', borderTop:'1px dashed #E5E1D8', marginTop:6 }}>
-        <span>Total Commission (deducted from sale)</span>
-        <span style={{ fontWeight:700, color:'#2C2C2C' }}>${totalAmt.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}</span>
-      </div>
-      {form.sale_buyer_agent_outside && (
-        <div style={{ display:'flex', justifyContent:'space-between', fontSize:11.5, color:'#B8892A', padding:'2px 2px 0' }}>
-          <span>NHC/BPV Revenue (Seller side only)</span>
-          <span style={{ fontWeight:700 }}>${sellerAmt.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}</span>
+      {(nhcAmt > 0 || coopAmt > 0) && (
+        <div style={{ display:'flex', justifyContent:'space-between', fontSize:12, color:'#6b7280', padding:'8px 2px 2px', borderTop:'1px dashed #E5E1D8', marginTop:6 }}>
+          <span>Total Commission (deducted from sale)</span>
+          <span style={{ fontWeight:700, color:'#2C2C2C' }}>${totalAmt.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}</span>
         </div>
       )}
     </>
@@ -875,11 +870,10 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
       mailing_id:form.mailing_id||null,
       source:form.source||null,
       commission_pct:form.commission_pct||null, commission_earned:form.commission_earned||null,
-      sale_commission_pct: (parseFloat(form.sale_commission_seller_pct)||0) + (parseFloat(form.sale_commission_buyer_pct)||0) || form.sale_commission_pct || null,
+      sale_commission_pct: form.sale_commission_pct || null,
       sale_commission_earned: ((parseFloat(form.sale_commission_seller_amt)||0) + (parseFloat(form.sale_commission_buyer_amt)||0)) || form.sale_commission_earned || null,
-      sale_commission_seller_pct:form.sale_commission_seller_pct||null, sale_commission_seller_amt:form.sale_commission_seller_amt||null,
-      sale_commission_buyer_pct:form.sale_commission_buyer_pct||null, sale_commission_buyer_amt:form.sale_commission_buyer_amt||null,
-      sale_buyer_agent_outside:form.sale_buyer_agent_outside||false, sale_buyer_agent_company:form.sale_buyer_agent_company||null,
+      sale_commission_seller_amt:form.sale_commission_seller_amt||null,
+      sale_commission_buyer_amt:form.sale_commission_buyer_amt||null,
       capital_gains_pct:form.capital_gains_pct||null, capital_gains_override:form.capital_gains_override||null,
       commission_min:form.commission_min||5000,
       nhc_notes:form.nhc_notes||null,
@@ -1008,7 +1002,7 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
     ...(showLoanTab ? [{ key:'loan', label:'Loan' }] : []),
     { key:'rehab',       label:'Renovation' },
     ...(showRentTab ? [{ key:'rent', label:'Lease' }] : []),
-    { key:'disposition', label: type==='Retail Listing' ? 'Listing' : 'Sold' },
+    { key:'disposition', label:'Sold' },
   ]
 
   // Disposition is always accessible — no gating on type/stage.
@@ -1486,21 +1480,15 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
             <div className="drawer-section">Linked Records</div>
             <LinkedOpsDealField
               propertyId={form.id} propertyAddress={form.address} role="disposition"
-              label={disp==='listing' ? 'Linked Ops Hub Deal (Listing)' : 'Linked Ops Hub Deal (Sold)'}
+              label="Linked Ops Hub Deal (Sold)"
               onApply={linked => {
                 const price = linked.volume || linked.list_price || null
-                const sellerPct = linked.commission_rate || linked.commission_pct || null
-                const sellerAmt = linked.commission_flat_fee || (price && sellerPct ? price*sellerPct/100 : null)
+                const commissionAmt = linked.commission_flat_fee || (price && linked.commission_rate ? price*linked.commission_rate/100 : null)
                 setForm(f=>({
                   ...f,
                   sale_price: price != null ? String(price) : f.sale_price,
-                  sale_commission_seller_pct: sellerPct != null ? String(sellerPct) : f.sale_commission_seller_pct,
-                  sale_commission_seller_amt: sellerAmt != null ? sellerAmt.toFixed(2) : f.sale_commission_seller_amt,
-                  sale_buyer_agent_outside: linked.co_op_agent ? true : f.sale_buyer_agent_outside,
-                  sale_buyer_agent_company: linked.co_op_agent || f.sale_buyer_agent_company,
-                  // Retail Listing's older single-field commission stays in sync too
-                  commission_pct: sellerPct != null ? String(sellerPct) : f.commission_pct,
-                  commission_earned: sellerAmt != null ? sellerAmt.toFixed(2) : f.commission_earned,
+                  disposition_date: linked.closing_date || f.disposition_date,
+                  sale_commission_seller_amt: commissionAmt != null ? commissionAmt.toFixed(2) : f.sale_commission_seller_amt,
                 }))
               }}
             />
@@ -1508,19 +1496,12 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
 
           {/* ── LISTING ── */}
           {disp==='listing' && (<>
-            <div className="drawer-section">Listing Details</div>
-            <FieldRow>
-              <Field label="List Date"><DatePicker style={inp} value={form.list_date||''} onChange={set('list_date')} /></Field>
-              <Field label="Offer Date"><DatePicker style={inp} value={form.offer_date||''} onChange={set('offer_date')} /></Field>
-            </FieldRow>
-            <Field label="ARV / List Price ($)"><input style={monoInp} type="number" value={form.arv||''} onChange={set('arv')} /></Field>
             <div className="drawer-section">Sale</div>
             <FieldRow>
               <Field label="Sale Price ($)"><input style={monoInp} type="number" value={form.sale_price||''} onChange={set('sale_price')} /></Field>
               <Field label="Close Date"><DatePicker style={inp} value={form.disposition_date||''} onChange={set('disposition_date')} /></Field>
             </FieldRow>
-            <Field label="Days on Market"><input style={monoInp} type="number" value={form.days_on_market||''} onChange={set('days_on_market')} /></Field>
-            <CommissionSplit form={form} setForm={setForm} calcCommission={calcCommission} monoInp={monoInp} inp={inp} />
+            <SaleCommission form={form} setForm={setForm} />
           </>)}
 
           {/* ── WHOLESALE ── */}
@@ -1579,7 +1560,7 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
               <Field label="Sale Price"><MoneyInput value={form.sale_price} onChange={set('sale_price')} /></Field>
               <Field label="Sale Date"><DatePicker style={inp} value={form.sale_date||''} onChange={set('sale_date')} /></Field>
             </FieldRow>
-            <CommissionSplit form={form} setForm={setForm} calcCommission={calcCommission} monoInp={monoInp} inp={inp} />
+            <SaleCommission form={form} setForm={setForm} />
             {form.sale_price && (
               <ProfitWaterfall
                 salePrice={form.sale_price} commission={(parseFloat(form.sale_commission_seller_amt)||0) + (parseFloat(form.sale_commission_buyer_amt)||0)}
@@ -1624,7 +1605,7 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
                   <Field label="Sale Price ($)"><input style={monoInp} type="number" value={form.sale_price||''} onChange={set('sale_price')} /></Field>
                   <Field label="Sale Date"><DatePicker style={inp} value={form.sale_date||''} onChange={set('sale_date')} /></Field>
                 </FieldRow>
-                <CommissionSplit form={form} setForm={setForm} calcCommission={calcCommission} monoInp={monoInp} inp={inp} />
+                <SaleCommission form={form} setForm={setForm} />
                 {form.sale_price && (
                   <div style={{ marginTop:10 }}>
                     <ProfitWaterfall
