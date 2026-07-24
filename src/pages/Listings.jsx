@@ -4,7 +4,12 @@ import { useIsMobile } from '../hooks/useIsMobile.js'
 import { PageWrap, SectionBar, Card, EmptyState, LoadingSpinner, fmt, fmtK, useSort, SortTh } from '../components/ui.jsx'
 import PropertyDrawer from '../components/PropertyDrawer.jsx'
 import ProposalModal from '../components/ProposalModal.jsx'
-import KanbanBoard, { cardPill, cardChip, CardStatBox, MoneyBurst, PROMO_PAYLOADS, shortStreet } from '../components/KanbanBoard.jsx'
+import KanbanBoard, { cardPill, cardChip, cardBtn, CardStatBox, MoneyBurst, PROMO_PAYLOADS, shortStreet } from '../components/KanbanBoard.jsx'
+
+const OPS_STATUS_COLOR = {
+  'New Deal':'#6b7280', 'Listing Signed':'#6b21a8', 'Coming Soon':'#D97825', 'Active Listing':'#2D6FAF',
+  'Pending':'#D97825', 'Closed':'#3B6D11', 'Withdrawn':'#B91C1C', 'Lost':'#B91C1C',
+}
 
 const PROMO_ZONES = [
   { key:'Analyzing', label:'RE-ANALYZE', emoji:'\u{1F50D}', color:'#6b7280' },
@@ -46,6 +51,7 @@ export default function Listings({ isAgentRole=false, currentUserEmail=null }) {
   const [proposal, setProposal] = useState(null)
   const [ownerFilter, setOwnerFilter] = useState('all')  // all | owned | client
   const [burst, setBurst] = useState(null)
+  const [linkStatus, setLinkStatus] = useState({}) // property_id -> Ops Hub linked (disposition) status
 
   useEffect(() => { load() }, [])
 
@@ -64,6 +70,19 @@ export default function Listings({ isAgentRole=false, currentUserEmail=null }) {
     setProperties(p || [])
     setMailings(m || [])
     setLoading(false)
+
+    const ids = (p || []).map(x => x.id)
+    if (ids.length > 0) {
+      const { data: links } = await supabase.from('pipeline_deals')
+        .select('cashoffer_property_id,status')
+        .in('cashoffer_property_id', ids)
+        .eq('cashoffer_link_role', 'disposition')
+      const map = {}
+      for (const l of (links || [])) map[l.cashoffer_property_id] = l.status
+      setLinkStatus(map)
+    } else {
+      setLinkStatus({})
+    }
   }
 
   const shown = properties.filter(p => {
@@ -154,6 +173,14 @@ export default function Listings({ isAgentRole=false, currentUserEmail=null }) {
         {p.days_on_market ? (
           <div style={{ fontSize:10, color: p.days_on_market > 60 ? '#B91C1C' : '#9ca3af', fontWeight: p.days_on_market > 60 ? 700 : 400 }}>{p.days_on_market}d on market</div>
         ) : null}
+
+        {linkStatus[p.id] && (
+          <button
+            onClick={e => { e.stopPropagation(); setDrawerTab('disposition'); setDrawer(p) }}
+            style={{ ...cardBtn, background: OPS_STATUS_COLOR[linkStatus[p.id]] || '#6b7280' }}>
+            🔗 {linkStatus[p.id]}
+          </button>
+        )}
       </>
     )
   }
