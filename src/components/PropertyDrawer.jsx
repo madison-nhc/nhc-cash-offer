@@ -631,32 +631,75 @@ function SaleCommission({ form, setForm }) {
   )
 }
 
-// Uniform pill-style <select> matching the Ops Hub's PillDropdown look: solid
-// color fill + white bold uppercase text once a value is set, muted grey pill
-// beforehand. Fixed width so header selects line up cleanly across rows.
+// Uniform pill-style dropdown matching the Ops Hub's PillDropdown: solid color
+// fill + white bold uppercase text on the closed button once a value is set,
+// muted grey pill beforehand — but a real white floating panel for the option
+// list (native <select> option elements inherit the select's own background
+// in some browsers, which made every option render gold/whatever-color instead
+// of white). Fixed width so header pills line up cleanly across rows.
 const PILL_WIDTH = 152
-function HeaderPillSelect({ value, onChange, disabled, title, color, hasValue, children }) {
+function HeaderPillSelect({ value, onSelect, sections, disabled, title, color, hasValue, placeholder='Select' }) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef(null)
+
+  useEffect(() => {
+    if (!open) return
+    function handler(e) { if (ref.current && !ref.current.contains(e.target)) setOpen(false) }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [open])
+
+  const label = sections.flatMap(s=>s.options).find(o=>o.value===value)?.label
+
   return (
-    <div style={{ position:'relative', width:PILL_WIDTH }}>
-      <select
-        value={value}
-        onChange={onChange}
-        onClick={e=>e.stopPropagation()}
-        disabled={disabled}
-        title={title}
+    <div ref={ref} style={{ position:'relative', width:PILL_WIDTH }}>
+      <button
+        type="button" title={title} disabled={disabled}
+        onClick={e=>{ e.stopPropagation(); if (!disabled) setOpen(o=>!o) }}
         style={{
-          appearance:'none', WebkitAppearance:'none', MozAppearance:'none',
-          border:'none', borderRadius:5, padding:'6px 22px 6px 10px', width:'100%', boxSizing:'border-box',
+          display:'flex', alignItems:'center', justifyContent:'space-between', gap:6,
+          width:'100%', boxSizing:'border-box',
+          border:'none', borderRadius:5, padding:'6px 10px',
           fontSize:11, fontWeight:700, fontFamily:'inherit', textTransform:'uppercase', letterSpacing:'0.05em',
-          whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis',
           color: hasValue ? '#fff' : '#9ca3af',
           background: hasValue ? color : '#F0EDE6',
           cursor: disabled ? 'not-allowed' : 'pointer', outline:'none',
           opacity: disabled ? 0.6 : 1,
         }}>
-        {children}
-      </select>
-      <span style={{ position:'absolute', right:8, top:'50%', transform:'translateY(-50%)', fontSize:8, opacity:0.8, pointerEvents:'none', color: hasValue ? '#fff' : '#9ca3af' }}>▼</span>
+        <span style={{ overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{label || placeholder}</span>
+        <span style={{ fontSize:8, opacity:0.8, flexShrink:0 }}>▼</span>
+      </button>
+
+      {open && (
+        <div style={{
+          position:'absolute', top:'calc(100% + 4px)', left:0, zIndex:200,
+          minWidth:'100%', width:'max-content', maxWidth:260, maxHeight:280, overflowY:'auto',
+          background:'#fff', border:'0.5px solid #D6D2CA', borderRadius:8,
+          boxShadow:'0 8px 24px rgba(0,0,0,0.18)',
+        }}>
+          {sections.map((sec, si) => (
+            <div key={si}>
+              {sec.label && (
+                <div style={{ padding:'6px 12px 2px', fontSize:9, fontWeight:700, color:'#9ca3af', textTransform:'uppercase', letterSpacing:0.6 }}>{sec.label}</div>
+              )}
+              {sec.options.map(o=>(
+                <div
+                  key={o.value}
+                  onClick={()=>{ setOpen(false); onSelect(o.value) }}
+                  style={{
+                    padding:'7px 12px', fontSize:12, fontWeight: o.value===value ? 700 : 500,
+                    color: o.value===value ? color : '#444', cursor:'pointer', whiteSpace:'nowrap',
+                    background: o.value===value ? color+'12' : 'transparent',
+                  }}
+                  onMouseEnter={e=>e.currentTarget.style.background='#F7F5F0'}
+                  onMouseLeave={e=>e.currentTarget.style.background = o.value===value ? color+'12' : 'transparent'}>
+                  {o.label}
+                </div>
+              ))}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
@@ -672,6 +715,16 @@ function OwnerAgentPicker({ form, setForm, set, entityList, ownerUserList, agent
   const ownerLocked = restrictedAgent || ownerDisabled
   const ownerValue = form.owner_entity_id ? `entity:${form.owner_entity_id}` : form.owner_user_email ? `user:${form.owner_user_email}` : form.owner==='Client' ? 'client' : ''
   const agentValue = form.agent_email || ''
+
+  const ownerSections = [
+    { options: [{ value:'', label:'Not yet selected' }, { value:'client', label:'Client (not NHC/BPV owned)' }] },
+    ...(ownerUserList.length > 0 ? [{ label:'People', options: ownerUserList.map(u=>({ value:`user:${u.email}`, label:u.full_name||u.email })) }] : []),
+    ...(entityList.length > 0 ? [{ label:'Businesses', options: entityList.map(ent=>({ value:`entity:${ent.id}`, label:ent.name })) }] : []),
+  ]
+  const agentSections = [
+    { options: [{ value:'', label:'No Agent' }, { value:'__outside_agent__', label:'Outside Agent' }, ...agentList.map(a=>({ value:a.email, label:a.full_name||a.email }))] },
+  ]
+
   return (
     <>
       <div style={{ display:'flex', flexDirection:'column', gap:2 }}>
@@ -682,8 +735,8 @@ function OwnerAgentPicker({ form, setForm, set, entityList, ownerUserList, agent
           color="#4B5563"
           disabled={ownerLocked}
           title={ownerDisabled && !restrictedAgent ? 'Owner is set once the property is purchased' : undefined}
-          onChange={e=>{
-            const val = e.target.value
+          sections={ownerSections}
+          onSelect={val=>{
             if (!val) { setForm(f=>({ ...f, owner_user_email:null, owner_entity_id:null, owner:null })); return }
             if (val === 'client') { setForm(f=>({ ...f, owner_user_email:null, owner_entity_id:null, owner:'Client' })); return }
             const [kind, id] = val.split(':')
@@ -694,20 +747,7 @@ function OwnerAgentPicker({ form, setForm, set, entityList, ownerUserList, agent
               const u = ownerUserList.find(x=>x.email===id)
               setForm(f=>({ ...f, owner_user_email:id, owner_entity_id:null, owner: u?.full_name || f.owner }))
             }
-          }}>
-          <option value="">Not yet selected</option>
-          <option value="client">Client (not NHC/BPV owned)</option>
-          {ownerUserList.length > 0 && (
-            <optgroup label="People">
-              {ownerUserList.map(u=><option key={u.email} value={`user:${u.email}`}>{u.full_name||u.email}</option>)}
-            </optgroup>
-          )}
-          {entityList.length > 0 && (
-            <optgroup label="Businesses">
-              {entityList.map(ent=><option key={ent.id} value={`entity:${ent.id}`}>{ent.name}</option>)}
-            </optgroup>
-          )}
-        </HeaderPillSelect>
+          }} />
       </div>
 
       <div style={{ display:'flex', flexDirection:'column', gap:2 }}>
@@ -715,13 +755,10 @@ function OwnerAgentPicker({ form, setForm, set, entityList, ownerUserList, agent
         <HeaderPillSelect
           value={agentValue}
           hasValue={!!agentValue}
-          color="#B8892A"
+          color="#0F766E"
           disabled={restrictedAgent}
-          onChange={set('agent_email')}>
-          <option value="">No Agent</option>
-          <option value="__outside_agent__">Outside Agent</option>
-          {agentList.map(a=><option key={a.email} value={a.email}>{a.full_name||a.email}</option>)}
-        </HeaderPillSelect>
+          sections={agentSections}
+          onSelect={val=>setForm(f=>({ ...f, agent_email:val }))} />
       </div>
     </>
   )
@@ -1889,9 +1926,8 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
                 hasValue={true}
                 color={typeColor}
                 disabled={restrictedAgent}
-                onChange={e=>setType(e.target.value)}>
-                {TYPE_OPTIONS.map(t=><option key={t.value} value={t.value}>{t.label || t.value}</option>)}
-              </HeaderPillSelect>
+                sections={[{ options: TYPE_OPTIONS.map(t=>({ value:t.value, label:t.label || t.value })) }]}
+                onSelect={val=>setType(val)} />
             </div>
 
             {/* Scoped stage dropdown — hidden for Analyzing/Lost which have no stages.
@@ -1904,12 +1940,8 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
                   value={form.rehab_stage||'Not Started'}
                   hasValue={true}
                   color={REHAB_COLOR[form.rehab_stage||'Not Started']}
-                  onChange={e=>{
-                    const rs = e.target.value
-                    setForm(f=>({ ...f, rehab_stage:rs, stage: rs==='Not Started' ? 'Purchased' : 'Renovation' }))
-                  }}>
-                  {REHAB_STAGES.map(s=><option key={s} value={s}>{s}</option>)}
-                </HeaderPillSelect>
+                  sections={[{ options: REHAB_STAGES.map(s=>({ value:s, label:s })) }]}
+                  onSelect={rs=>setForm(f=>({ ...f, rehab_stage:rs, stage: rs==='Not Started' ? 'Purchased' : 'Renovation' }))} />
               </div>
             ) : scopedStages.length>0 && (
               <div style={{ display:'flex', flexDirection:'column', gap:2 }}>
@@ -1919,9 +1951,8 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
                   hasValue={!!stage}
                   color={stageColor}
                   disabled={restrictedAgent}
-                  onChange={e=>setVal('stage',e.target.value)}>
-                  {scopedStages.map(s=><option key={s} value={s}>{s}</option>)}
-                </HeaderPillSelect>
+                  sections={[{ options: scopedStages.map(s=>({ value:s, label:s })) }]}
+                  onSelect={val=>setVal('stage',val)} />
               </div>
             )}
           </div>
