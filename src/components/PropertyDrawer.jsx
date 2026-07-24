@@ -1883,18 +1883,19 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
           </button>
         ) : <span />}
         <div style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
-          {linkedListingStatus && (
+          {!isNew && (
             <button
               onClick={()=>setTab('disposition')}
               title="Linked Ops Hub listing status"
               style={{
                 display:'flex', alignItems:'center', gap:6,
-                background: OPS_STATUS_COLOR[linkedListingStatus] || '#6b7280', color:'#fff',
+                background: linkedListingStatus ? (OPS_STATUS_COLOR[linkedListingStatus] || '#6b7280') : '#D6D2CA',
+                color: linkedListingStatus ? '#fff' : '#6b7280',
                 border:'none', borderRadius:6, padding:'6px 12px',
                 fontSize:11, fontWeight:700, fontFamily:'inherit', cursor:'pointer',
                 textTransform:'uppercase', letterSpacing:0.4, whiteSpace:'nowrap',
               }}>
-              🔗 {linkedListingStatus}
+              🔗 {linkedListingStatus || 'No Deal Linked'}
             </button>
           )}
           <Btn variant="outline" onClick={onClose}>Cancel</Btn>

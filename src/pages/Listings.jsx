@@ -174,11 +174,17 @@ export default function Listings({ isAgentRole=false, currentUserEmail=null }) {
           <div style={{ fontSize:10, color: p.days_on_market > 60 ? '#B91C1C' : '#9ca3af', fontWeight: p.days_on_market > 60 ? 700 : 400 }}>{p.days_on_market}d on market</div>
         ) : null}
 
-        {linkStatus[p.id] && (
+        {linkStatus[p.id] ? (
           <button
             onClick={e => { e.stopPropagation(); setDrawerTab('disposition'); setDrawer(p) }}
             style={{ ...cardBtn, background: OPS_STATUS_COLOR[linkStatus[p.id]] || '#6b7280' }}>
             🔗 {linkStatus[p.id]}
+          </button>
+        ) : (
+          <button
+            onClick={e => { e.stopPropagation(); setDrawerTab('disposition'); setDrawer(p) }}
+            style={{ ...cardBtn, background:'#D6D2CA', color:'#6b7280' }}>
+            🔗 No Deal Linked
           </button>
         )}
       </>
