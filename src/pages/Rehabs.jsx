@@ -300,7 +300,7 @@ export default function Rehabs({ onOpenSupplies, isAgentRole=false, currentUserE
       <SectionBar>Renovation Projects ({filtered.length})</SectionBar>
 
       {filtered.length===0 ? (
-        <EmptyState icon="🔨" text="No active renovations. Drop an Analyzer deal on the PURCHASED zone to start one." />
+        <EmptyState icon="🔨" text="No active renovations. Drop an Analyzer deal on the START RENOVATION zone to start one." />
       ) : (
         <Card style={{ padding:0 }}>
           <table style={{ width:'100%', borderCollapse:'collapse' }}>
@@ -383,4 +383,5 @@ export default function Rehabs({ onOpenSupplies, isAgentRole=false, currentUserE
     </PageWrap>
   )
 }
+
 

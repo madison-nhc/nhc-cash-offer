@@ -36,7 +36,7 @@ function daysAgo(dateStr) {
 }
 
 const PROMO_ZONES = [
-  { key:'Renovation',     label:'PURCHASED',        sub:'Flip / Hold',      emoji:'\u{1F3D7}\u{FE0F}', color:'#6b21a8' },
+  { key:'Renovation',     label:'START RENOVATION', sub:'Flip / Hold',      emoji:'\u{1F3D7}\u{FE0F}', color:'#6b21a8' },
   { key:'Retail Listing', label:'STANDARD LISTING', sub:'NHC \u00b7 client',   emoji:'\u{1FAA7}', color:'#3B6D11' },
   { key:'Wholesale',      label:'WHOLESALE',        sub:'Assign contract',  emoji:'\u{1F91D}', color:'#6b21a8' },
   { divider:true },
@@ -371,4 +371,5 @@ export default function Analyzer({ openPropertyId, openInPackage, onOpenedTarget
     </PageWrap>
   )
 }
+
 
