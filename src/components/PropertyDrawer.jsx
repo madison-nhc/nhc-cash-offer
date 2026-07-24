@@ -184,9 +184,9 @@ function LinkedOpsDealField({ propertyId, propertyAddress, role, label, onApply 
         <div style={{ background: '#FAF6EF', border: '0.5px solid #E8DFC8', borderRadius: 6, padding: '8px 10px' }}>
           <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
             <div style={{ minWidth: 0 }}>
-              <div style={{ fontSize: 13, fontWeight: 700, color: '#2C2C2C' }}>{linked.client_name || linked.property_address || '—'}</div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: '#2C2C2C' }}>{linked.property_address || linked.client_name || '—'}</div>
               <div style={{ fontSize: 11, color: '#888', marginTop: 2 }}>
-                {linked.deal_type}{linked.primary_agent ? ` · ${linked.primary_agent}` : ''}
+                {linked.client_name ? `${linked.client_name} · ` : ''}{linked.deal_type}{linked.primary_agent ? ` · ${linked.primary_agent}` : ''}
               </div>
             </div>
             <span style={{ flexShrink:0, fontSize:9, fontWeight:700, color:'#fff', background: OPS_STATUS_COLOR[linked.status] || '#6b7280', borderRadius:5, padding:'3px 8px', textTransform:'uppercase', letterSpacing:0.4, whiteSpace:'nowrap' }}>
@@ -1418,7 +1418,7 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
         <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
           <div className="drawer-section">Linked Records</div>
           <LinkedOpsDealField
-            propertyId={form.id} propertyAddress={form.address} role="acquisition" label="Linked Ops Hub Deal (Acquisition)"
+            propertyId={form.id} propertyAddress={form.address} role="acquisition" label="Linked Ops Hub Deal (Purchase)"
             onApply={linked => {
               const price = linked.volume || linked.list_price || null
               const commission = linked.commission_flat_fee || (price && linked.commission_rate ? price*linked.commission_rate/100 : null)
@@ -1645,7 +1645,7 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
             <div className="drawer-section">Linked Records</div>
             <LinkedOpsDealField
               propertyId={form.id} propertyAddress={form.address} role="disposition"
-              label="Linked Ops Hub Deal (Sold)"
+              label="Linked Ops Hub Deal (Listing)"
               onApply={linked => {
                 const price = linked.volume || linked.list_price || null
                 const commissionAmt = linked.commission_flat_fee || (price && linked.commission_rate ? price*linked.commission_rate/100 : null)
