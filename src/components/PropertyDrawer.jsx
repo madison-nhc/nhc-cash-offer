@@ -631,6 +631,36 @@ function SaleCommission({ form, setForm }) {
   )
 }
 
+// Uniform pill-style <select> matching the Ops Hub's PillDropdown look: solid
+// color fill + white bold uppercase text once a value is set, muted grey pill
+// beforehand. Fixed width so header selects line up cleanly across rows.
+const PILL_WIDTH = 152
+function HeaderPillSelect({ value, onChange, disabled, title, color, hasValue, children }) {
+  return (
+    <div style={{ position:'relative', width:PILL_WIDTH }}>
+      <select
+        value={value}
+        onChange={onChange}
+        onClick={e=>e.stopPropagation()}
+        disabled={disabled}
+        title={title}
+        style={{
+          appearance:'none', WebkitAppearance:'none', MozAppearance:'none',
+          border:'none', borderRadius:5, padding:'6px 22px 6px 10px', width:'100%', boxSizing:'border-box',
+          fontSize:11, fontWeight:700, fontFamily:'inherit', textTransform:'uppercase', letterSpacing:'0.05em',
+          whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis',
+          color: hasValue ? '#fff' : '#9ca3af',
+          background: hasValue ? color : '#F0EDE6',
+          cursor: disabled ? 'not-allowed' : 'pointer', outline:'none',
+          opacity: disabled ? 0.6 : 1,
+        }}>
+        {children}
+      </select>
+      <span style={{ position:'absolute', right:8, top:'50%', transform:'translateY(-50%)', fontSize:8, opacity:0.8, pointerEvents:'none', color: hasValue ? '#fff' : '#9ca3af' }}>▼</span>
+    </div>
+  )
+}
+
 // Owner + Agent pickers — shown in the header for every deal type, and again on the
 // Purchase tab for types that have one. The Owner select is greyed out (ownerDisabled)
 // while a deal is still type 'Analyzing' — nothing to own until it's actually purchased —
@@ -640,13 +670,18 @@ function SaleCommission({ form, setForm }) {
 // text field kept in sync for the existing card display across Rehabs/Holds/Listings/Wholesale/Sold.
 function OwnerAgentPicker({ form, setForm, set, entityList, ownerUserList, agentList, restrictedAgent, ownerDisabled=false }) {
   const ownerLocked = restrictedAgent || ownerDisabled
+  const ownerValue = form.owner_entity_id ? `entity:${form.owner_entity_id}` : form.owner_user_email ? `user:${form.owner_user_email}` : form.owner==='Client' ? 'client' : ''
+  const agentValue = form.agent_email || ''
   return (
     <>
       <div style={{ display:'flex', flexDirection:'column', gap:2 }}>
         <span style={{ fontSize:9, fontWeight:700, color:'#9ca3af', textTransform:'uppercase', letterSpacing:0.6 }}>Owner</span>
-        <select
-          value={form.owner_entity_id ? `entity:${form.owner_entity_id}` : form.owner_user_email ? `user:${form.owner_user_email}` : form.owner==='Client' ? 'client' : ''}
-          onClick={e=>e.stopPropagation()}
+        <HeaderPillSelect
+          value={ownerValue}
+          hasValue={!!ownerValue}
+          color="#4B5563"
+          disabled={ownerLocked}
+          title={ownerDisabled && !restrictedAgent ? 'Owner is set once the property is purchased' : undefined}
           onChange={e=>{
             const val = e.target.value
             if (!val) { setForm(f=>({ ...f, owner_user_email:null, owner_entity_id:null, owner:null })); return }
@@ -659,14 +694,6 @@ function OwnerAgentPicker({ form, setForm, set, entityList, ownerUserList, agent
               const u = ownerUserList.find(x=>x.email===id)
               setForm(f=>({ ...f, owner_user_email:id, owner_entity_id:null, owner: u?.full_name || f.owner }))
             }
-          }}
-          disabled={ownerLocked}
-          title={ownerDisabled && !restrictedAgent ? 'Owner is set once the property is purchased' : undefined}
-          style={{
-            border:'1.5px solid #D6D2CA', borderRadius:6, padding:'3px 8px',
-            fontSize:11, fontWeight:600, fontFamily:'inherit', color:'#6b7280', background:'#fff',
-            cursor: ownerLocked ? 'not-allowed' : 'pointer', outline:'none',
-            opacity: ownerLocked ? 0.6 : 1,
           }}>
           <option value="">Not yet selected</option>
           <option value="client">Client (not NHC/BPV owned)</option>
@@ -680,26 +707,21 @@ function OwnerAgentPicker({ form, setForm, set, entityList, ownerUserList, agent
               {entityList.map(ent=><option key={ent.id} value={`entity:${ent.id}`}>{ent.name}</option>)}
             </optgroup>
           )}
-        </select>
+        </HeaderPillSelect>
       </div>
 
       <div style={{ display:'flex', flexDirection:'column', gap:2 }}>
         <span style={{ fontSize:9, fontWeight:700, color:'#9ca3af', textTransform:'uppercase', letterSpacing:0.6 }}>NHC Agent</span>
-        <select
-          value={form.agent_email||''}
-          onChange={set('agent_email')}
-          onClick={e=>e.stopPropagation()}
+        <HeaderPillSelect
+          value={agentValue}
+          hasValue={!!agentValue}
+          color="#B8892A"
           disabled={restrictedAgent}
-          style={{
-            border:'1.5px solid #D6D2CA', borderRadius:6, padding:'3px 8px',
-            fontSize:11, fontWeight:600, fontFamily:'inherit', color:'#6b7280', background:'#fff',
-            cursor: restrictedAgent ? 'not-allowed' : 'pointer', outline:'none',
-            opacity: restrictedAgent ? 0.6 : 1, maxWidth:130,
-          }}>
+          onChange={set('agent_email')}>
           <option value="">No Agent</option>
           <option value="__outside_agent__">Outside Agent</option>
           {agentList.map(a=><option key={a.email} value={a.email}>{a.full_name||a.email}</option>)}
-        </select>
+        </HeaderPillSelect>
       </div>
     </>
   )
@@ -1862,19 +1884,14 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
             {/* Type dropdown — primary */}
             <div style={{ display:'flex', flexDirection:'column', gap:2 }}>
               <span style={{ fontSize:9, fontWeight:700, color:'#9ca3af', textTransform:'uppercase', letterSpacing:0.6 }}>Deal Type</span>
-              <select
+              <HeaderPillSelect
                 value={type}
-                onChange={e=>setType(e.target.value)}
-                onClick={e=>e.stopPropagation()}
+                hasValue={true}
+                color={typeColor}
                 disabled={restrictedAgent}
-                style={{
-                  border:`1.5px solid ${typeColor}`, borderRadius:6, padding:'3px 8px',
-                  fontSize:11, fontWeight:700, fontFamily:'inherit',
-                  color:typeColor, background:typeColor+'12', cursor: restrictedAgent ? 'not-allowed' : 'pointer', outline:'none',
-                  opacity: restrictedAgent ? 0.6 : 1,
-                }}>
+                onChange={e=>setType(e.target.value)}>
                 {TYPE_OPTIONS.map(t=><option key={t.value} value={t.value}>{t.label || t.value}</option>)}
-              </select>
+              </HeaderPillSelect>
             </div>
 
             {/* Scoped stage dropdown — hidden for Analyzing/Lost which have no stages.
@@ -1883,37 +1900,28 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
             {type==='Renovation' ? (
               <div style={{ display:'flex', flexDirection:'column', gap:2 }}>
                 <span style={{ fontSize:9, fontWeight:700, color:'#9ca3af', textTransform:'uppercase', letterSpacing:0.6 }}>Renovation Stage</span>
-                <select
+                <HeaderPillSelect
                   value={form.rehab_stage||'Not Started'}
+                  hasValue={true}
+                  color={REHAB_COLOR[form.rehab_stage||'Not Started']}
                   onChange={e=>{
                     const rs = e.target.value
                     setForm(f=>({ ...f, rehab_stage:rs, stage: rs==='Not Started' ? 'Purchased' : 'Renovation' }))
-                  }}
-                  onClick={e=>e.stopPropagation()}
-                  style={{
-                    border:`1.5px solid ${REHAB_COLOR[form.rehab_stage||'Not Started']}`, borderRadius:6, padding:'3px 8px',
-                    fontSize:11, fontWeight:700, fontFamily:'inherit',
-                    color:REHAB_COLOR[form.rehab_stage||'Not Started'], background:(REHAB_COLOR[form.rehab_stage||'Not Started'])+'12', cursor:'pointer', outline:'none',
                   }}>
                   {REHAB_STAGES.map(s=><option key={s} value={s}>{s}</option>)}
-                </select>
+                </HeaderPillSelect>
               </div>
             ) : scopedStages.length>0 && (
               <div style={{ display:'flex', flexDirection:'column', gap:2 }}>
                 <span style={{ fontSize:9, fontWeight:700, color:'#9ca3af', textTransform:'uppercase', letterSpacing:0.6 }}>Deal Stage</span>
-                <select
+                <HeaderPillSelect
                   value={stage||''}
-                  onChange={e=>setVal('stage',e.target.value)}
-                  onClick={e=>e.stopPropagation()}
+                  hasValue={!!stage}
+                  color={stageColor}
                   disabled={restrictedAgent}
-                  style={{
-                    border:`1.5px solid ${stageColor}`, borderRadius:6, padding:'3px 8px',
-                    fontSize:11, fontWeight:700, fontFamily:'inherit',
-                    color:stageColor, background:stageColor+'12', cursor: restrictedAgent ? 'not-allowed' : 'pointer', outline:'none',
-                    opacity: restrictedAgent ? 0.6 : 1,
-                  }}>
+                  onChange={e=>setVal('stage',e.target.value)}>
                   {scopedStages.map(s=><option key={s} value={s}>{s}</option>)}
-                </select>
+                </HeaderPillSelect>
               </div>
             )}
           </div>
