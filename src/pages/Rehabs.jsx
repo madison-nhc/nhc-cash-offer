@@ -42,7 +42,6 @@ export default function Rehabs({ onOpenSupplies, isAgentRole=false, currentUserE
   const [drawerTab, setDrawerTab] = useState('rehab')
   const [proposal, setProposal] = useState(null)
   const [dashboard, setDashboard] = useState(null)  // property whose Renovation Dashboard is open
-  const [view, setView] = useState('board')
   const [burst, setBurst] = useState(null)
 
   useEffect(() => { load() }, [])
@@ -266,17 +265,7 @@ export default function Rehabs({ onOpenSupplies, isAgentRole=false, currentUserE
         ))}
       </div>
 
-      {!mobile && (
-        <div style={{ display:'flex', justifyContent:'flex-end', marginBottom:14 }}>
-          <div style={{ display:'flex', gap:2 }}>
-            {[['board','Board'],['table','Table']].map(([v,l]) => (
-              <button key={v} onClick={() => setView(v)} style={{ padding:'6px 14px', border:'none', borderRadius:6, cursor:'pointer', background: view === v ? '#2C2C2C' : '#F0EDE6', color: view === v ? '#fff' : '#6b7280', fontSize:12, fontWeight: view === v ? 700 : 400, fontFamily:'inherit' }}>{l}</button>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {view === 'board' && !mobile ? (
+      {!mobile ? (
         filtered.length === 0 ? (
           <EmptyState icon="🔨" text="No active renovations match this filter." />
         ) : (

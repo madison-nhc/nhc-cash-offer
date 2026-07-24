@@ -44,7 +44,6 @@ export default function Listings({ isAgentRole=false, currentUserEmail=null }) {
   const [drawer, setDrawer] = useState(null)
   const [drawerTab, setDrawerTab] = useState('analyzer')
   const [proposal, setProposal] = useState(null)
-  const [view, setView] = useState('board')
   const [ownerFilter, setOwnerFilter] = useState('all')  // all | owned | client
   const [burst, setBurst] = useState(null)
 
@@ -201,16 +200,9 @@ export default function Listings({ isAgentRole=false, currentUserEmail=null }) {
             <button key={v} onClick={() => setOwnerFilter(v)} style={{ padding:'6px 14px', border:'none', borderRadius:6, cursor:'pointer', background: ownerFilter === v ? '#2C2C2C' : '#F0EDE6', color: ownerFilter === v ? '#fff' : '#6b7280', fontSize:12, fontWeight: ownerFilter === v ? 700 : 400, fontFamily:'inherit' }}>{l}</button>
           ))}
         </div>
-        {!mobile && (
-          <div style={{ display:'flex', gap:2 }}>
-            {[['board','Board'],['table','Table']].map(([v,l]) => (
-              <button key={v} onClick={() => setView(v)} style={{ padding:'6px 14px', border:'none', borderRadius:6, cursor:'pointer', background: view === v ? '#2C2C2C' : '#F0EDE6', color: view === v ? '#fff' : '#6b7280', fontSize:12, fontWeight: view === v ? 700 : 400, fontFamily:'inherit' }}>{l}</button>
-            ))}
-          </div>
-        )}
       </div>
 
-      {view === 'board' && !mobile ? (
+      {!mobile ? (
         shown.length === 0 ? (
           <EmptyState icon="○" text="No active listings match this filter." />
         ) : (
@@ -300,3 +292,4 @@ export default function Listings({ isAgentRole=false, currentUserEmail=null }) {
     </PageWrap>
   )
 }
+

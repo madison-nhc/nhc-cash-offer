@@ -28,7 +28,6 @@ export default function Wholesale({ isAgentRole=false, currentUserEmail=null }) 
   const [drawer, setDrawer] = useState(null)
   const [drawerTab, setDrawerTab] = useState('analyzer')
   const [proposal, setProposal] = useState(null)
-  const [view, setView] = useState('board')
   const [burst, setBurst] = useState(null)
 
   useEffect(() => { load() }, [])
@@ -154,17 +153,7 @@ export default function Wholesale({ isAgentRole=false, currentUserEmail=null }) 
         ))}
       </div>
 
-      {!mobile && (
-        <div style={{ display:'flex', justifyContent:'flex-end', marginBottom:14 }}>
-          <div style={{ display:'flex', gap:2 }}>
-            {[['board','Board'],['table','Table']].map(([v,l]) => (
-              <button key={v} onClick={() => setView(v)} style={{ padding:'6px 14px', border:'none', borderRadius:6, cursor:'pointer', background: view === v ? '#2C2C2C' : '#F0EDE6', color: view === v ? '#fff' : '#6b7280', fontSize:12, fontWeight: view === v ? 700 : 400, fontFamily:'inherit' }}>{l}</button>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {view === 'board' && !mobile ? (
+      {!mobile ? (
         properties.length === 0 ? (
           <EmptyState icon="○" text="No wholesale deals yet. Set deal type to Wholesale on a property in the Analyzer." />
         ) : (
@@ -238,4 +227,5 @@ export default function Wholesale({ isAgentRole=false, currentUserEmail=null }) 
     </PageWrap>
   )
 }
+
 
