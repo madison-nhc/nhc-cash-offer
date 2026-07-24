@@ -34,11 +34,9 @@ const BOARD_COLUMNS = [
 function validDropTarget() { return true }
 
 function ownerLabel(p) {
-  if (p.type === 'Flip') return { text:'Flip',   color:'#D97825', owned:true }
-  if (p.type === 'Hold') return { text:'Hold',   color:'#B8892A', owned:true }
-  return p.listing_type === 'Reno'
-    ? { text:'Client · Reno',  color:'#6b21a8', owned:false }
-    : { text:'Client · As-Is', color:'#3B6D11', owned:false }
+  if (p.type === 'Flip') return { text:'Buy & Flip', color:'#D97825', owned:true }
+  if (p.type === 'Hold') return { text:'Hold',       color:'#B8892A', owned:true }
+  return { text:'Standard', color:'#3B6D11', owned:false }
 }
 
 export default function Listings({ isAgentRole=false, currentUserEmail=null }) {
@@ -74,11 +72,16 @@ export default function Listings({ isAgentRole=false, currentUserEmail=null }) {
     const ids = (p || []).map(x => x.id)
     if (ids.length > 0) {
       const { data: links } = await supabase.from('pipeline_deals')
-        .select('cashoffer_property_id,status')
+        .select('cashoffer_property_id,status,list_price,volume,original_list_price')
         .in('cashoffer_property_id', ids)
         .eq('cashoffer_link_role', 'disposition')
       const map = {}
-      for (const l of (links || [])) map[l.cashoffer_property_id] = l.status
+      for (const l of (links || [])) {
+        map[l.cashoffer_property_id] = {
+          status: l.status,
+          listPrice: l.list_price || l.volume || l.original_list_price || null,
+        }
+      }
       setLinkStatus(map)
     } else {
       setLinkStatus({})
@@ -148,6 +151,15 @@ export default function Listings({ isAgentRole=false, currentUserEmail=null }) {
 
   function listingCardContent(p) {
     const badge = ownerLabel(p)
+    const link = linkStatus[p.id] // { status, listPrice } | undefined
+    const listPrice = link?.listPrice || null
+
+    // Est. Profit (Flip/Hold): projected sale proceeds (active list price, falling back to
+    // ARV if not yet linked in Ops) minus what's been put into the deal so far.
+    const totalCost = (parseFloat(p.purchase_price)||0) + (parseFloat(p.closing_costs)||0) + (parseFloat(p.rehab_cost)||0)
+    const projectedSale = listPrice || p.arv || null
+    const estProfit = badge.owned && projectedSale && totalCost>0 ? projectedSale - totalCost : null
+
     return (
       <>
         <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:8 }}>
@@ -163,10 +175,12 @@ export default function Listings({ isAgentRole=false, currentUserEmail=null }) {
 
         {p.seller_name && <div style={{ fontSize:11.5, color:'#B8892A', fontWeight:600, margin:'6px 0 8px' }}>{p.seller_name}</div>}
 
-        {(p.commission_earned || p.arv) ? (
+        {(listPrice || p.arv || p.commission_earned || estProfit != null) ? (
           <div style={{ display:'flex', gap:6, marginBottom:8 }}>
-            {p.commission_earned ? <CardStatBox label="Commission" value={fmt(p.commission_earned)} color="#3B6D11" bg="#EEF5E7" /> : null}
-            {p.arv ? <CardStatBox label="ARV" value={fmt(p.arv)} color="#6b7280" bg="#F0EDE6" /> : null}
+            {(listPrice || p.arv) ? <CardStatBox label="List Price" value={fmt(listPrice || p.arv)} color="#6b7280" bg="#F0EDE6" /> : null}
+            {badge.owned
+              ? (estProfit != null ? <CardStatBox label="Est. Profit" value={fmt(estProfit)} color="#3B6D11" bg="#EEF5E7" /> : null)
+              : (p.commission_earned ? <CardStatBox label="Commission" value={fmt(p.commission_earned)} color="#3B6D11" bg="#EEF5E7" /> : null)}
           </div>
         ) : null}
 
@@ -174,11 +188,11 @@ export default function Listings({ isAgentRole=false, currentUserEmail=null }) {
           <div style={{ fontSize:10, color: p.days_on_market > 60 ? '#B91C1C' : '#9ca3af', fontWeight: p.days_on_market > 60 ? 700 : 400 }}>{p.days_on_market}d on market</div>
         ) : null}
 
-        {linkStatus[p.id] ? (
+        {link ? (
           <button
             onClick={e => { e.stopPropagation(); setDrawerTab('disposition'); setDrawer(p) }}
-            style={{ ...cardBtn, background: OPS_STATUS_COLOR[linkStatus[p.id]] || '#6b7280' }}>
-            🔗 {linkStatus[p.id]}
+            style={{ ...cardBtn, background: OPS_STATUS_COLOR[link.status] || '#6b7280' }}>
+            🔗 {link.status}
           </button>
         ) : (
           <button
