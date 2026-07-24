@@ -1737,11 +1737,6 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
           </button>
         ) : <span />}
         <div style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
-          {!isNew && (
-            <button onClick={()=>setPingOpen(true)} title="Ping a teammate about this property" style={{ background:'#fff', border:'1px solid #D6D2CA', color:'#6b7280', borderRadius:6, padding:'8px 14px', fontSize:12, fontWeight:700, cursor:'pointer', fontFamily:'inherit', display:'flex', alignItems:'center', gap:6 }}>
-              🔔 Ping
-            </button>
-          )}
           <Btn variant="outline" onClick={onClose}>Cancel</Btn>
           <Btn onClick={handleClose} disabled={!!lockedByOther}>Save</Btn>
         </div>
