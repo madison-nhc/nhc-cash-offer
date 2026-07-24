@@ -19,12 +19,12 @@ import { useIsMobile } from '../hooks/useIsMobile.js'
 
 // ── Type options (primary) ────────────────────────────────────────────────────
 const TYPE_OPTIONS = [
-  { value:'Analyzing',       color:'#B8892A', label:'Analyzer' },
-  { value:'Renovation',      color:'#6b21a8' },
-  { value:'Flip',            color:'#D97825' },
-  { value:'Hold',            color:'#B8892A' },
-  { value:'Retail Listing',  color:'#3B6D11' },
-  { value:'Wholesale',       color:'#6b21a8' },
+  { value:'Analyzing',       color:'#B8892A', label:'Analyzing' },
+  { value:'Renovation',      color:'#6b21a8', label:'Renovating' },
+  { value:'Flip',            color:'#D97825', label:'Buy & Flip' },
+  { value:'Hold',            color:'#B8892A', label:'Buy & Hold' },
+  { value:'Retail Listing',  color:'#3B6D11', label:'Listing' },
+  { value:'Wholesale',       color:'#6b21a8', label:'Wholesaling' },
 ]
 const TYPE_COLOR = Object.fromEntries(TYPE_OPTIONS.map(t=>[t.value,t.color]))
 
@@ -64,7 +64,7 @@ function streetPart(address) {
 // points back at this property, tagged with a role so a property can carry two
 // separate links: the Acquisition-side deal (buying it) and the Disposition-side
 // deal (selling it) — each is a different Ops Hub transaction). Shows the current
-// link (if any) with a small card showing Deal Stage, Agent, and a stage-appropriate
+// link (if any) with a small card showing Stage, Agent, and a stage-appropriate
 // price (List/Pending/Sale) + commission if entered. Writes happen immediately (not
 // gated behind the drawer's main Save button) since this is a cross-table relationship.
 function LinkedOpsDealField({ propertyId, propertyAddress, role, label, onApply }) {
@@ -1934,11 +1934,11 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
             <OwnerAgentPicker form={form} setForm={setForm} setVal={setVal} set={set} entityList={entityList} ownerUserList={ownerUserList} agentList={agentList} restrictedAgent={restrictedAgent} ownerDisabled={type==='Analyzing'} />
           </div>
 
-          {/* Row 2: Deal Type + Deal/Renovation Stage */}
+          {/* Row 2: Deal Status + Stage/Renovation Stage */}
           <div style={{ display:'flex', alignItems:'flex-end', gap:10, flexWrap:'wrap' }}>
             {/* Type dropdown — primary */}
             <div style={{ display:'flex', flexDirection:'column', gap:2 }}>
-              <span style={{ fontSize:9, fontWeight:700, color:'#9ca3af', textTransform:'uppercase', letterSpacing:0.6 }}>Deal Type</span>
+              <span style={{ fontSize:9, fontWeight:700, color:'#9ca3af', textTransform:'uppercase', letterSpacing:0.6 }}>Deal Status</span>
               <HeaderPillSelect
                 value={type}
                 hasValue={true}
@@ -1963,7 +1963,7 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
               </div>
             ) : scopedStages.length>0 && (
               <div style={{ display:'flex', flexDirection:'column', gap:2 }}>
-                <span style={{ fontSize:9, fontWeight:700, color:'#9ca3af', textTransform:'uppercase', letterSpacing:0.6 }}>Deal Stage</span>
+                <span style={{ fontSize:9, fontWeight:700, color:'#9ca3af', textTransform:'uppercase', letterSpacing:0.6 }}>Stage</span>
                 <HeaderPillSelect
                   value={stage||''}
                   hasValue={!!stage}
