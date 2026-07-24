@@ -6,7 +6,7 @@ import PropertyDrawer from '../components/PropertyDrawer.jsx'
 import ProposalModal from '../components/ProposalModal.jsx'
 import PackageDeals from './PackageDeals.jsx'
 import MobileCard, { CardRow, CardLabel, CardValue } from '../components/MobileCard.jsx'
-import KanbanBoard, { cardPill, cardChip, cardBtn, MoneyBurst, PROMO_PAYLOADS, shortStreet } from '../components/KanbanBoard.jsx'
+import KanbanBoard, { cardPill, cardChip, cardBtn, CardStatBox, MoneyBurst, PROMO_PAYLOADS, shortStreet } from '../components/KanbanBoard.jsx'
 
 function calcCashOffer(p) {
   const arv = parseFloat(p.arv) || 0
@@ -70,27 +70,38 @@ async function seedRenovationFromAnalyzer(p) {
 function analyzerCardContent(p, onViewOffer) {
   const cashOffer = calcCashOffer(p)
   const days = daysAgo(p.updated_at)
+  const stale = days !== null && days > 7
   return (
     <>
       <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:8 }}>
-          <div style={{ fontSize:13, fontWeight:700, color:'#2C2C2C', minWidth:0 }}>{shortStreet(p.address) || 'New Property'}</div>
-          {p.owner ? <div style={{ fontSize:11, color:'#6b7280', flexShrink:0 }}>{p.owner}</div> : null}
+        <div style={{ minWidth:0 }}>
+          <div style={{ fontSize:13, fontWeight:700, color:'#2C2C2C' }}>{shortStreet(p.address) || 'New Property'}</div>
+          <div style={{ fontSize:10, color:'#9ca3af', marginTop:1 }}>{p.address?.split(',').slice(1,3).join(',').trim() || ''}</div>
+          {p.owner && <div style={{ fontSize:10, color:'#9ca3af', marginTop:1 }}>{p.owner}</div>}
         </div>
-        <div style={{ fontSize:10, color:'#9ca3af', marginTop:1, marginBottom:3 }}>{p.address?.split(',').slice(1,3).join(',').trim() || ''}</div>
-      {p.seller_name && <div style={{ fontSize:11.5, color:'#B8892A', fontWeight:600, marginBottom:8 }}>{p.seller_name}</div>}
-      <div style={{ display:'flex', flexWrap:'nowrap', gap:6, alignItems:'center', justifyContent:'center', marginBottom:6 }}>
-        {cashOffer ? <span style={cardChip()}>Cash: {fmt(cashOffer)}</span> : null}
-        {p.arv && <span style={cardChip('#3B6D11','#EEF5E7','#CBDDB8')}>ARV: {fmt(p.arv)}</span>}
+        {p.source && (
+          <span style={{ flexShrink:0, fontSize:9, fontWeight:700, color:'#fff', background:'#6b7280', borderRadius:5, padding:'3px 8px', textTransform:'uppercase', letterSpacing:0.4 }}>
+            {p.source}
+          </span>
+        )}
       </div>
-      <div style={{ display:'flex', flexWrap:'wrap', gap:4, alignItems:'center', justifyContent:'center' }}>
-        {p.source && <span style={cardPill('#D97825','#FBF0E4')}>{p.source}</span>}
+
+      {p.seller_name && <div style={{ fontSize:11.5, color:'#B8892A', fontWeight:600, margin:'6px 0 8px' }}>{p.seller_name}</div>}
+
+      <div style={{ display:'flex', gap:6 }}>
+        {cashOffer ? <CardStatBox label="Cash Offer" value={fmt(cashOffer)} color="#B8892A" bg="#FBF6EA" /> : null}
+        {p.arv ? <CardStatBox label="ARV" value={fmt(p.arv)} color="#3B6D11" bg="#EEF5E7" /> : null}
+      </div>
+
+      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginTop:8 }}>
         {p.acquisition_type === 'Pre-Owned' && <span style={cardPill('#6b21a8','#F3EBFA')}>Pre-Owned</span>}
         {days !== null && (
-          <span style={{ fontSize:10, fontWeight: days > 7 ? 700 : 400, color: days > 14 ? '#B91C1C' : days > 7 ? '#D97825' : '#9ca3af' }}>
+          <span style={{ fontSize:10, fontWeight: stale ? 700 : 400, color: days > 14 ? '#B91C1C' : days > 7 ? '#D97825' : '#9ca3af', marginLeft:'auto' }}>
             {days===0 ? 'Updated today' : `Updated ${days}d ago`}
           </span>
         )}
       </div>
+
       {cashOffer ? (
         <button style={cardBtn} onClick={e => { e.stopPropagation(); onViewOffer(p) }}>📄 View Offer PDF</button>
       ) : null}
@@ -136,6 +147,7 @@ function AnalyzerBoard({ properties, onOpen, onMoved, onPromoted, onViewOffer })
   return (
     <>
       <KanbanBoard
+        columnWidth={420}
         columns={BOARD_COLUMNS}
         items={properties}
         columnFor={columnFor}

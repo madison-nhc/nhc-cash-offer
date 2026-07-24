@@ -11,6 +11,17 @@ export const cardChip = (color='#B8892A', bg='#FBF6EA', border='#E8D9B5') => ({
   border:`0.5px solid ${border}`, borderRadius:10, padding:'2px 8px',
   whiteSpace:'nowrap', flexShrink:0,
 })
+// Bolder stat box — models Ops Hub's Inspection/Appraisal boxes on the Pending card:
+// a colored-tint block with a small caps label on top and a bold value below,
+// meant to sit in a 2-up (or more) row instead of the smaller inline pill/chip.
+export function CardStatBox({ label, value, color='#B8892A', bg='#FBF6EA' }) {
+  return (
+    <div style={{ flex:1, minWidth:0, background:bg, borderRadius:6, padding:'6px 9px' }}>
+      <div style={{ fontSize:9, fontWeight:700, color, textTransform:'uppercase', letterSpacing:0.5, opacity:0.75 }}>{label}</div>
+      <div style={{ fontSize:13, fontWeight:700, color, marginTop:1, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{value}</div>
+    </div>
+  )
+}
 export const cardBtn = {
   marginTop:8, width:'100%', padding:'6px 0', border:'none',
   borderRadius:6, background:'#B8892A', color:'#fff', fontSize:10.5,
