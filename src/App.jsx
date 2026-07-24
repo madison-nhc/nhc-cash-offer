@@ -148,22 +148,45 @@ function initialTab() {
   return tabForPath(window.location.pathname) || localStorage.getItem('nhc_hub_tab') || 'analyzer'
 }
 
-// Address-only add flow, plus one small branch: is this a property still being
-// analyzed, or one already owned? If owned, who owns it? Agents only see their
-// own deals, so the property is always attributed to whoever is adding it.
+// Address-only add flow, plus two small branches for an already-owned property:
+// who owns it (from the same Person/Business owner list used in the drawer), and
+// where it's headed — straight to Listing, straight to Hold, or Rehab first (the
+// old default, for anything that needs work before it forks into Flip/Hold/Listing).
 function QuickAddPropertyModal({ open, onClose, onAdd }) {
   const [address, setAddress] = useState('')
   const [owned, setOwned] = useState(false)
-  const [owner, setOwner] = useState('BPV')
+  const [ownerVal, setOwnerVal] = useState('') // 'user:email' | 'entity:id' | ''
+  const [destination, setDestination] = useState('rehab') // 'list' | 'hold' | 'rehab'
+  const [ownerUserList, setOwnerUserList] = useState([])
+  const [entityList, setEntityList] = useState([])
   const [saving, setSaving] = useState(false)
 
-  useEffect(() => { if (open) { setAddress(''); setOwned(false); setOwner('BPV') } }, [open])
+  useEffect(() => {
+    if (!open) return
+    setAddress(''); setOwned(false); setOwnerVal(''); setDestination('rehab')
+    supabase.from('cashoffer_users').select('email,full_name').eq('is_property_owner', true).order('full_name')
+      .then(({ data }) => setOwnerUserList(data || []))
+    supabase.from('cashoffer_entities').select('id,name').order('name')
+      .then(({ data }) => {
+        setEntityList(data || [])
+        // Default to BE Property Ventures if it exists, since that's the common case
+        const bpv = (data || []).find(e => e.name.toLowerCase().includes('property ventures'))
+        if (bpv) setOwnerVal(`entity:${bpv.id}`)
+      })
+  }, [open])
   if (!open) return null
 
   async function submit() {
     if (!address) return
     setSaving(true)
-    await onAdd(address, { owned, owner })
+    const [kind, id] = ownerVal.split(':')
+    const ownerName = kind === 'entity' ? entityList.find(e => e.id === id)?.name : ownerUserList.find(u => u.email === id)?.full_name
+    await onAdd(address, {
+      owned, destination,
+      owner: ownerName || null,
+      owner_user_email: kind === 'user' ? id : null,
+      owner_entity_id: kind === 'entity' ? id : null,
+    })
     setSaving(false)
   }
 
@@ -191,18 +214,45 @@ function QuickAddPropertyModal({ open, onClose, onAdd }) {
           >Already Owned</div>
         </div>
 
-        {owned && (
+        {owned && (<>
           <div style={{ marginTop:14 }}>
             <label style={{ fontSize:11, fontWeight:600, color:'#6b7280', display:'block', marginBottom:4 }}>Owned By</label>
             <select
-              value={owner}
-              onChange={e => setOwner(e.target.value)}
+              value={ownerVal}
+              onChange={e => setOwnerVal(e.target.value)}
               style={{ width:'100%', border:'1.5px solid #D6D2CA', borderRadius:6, padding:'8px 10px', fontSize:13, fontWeight:600, fontFamily:'inherit', color:'#2C2C2C', background:'#fff', cursor:'pointer', outline:'none' }}
             >
-              {['BPV','Bob Sophiea','Eric Kimble','Other'].map(o => <option key={o}>{o}</option>)}
+              <option value="">Not yet selected</option>
+              {ownerUserList.length > 0 && (
+                <optgroup label="People">
+                  {ownerUserList.map(u => <option key={u.email} value={`user:${u.email}`}>{u.full_name || u.email}</option>)}
+                </optgroup>
+              )}
+              {entityList.length > 0 && (
+                <optgroup label="Businesses">
+                  {entityList.map(e => <option key={e.id} value={`entity:${e.id}`}>{e.name}</option>)}
+                </optgroup>
+              )}
             </select>
           </div>
-        )}
+
+          <div style={{ marginTop:14 }}>
+            <label style={{ fontSize:11, fontWeight:600, color:'#6b7280', display:'block', marginBottom:6 }}>Where's it going?</label>
+            <div style={{ display:'flex', gap:8 }}>
+              {[
+                { key:'rehab', label:'Rehab' },
+                { key:'hold',  label:'Hold' },
+                { key:'list',  label:'List' },
+              ].map(d => (
+                <div
+                  key={d.key}
+                  onClick={() => setDestination(d.key)}
+                  style={{ ...pillBase, background: destination===d.key ? '#B8892A' : '#fff', color: destination===d.key ? '#fff' : '#6b7280', borderColor: destination===d.key ? '#B8892A' : '#D6D2CA' }}
+                >{d.label}</div>
+              ))}
+            </div>
+          </div>
+        </>)}
 
         <div style={{ display:'flex', gap:8, marginTop:20 }}>
           <button
@@ -607,8 +657,19 @@ function AuthedApp({ isAdmin, isAgentRole, userEmail }) {
         open={newPropertyOpen}
         onClose={() => setNewPropertyOpen(false)}
         onAdd={async (address, details) => {
+          const DESTINATIONS = {
+            rehab: { type:'Renovation',     stage:'Purchased', disposition:'renovation' },
+            hold:  { type:'Hold',           stage:'Vacant',     disposition:'hold' },
+            list:  { type:'Retail Listing', stage:'Off Market', disposition:'listing' },
+          }
           const payload = details?.owned
-            ? { address, type:'Renovation', stage:'Purchased', disposition:'renovation', owner: details.owner || null, agent_email: userEmail || null }
+            ? {
+                address, ...(DESTINATIONS[details.destination] || DESTINATIONS.rehab),
+                owner: details.owner || null,
+                owner_user_email: details.owner_user_email || null,
+                owner_entity_id: details.owner_entity_id || null,
+                agent_email: userEmail || null,
+              }
             : { address, type:'Analyzing', stage:'Analyzing', owner:null, agent_email: userEmail || null }
           const { error } = await supabase.from('cashoffer_properties').insert(payload)
           if (error) { alert(`Couldn't add this property.\n\n${error.message}`); return }
