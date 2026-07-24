@@ -905,7 +905,7 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
       post_occupancy_payment:form.post_occupancy_payment||null,
       // Stage 1 fields
       acquisition_type:form.acquisition_type||'Purchased',
-      owner:form.owner||'BPV', managed_by_bpv:form.managed_by_bpv||false,
+      owner:form.owner||null, managed_by_bpv:form.managed_by_bpv||false,
       owner_user_email:form.owner_user_email||null, owner_entity_id:form.owner_entity_id||null,
       agent_email:form.agent_email||null,
       rehab_active: type==='Renovation'
@@ -1804,11 +1804,12 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
           <div style={{ display:'flex', flexDirection:'column', gap:2 }}>
             <span style={{ fontSize:9, fontWeight:700, color:'#9ca3af', textTransform:'uppercase', letterSpacing:0.6 }}>Owner</span>
             <select
-              value={form.owner_entity_id ? `entity:${form.owner_entity_id}` : form.owner_user_email ? `user:${form.owner_user_email}` : ''}
+              value={form.owner_entity_id ? `entity:${form.owner_entity_id}` : form.owner_user_email ? `user:${form.owner_user_email}` : form.owner==='Client' ? 'client' : ''}
               onClick={e=>e.stopPropagation()}
               onChange={e=>{
                 const val = e.target.value
-                if (!val) { setForm(f=>({ ...f, owner_user_email:null, owner_entity_id:null })); return }
+                if (!val) { setForm(f=>({ ...f, owner_user_email:null, owner_entity_id:null, owner:null })); return }
+                if (val === 'client') { setForm(f=>({ ...f, owner_user_email:null, owner_entity_id:null, owner:'Client' })); return }
                 const [kind, id] = val.split(':')
                 if (kind === 'entity') {
                   const ent = entityList.find(x=>x.id===id)
@@ -1825,7 +1826,8 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
                 cursor: restrictedAgent ? 'not-allowed' : 'pointer', outline:'none',
                 opacity: restrictedAgent ? 0.6 : 1,
               }}>
-              <option value="">Select owner...</option>
+              <option value="">Not yet selected</option>
+              <option value="client">Client (not NHC/BPV owned)</option>
               {ownerUserList.length > 0 && (
                 <optgroup label="People">
                   {ownerUserList.map(u=><option key={u.email} value={`user:${u.email}`}>{u.full_name||u.email}</option>)}

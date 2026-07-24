@@ -608,8 +608,8 @@ function AuthedApp({ isAdmin, isAgentRole, userEmail }) {
         onClose={() => setNewPropertyOpen(false)}
         onAdd={async (address, details) => {
           const payload = details?.owned
-            ? { address, type:'Renovation', stage:'Purchased', disposition:'renovation', owner: details.owner || 'BPV', agent_email: userEmail || null }
-            : { address, type:'Analyzing', stage:'Analyzing', owner:'BPV', agent_email: userEmail || null }
+            ? { address, type:'Renovation', stage:'Purchased', disposition:'renovation', owner: details.owner || null, agent_email: userEmail || null }
+            : { address, type:'Analyzing', stage:'Analyzing', owner:null, agent_email: userEmail || null }
           const { error } = await supabase.from('cashoffer_properties').insert(payload)
           if (error) { alert(`Couldn't add this property.\n\n${error.message}`); return }
           setNewPropertyOpen(false)
