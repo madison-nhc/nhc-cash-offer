@@ -4,7 +4,7 @@ import { useIsMobile } from '../hooks/useIsMobile.js'
 import { PageWrap, SectionBar, Card, Badge, EmptyState, LoadingSpinner, fmt, fmtK, useSort, SortTh } from '../components/ui.jsx'
 import PropertyDrawer from '../components/PropertyDrawer.jsx'
 import ProposalModal from '../components/ProposalModal.jsx'
-import KanbanBoard, { cardPill, cardChip, cardBtn, MoneyBurst, shortStreet } from '../components/KanbanBoard.jsx'
+import KanbanBoard, { cardPill, cardChip, cardBtn, CardStatBox, MoneyBurst, shortStreet } from '../components/KanbanBoard.jsx'
 
 const BOARD_COLUMNS = [
   { key:'Vacant',        color:'#D97825' },  // between tenants, needs a turn — expenses live on the Rent tab
@@ -116,21 +116,26 @@ export default function Holds({ isAgentRole=false, currentUserEmail=null }) {
     return (
       <>
         <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:8 }}>
-          <div style={{ fontSize:13, fontWeight:700, color:'#2C2C2C', minWidth:0 }}>{shortStreet(p.address) || 'New Property'}</div>
-          <div style={{ fontSize:11, color:'#6b7280', flexShrink:0 }}>{p.owner || 'BPV'}</div>
+          <div style={{ minWidth:0 }}>
+            <div style={{ fontSize:13, fontWeight:700, color:'#2C2C2C' }}>{shortStreet(p.address) || 'New Property'}</div>
+            <div style={{ fontSize:10, color:'#9ca3af', marginTop:1 }}>{p.address?.split(',').slice(1,3).join(',').trim() || ''}</div>
+            {p.owner && <div style={{ fontSize:10, color:'#9ca3af', marginTop:1 }}>{p.owner}</div>}
+          </div>
         </div>
-        <div style={{ fontSize:10, color:'#9ca3af', marginTop:1, marginBottom:8 }}>{p.address?.split(',').slice(1,3).join(',').trim() || ''}</div>
+
         {(rent > 0 || payment > 0) ? (
-          <div style={{ display:'flex', gap:4, alignItems:'center', justifyContent:'center', marginBottom:8, flexWrap:'wrap' }}>
-            {rent > 0 && <span style={cardChip('#3B6D11','#EEF5E7','#CBDDB8')}>Rent {fmt(rent)}/mo</span>}
-            {payment > 0 && <span style={cardChip('#D97825','#FBF0E4','#F2D9BE')}>Loan {fmt(payment)}/mo</span>}
+          <div style={{ display:'flex', gap:6, margin:'8px 0' }}>
+            {rent > 0 && <CardStatBox label="Rent/mo" value={fmt(rent)} color="#3B6D11" bg="#EEF5E7" />}
+            {payment > 0 && <CardStatBox label="Loan/mo" value={fmt(payment)} color="#D97825" bg="#FBF0E4" />}
           </div>
         ) : null}
+
         {lease?.tenant_name ? (
-          <div style={{ fontSize:11.5, color:'#3B6D11', fontWeight:600, textAlign:'center', margin:'2px 0 8px' }}>{lease.tenant_name}</div>
+          <div style={{ fontSize:11.5, color:'#3B6D11', fontWeight:600, marginBottom:6 }}>{lease.tenant_name}</div>
         ) : (
-          <div style={{ fontSize:10, color:'#9ca3af', fontStyle:'italic', textAlign:'center', margin:'2px 0 8px' }}>No lease yet</div>
+          <div style={{ fontSize:10, color:'#9ca3af', fontStyle:'italic', marginBottom:6 }}>No lease yet</div>
         )}
+
         <button style={cardBtn} onClick={e => { e.stopPropagation(); setDrawerTab('rent'); setAutoOpenLease(true); setDrawer(p) }}>🔑 Lease Dashboard</button>
       </>
     )

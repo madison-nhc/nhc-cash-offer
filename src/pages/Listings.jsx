@@ -4,7 +4,7 @@ import { useIsMobile } from '../hooks/useIsMobile.js'
 import { PageWrap, SectionBar, Card, EmptyState, LoadingSpinner, fmt, fmtK, useSort, SortTh } from '../components/ui.jsx'
 import PropertyDrawer from '../components/PropertyDrawer.jsx'
 import ProposalModal from '../components/ProposalModal.jsx'
-import KanbanBoard, { cardPill, cardChip, MoneyBurst, PROMO_PAYLOADS, shortStreet } from '../components/KanbanBoard.jsx'
+import KanbanBoard, { cardPill, cardChip, CardStatBox, MoneyBurst, PROMO_PAYLOADS, shortStreet } from '../components/KanbanBoard.jsx'
 
 const PROMO_ZONES = [
   { key:'Analyzing', label:'RE-ANALYZE', emoji:'\u{1F50D}', color:'#6b7280' },
@@ -133,21 +133,28 @@ export default function Listings({ isAgentRole=false, currentUserEmail=null }) {
     return (
       <>
         <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:8 }}>
-          <div style={{ fontSize:13, fontWeight:700, color:'#2C2C2C', minWidth:0 }}>{shortStreet(p.address) || 'New Property'}</div>
-          {p.owner ? <div style={{ fontSize:11, color:'#6b7280', flexShrink:0 }}>{p.owner}</div> : null}
-        </div>
-        <div style={{ fontSize:10, color:'#9ca3af', marginTop:1, marginBottom:3 }}>{p.address?.split(',').slice(1,3).join(',').trim() || ''}</div>
-        <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:8, marginBottom:8 }}>
           <div style={{ minWidth:0 }}>
-            {p.seller_name && <div style={{ fontSize:11.5, color:'#B8892A', fontWeight:600, marginBottom:1 }}>{p.seller_name}</div>}
+            <div style={{ fontSize:13, fontWeight:700, color:'#2C2C2C' }}>{shortStreet(p.address) || 'New Property'}</div>
+            <div style={{ fontSize:10, color:'#9ca3af', marginTop:1 }}>{p.address?.split(',').slice(1,3).join(',').trim() || ''}</div>
+            {p.owner && <div style={{ fontSize:10, color:'#9ca3af', marginTop:1 }}>{p.owner}</div>}
           </div>
-          {p.commission_earned ? <span style={cardChip('#3B6D11','#EEF5E7','#CBDDB8')}>{fmt(p.commission_earned)}</span> : null}
+          <span style={{ flexShrink:0, fontSize:9, fontWeight:700, color:'#fff', background:badge.color, borderRadius:5, padding:'3px 8px', textTransform:'uppercase', letterSpacing:0.4 }}>
+            {badge.text}
+          </span>
         </div>
-        <div style={{ display:'flex', flexWrap:'wrap', gap:4, alignItems:'center', justifyContent:'center' }}>
-          <span style={cardPill(badge.color, '#F0EDE6')}>{badge.text}</span>
-          {p.arv && <span style={cardPill('#6b7280','#F0EDE6')}>ARV {fmt(p.arv)}</span>}
-          {p.days_on_market ? <span style={{ fontSize:10, color: p.days_on_market > 60 ? '#B91C1C' : '#9ca3af' }}>{p.days_on_market}d DOM</span> : null}
-        </div>
+
+        {p.seller_name && <div style={{ fontSize:11.5, color:'#B8892A', fontWeight:600, margin:'6px 0 8px' }}>{p.seller_name}</div>}
+
+        {(p.commission_earned || p.arv) ? (
+          <div style={{ display:'flex', gap:6, marginBottom:8 }}>
+            {p.commission_earned ? <CardStatBox label="Commission" value={fmt(p.commission_earned)} color="#3B6D11" bg="#EEF5E7" /> : null}
+            {p.arv ? <CardStatBox label="ARV" value={fmt(p.arv)} color="#6b7280" bg="#F0EDE6" /> : null}
+          </div>
+        ) : null}
+
+        {p.days_on_market ? (
+          <div style={{ fontSize:10, color: p.days_on_market > 60 ? '#B91C1C' : '#9ca3af', fontWeight: p.days_on_market > 60 ? 700 : 400 }}>{p.days_on_market}d on market</div>
+        ) : null}
       </>
     )
   }

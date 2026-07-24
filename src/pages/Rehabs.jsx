@@ -4,7 +4,7 @@ import { useIsMobile } from '../hooks/useIsMobile.js'
 import { PageWrap, SectionBar, Card, EmptyState, LoadingSpinner, fmt, fmtK, useSort, SortTh } from '../components/ui.jsx'
 import PropertyDrawer from '../components/PropertyDrawer.jsx'
 import ProposalModal from '../components/ProposalModal.jsx'
-import KanbanBoard, { cardPill, cardChip, cardBtn, MoneyBurst, shortStreet } from '../components/KanbanBoard.jsx'
+import KanbanBoard, { cardPill, cardChip, cardBtn, CardStatBox, MoneyBurst, shortStreet } from '../components/KanbanBoard.jsx'
 import RehabRoundTracker from '../components/RehabRoundTracker.jsx'
 
 const REHAB_STAGE_COLOR = {
@@ -164,35 +164,44 @@ export default function Rehabs({ onOpenSupplies, isAgentRole=false, currentUserE
     const est = estCost(p.id)
     const spent = spentCost(p.id)
     const over = spent > est && est > 0
-    const rehabStage = p.rehab_stage || 'Not Started'
     const daysActive = p.rehab_start_date ? Math.floor((Date.now()-new Date(p.rehab_start_date))/86400000) : null
     return (
       <>
         <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:8 }}>
-          <div style={{ fontSize:13, fontWeight:700, color:'#2C2C2C', minWidth:0 }}>{shortStreet(p.address) || 'New Property'}</div>
-          <div style={{ fontSize:11, color:'#6b7280', flexShrink:0 }}>{p.owner || 'BPV'}</div>
+          <div style={{ minWidth:0 }}>
+            <div style={{ fontSize:13, fontWeight:700, color:'#2C2C2C' }}>{shortStreet(p.address) || 'New Property'}</div>
+            <div style={{ fontSize:10, color:'#9ca3af', marginTop:1 }}>{p.address?.split(',').slice(1,3).join(',').trim() || ''}</div>
+            {p.owner && <div style={{ fontSize:10, color:'#9ca3af', marginTop:1 }}>{p.owner}</div>}
+          </div>
+          {p.type === 'Retail Listing' && (
+            <span style={{ flexShrink:0, fontSize:9, fontWeight:700, color:'#fff', background:badge.color, borderRadius:5, padding:'3px 8px', textTransform:'uppercase', letterSpacing:0.4 }}>
+              {badge.text}
+            </span>
+          )}
         </div>
-        <div style={{ fontSize:10, color:'#9ca3af', marginTop:1, marginBottom:8 }}>{p.address?.split(',').slice(1,3).join(',').trim() || ''}</div>
+
         {(spent > 0 || est > 0) ? (
-          <div style={{ display:'flex', gap:4, alignItems:'center', justifyContent:'center', marginBottom:8 }}>
-            <span style={cardChip('#B8892A','#FBF6EA','#E8D9B5')}>Est {est > 0 ? fmt(est) : '\u2014'}</span>
-            <span style={cardChip(over ? '#B91C1C' : '#3B6D11', over ? '#FBEAEA' : '#EEF5E7', over ? '#EFC5C5' : '#CBDDB8')}>Spent {fmt(spent)}</span>
+          <div style={{ display:'flex', gap:6, margin:'8px 0' }}>
+            <CardStatBox label="Est" value={est > 0 ? fmt(est) : '\u2014'} color="#B8892A" bg="#FBF6EA" />
+            <CardStatBox label="Spent" value={fmt(spent)} color={over ? '#B91C1C' : '#3B6D11'} bg={over ? '#FBEAEA' : '#EEF5E7'} />
           </div>
         ) : null}
+
         {est > 0 ? (
-          <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:8 }}>
+          <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:6 }}>
             <div style={{ flex:1, height:5, background:'#E5E1DB', borderRadius:99, overflow:'hidden' }}>
               <div style={{ height:'100%', width:`${pct}%`, background: pct>=100 ? '#3B6D11' : '#B8892A', borderRadius:99 }} />
             </div>
             <span style={{ fontSize:10, color:'#6b7280', fontWeight:600, whiteSpace:'nowrap' }}>{pct}%</span>
           </div>
         ) : (
-          <div style={{ fontSize:10, color:'#9ca3af', fontStyle:'italic', textAlign:'center', margin:'2px 0 8px' }}>No renovation started</div>
+          <div style={{ fontSize:10, color:'#9ca3af', fontStyle:'italic', margin:'2px 0 6px' }}>No renovation started</div>
         )}
-        <div style={{ display:'flex', flexWrap:'wrap', gap:4, alignItems:'center', justifyContent:'center' }}>
-          {p.type === 'Retail Listing' && <span style={cardPill(badge.color, '#F0EDE6')}>{badge.text}</span>}
-          {daysActive !== null && <span style={{ fontSize:10, color: daysActive > 60 ? '#B91C1C' : '#9ca3af' }}>Day {daysActive + 1}</span>}
-        </div>
+
+        {daysActive !== null && (
+          <div style={{ fontSize:10, color: daysActive > 60 ? '#B91C1C' : '#9ca3af', fontWeight: daysActive > 60 ? 700 : 400 }}>Day {daysActive + 1}</div>
+        )}
+
         <button style={cardBtn} onClick={e => { e.stopPropagation(); setDashboard(p) }}>🔨 Renovation Dashboard</button>
       </>
     )

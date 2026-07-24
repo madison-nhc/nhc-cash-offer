@@ -4,7 +4,7 @@ import { useIsMobile } from '../hooks/useIsMobile.js'
 import { PageWrap, SectionBar, Card, Badge, EmptyState, LoadingSpinner, fmt, fmtK, useSort, SortTh } from '../components/ui.jsx'
 import PropertyDrawer from '../components/PropertyDrawer.jsx'
 import ProposalModal from '../components/ProposalModal.jsx'
-import KanbanBoard, { cardPill, cardChip, MoneyBurst, PROMO_PAYLOADS, shortStreet } from '../components/KanbanBoard.jsx'
+import KanbanBoard, { cardPill, cardChip, CardStatBox, MoneyBurst, PROMO_PAYLOADS, shortStreet } from '../components/KanbanBoard.jsx'
 
 const PROMO_ZONES = [
   { key:'Analyzing', label:'RE-ANALYZE', emoji:'\u{1F50D}', color:'#6b7280' },
@@ -89,21 +89,31 @@ export default function Wholesale({ isAgentRole=false, currentUserEmail=null }) 
     return (
       <>
         <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:8 }}>
-          <div style={{ fontSize:13, fontWeight:700, color:'#2C2C2C', minWidth:0 }}>{shortStreet(p.address) || 'New Property'}</div>
-          {p.owner ? <div style={{ fontSize:11, color:'#6b7280', flexShrink:0 }}>{p.owner}</div> : null}
-        </div>
-        <div style={{ fontSize:10, color:'#9ca3af', marginTop:1, marginBottom:3 }}>{p.address?.split(',').slice(1,3).join(',').trim() || ''}</div>
-        <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:8, marginBottom:8 }}>
           <div style={{ minWidth:0 }}>
-            {p.wholesale_buyer && <div style={{ fontSize:11.5, color:'#6b21a8', fontWeight:600, marginBottom:1 }}>{p.wholesale_buyer}</div>}
-            {p.seller_name && <div style={{ fontSize:11, color:'#6b7280' }}>{p.seller_name}</div>}
+            <div style={{ fontSize:13, fontWeight:700, color:'#2C2C2C' }}>{shortStreet(p.address) || 'New Property'}</div>
+            <div style={{ fontSize:10, color:'#9ca3af', marginTop:1 }}>{p.address?.split(',').slice(1,3).join(',').trim() || ''}</div>
+            {p.owner && <div style={{ fontSize:10, color:'#9ca3af', marginTop:1 }}>{p.owner}</div>}
           </div>
-          {p.wholesale_fee ? <span style={cardChip('#6b21a8','#F3EBFA','#DCC8EE')}>{fmt(p.wholesale_fee)}</span> : null}
+          {p.source && (
+            <span style={{ flexShrink:0, fontSize:9, fontWeight:700, color:'#fff', background:'#6b7280', borderRadius:5, padding:'3px 8px', textTransform:'uppercase', letterSpacing:0.4 }}>
+              {p.source}
+            </span>
+          )}
         </div>
-        <div style={{ display:'flex', flexWrap:'wrap', gap:4, alignItems:'center', justifyContent:'center' }}>
-          {p.source && <span style={cardPill('#D97825','#FBF0E4')}>{p.source}</span>}
-          {p.purchase_price && <span style={cardPill('#6b7280','#F0EDE6')}>Contract {fmt(p.purchase_price)}</span>}
-        </div>
+
+        {(p.wholesale_buyer || p.seller_name) && (
+          <div style={{ margin:'6px 0 8px' }}>
+            {p.wholesale_buyer && <div style={{ fontSize:11.5, color:'#6b21a8', fontWeight:600 }}>{p.wholesale_buyer}</div>}
+            {p.seller_name && <div style={{ fontSize:11, color:'#6b7280', marginTop:1 }}>{p.seller_name}</div>}
+          </div>
+        )}
+
+        {(p.wholesale_fee || p.purchase_price) ? (
+          <div style={{ display:'flex', gap:6 }}>
+            {p.wholesale_fee ? <CardStatBox label="Fee" value={fmt(p.wholesale_fee)} color="#6b21a8" bg="#F3EBFA" /> : null}
+            {p.purchase_price ? <CardStatBox label="Contract" value={fmt(p.purchase_price)} color="#6b7280" bg="#F0EDE6" /> : null}
+          </div>
+        ) : null}
       </>
     )
   }
