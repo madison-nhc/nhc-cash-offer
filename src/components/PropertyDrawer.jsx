@@ -18,7 +18,7 @@ import { useIsMobile } from '../hooks/useIsMobile.js'
 
 // ── Type options (primary) ────────────────────────────────────────────────────
 const TYPE_OPTIONS = [
-  { value:'Analyzing',       color:'#B8892A' },
+  { value:'Analyzing',       color:'#B8892A', label:'Analyzer' },
   { value:'Renovation',      color:'#6b21a8' },
   { value:'Flip',            color:'#D97825' },
   { value:'Hold',            color:'#B8892A' },
@@ -631,6 +631,76 @@ function SaleCommission({ form, setForm }) {
   )
 }
 
+// Owner + Agent pickers — shared between the header (Retail Listing only, since it never
+// gets a Purchase tab) and the Purchase tab (everywhere else, since that's when the
+// property actually changes hands). Owner combines people flagged as Property Owners
+// (Users page) and businesses (Business page); legacy `owner` text field kept in sync
+// for the existing card display across Rehabs/Holds/Listings/Wholesale/Sold.
+function OwnerAgentPicker({ form, setForm, set, entityList, ownerUserList, agentList, restrictedAgent }) {
+  return (
+    <>
+      <div style={{ display:'flex', flexDirection:'column', gap:2 }}>
+        <span style={{ fontSize:9, fontWeight:700, color:'#9ca3af', textTransform:'uppercase', letterSpacing:0.6 }}>Owner</span>
+        <select
+          value={form.owner_entity_id ? `entity:${form.owner_entity_id}` : form.owner_user_email ? `user:${form.owner_user_email}` : form.owner==='Client' ? 'client' : ''}
+          onClick={e=>e.stopPropagation()}
+          onChange={e=>{
+            const val = e.target.value
+            if (!val) { setForm(f=>({ ...f, owner_user_email:null, owner_entity_id:null, owner:null })); return }
+            if (val === 'client') { setForm(f=>({ ...f, owner_user_email:null, owner_entity_id:null, owner:'Client' })); return }
+            const [kind, id] = val.split(':')
+            if (kind === 'entity') {
+              const ent = entityList.find(x=>x.id===id)
+              setForm(f=>({ ...f, owner_entity_id:id, owner_user_email:null, owner: ent?.name || f.owner }))
+            } else {
+              const u = ownerUserList.find(x=>x.email===id)
+              setForm(f=>({ ...f, owner_user_email:id, owner_entity_id:null, owner: u?.full_name || f.owner }))
+            }
+          }}
+          disabled={restrictedAgent}
+          style={{
+            border:'1.5px solid #D6D2CA', borderRadius:6, padding:'3px 8px',
+            fontSize:11, fontWeight:600, fontFamily:'inherit', color:'#6b7280', background:'#fff',
+            cursor: restrictedAgent ? 'not-allowed' : 'pointer', outline:'none',
+            opacity: restrictedAgent ? 0.6 : 1,
+          }}>
+          <option value="">Not yet selected</option>
+          <option value="client">Client (not NHC/BPV owned)</option>
+          {ownerUserList.length > 0 && (
+            <optgroup label="People">
+              {ownerUserList.map(u=><option key={u.email} value={`user:${u.email}`}>{u.full_name||u.email}</option>)}
+            </optgroup>
+          )}
+          {entityList.length > 0 && (
+            <optgroup label="Businesses">
+              {entityList.map(ent=><option key={ent.id} value={`entity:${ent.id}`}>{ent.name}</option>)}
+            </optgroup>
+          )}
+        </select>
+      </div>
+
+      <div style={{ display:'flex', flexDirection:'column', gap:2 }}>
+        <span style={{ fontSize:9, fontWeight:700, color:'#9ca3af', textTransform:'uppercase', letterSpacing:0.6 }}>Agent</span>
+        <select
+          value={form.agent_email||''}
+          onChange={set('agent_email')}
+          onClick={e=>e.stopPropagation()}
+          disabled={restrictedAgent}
+          style={{
+            border:'1.5px solid #D6D2CA', borderRadius:6, padding:'3px 8px',
+            fontSize:11, fontWeight:600, fontFamily:'inherit', color:'#6b7280', background:'#fff',
+            cursor: restrictedAgent ? 'not-allowed' : 'pointer', outline:'none',
+            opacity: restrictedAgent ? 0.6 : 1, maxWidth:130,
+          }}>
+          <option value="">No Agent</option>
+          <option value="__outside_agent__">Outside Agent</option>
+          {agentList.map(a=><option key={a.email} value={a.email}>{a.full_name||a.email}</option>)}
+        </select>
+      </div>
+    </>
+  )
+}
+
 export default function PropertyDrawer({ property, open, onClose, onSave, mailings=[], onViewOffer, inlineMode=false, initialTab='analyzer', openRentTracker=false, currentUserEmail=null, isAgentRole=false }) {
   const isFullViewMobile = useIsMobile()
   const [form, setForm]           = useState({})
@@ -1148,6 +1218,11 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
             </div>
           )}
           <div className="drawer-section">Owner / Seller</div>
+          {form.owner && (
+            <div style={{ fontSize:11.5, color:'#B8892A', fontWeight:600, marginTop:-8 }}>
+              Owned by {form.owner}{type!=='Retail Listing' && <span style={{ color:'#9ca3af', fontWeight:400 }}> — edit on Purchase tab</span>}
+            </div>
+          )}
           <FieldRow>
             <Field label="Name"><input style={inp} value={form.seller_name||''} onChange={set('seller_name')} /></Field>
             <Field label="FUB Link">
@@ -1265,6 +1340,11 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
               }))
             }}
           />
+
+          <div className="drawer-section">Ownership</div>
+          <div style={{ display:'flex', gap:10, flexWrap:'wrap' }}>
+            <OwnerAgentPicker form={form} setForm={setForm} setVal={setVal} set={set} entityList={entityList} ownerUserList={ownerUserList} agentList={agentList} restrictedAgent={restrictedAgent} />
+          </div>
 
           <Toggle
             on={form.acquisition_type==='Pre-Owned'}
@@ -1773,69 +1853,20 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
       )}
       subtitle={
         <div style={{ display:'flex', alignItems:'flex-end', gap:10, marginTop:8, flexWrap:'wrap' }}>
-          {/* Owner picker — a single list combining people flagged as Property Owners
-              (Users page) and businesses (Business page). Value is prefixed so we know
-              which table it came from; legacy `owner` text field kept in sync for the
-              existing card display across Rehabs/Holds/Listings/Wholesale/Sold. */}
-          <div style={{ display:'flex', flexDirection:'column', gap:2 }}>
-            <span style={{ fontSize:9, fontWeight:700, color:'#9ca3af', textTransform:'uppercase', letterSpacing:0.6 }}>Owner</span>
-            <select
-              value={form.owner_entity_id ? `entity:${form.owner_entity_id}` : form.owner_user_email ? `user:${form.owner_user_email}` : form.owner==='Client' ? 'client' : ''}
-              onClick={e=>e.stopPropagation()}
-              onChange={e=>{
-                const val = e.target.value
-                if (!val) { setForm(f=>({ ...f, owner_user_email:null, owner_entity_id:null, owner:null })); return }
-                if (val === 'client') { setForm(f=>({ ...f, owner_user_email:null, owner_entity_id:null, owner:'Client' })); return }
-                const [kind, id] = val.split(':')
-                if (kind === 'entity') {
-                  const ent = entityList.find(x=>x.id===id)
-                  setForm(f=>({ ...f, owner_entity_id:id, owner_user_email:null, owner: ent?.name || f.owner }))
-                } else {
-                  const u = ownerUserList.find(x=>x.email===id)
-                  setForm(f=>({ ...f, owner_user_email:id, owner_entity_id:null, owner: u?.full_name || f.owner }))
-                }
-              }}
-              disabled={restrictedAgent}
-              style={{
-                border:'1.5px solid #D6D2CA', borderRadius:6, padding:'3px 8px',
-                fontSize:11, fontWeight:600, fontFamily:'inherit', color:'#6b7280', background:'#fff',
-                cursor: restrictedAgent ? 'not-allowed' : 'pointer', outline:'none',
-                opacity: restrictedAgent ? 0.6 : 1,
-              }}>
-              <option value="">Not yet selected</option>
-              <option value="client">Client (not NHC/BPV owned)</option>
-              {ownerUserList.length > 0 && (
-                <optgroup label="People">
-                  {ownerUserList.map(u=><option key={u.email} value={`user:${u.email}`}>{u.full_name||u.email}</option>)}
-                </optgroup>
-              )}
-              {entityList.length > 0 && (
-                <optgroup label="Businesses">
-                  {entityList.map(ent=><option key={ent.id} value={`entity:${ent.id}`}>{ent.name}</option>)}
-                </optgroup>
-              )}
-            </select>
-          </div>
-
-          {/* Agent dropdown — who's working this deal */}
-          <div style={{ display:'flex', flexDirection:'column', gap:2 }}>
-            <span style={{ fontSize:9, fontWeight:700, color:'#9ca3af', textTransform:'uppercase', letterSpacing:0.6 }}>Agent</span>
-            <select
-              value={form.agent_email||''}
-              onChange={set('agent_email')}
-              onClick={e=>e.stopPropagation()}
-              disabled={restrictedAgent}
-              style={{
-                border:'1.5px solid #D6D2CA', borderRadius:6, padding:'3px 8px',
-                fontSize:11, fontWeight:600, fontFamily:'inherit', color:'#6b7280', background:'#fff',
-                cursor: restrictedAgent ? 'not-allowed' : 'pointer', outline:'none',
-                opacity: restrictedAgent ? 0.6 : 1, maxWidth:130,
-              }}>
-              <option value="">No Agent</option>
-              <option value="__outside_agent__">Outside Agent</option>
-              {agentList.map(a=><option key={a.email} value={a.email}>{a.full_name||a.email}</option>)}
-            </select>
-          </div>
+          {type==='Retail Listing' ? (
+            // Retail Listing never gets a Purchase tab (BPV doesn't buy these), so the
+            // Owner/Agent pickers stay right here since there's nowhere else for them to live.
+            <OwnerAgentPicker form={form} setForm={setForm} setVal={setVal} set={set} entityList={entityList} ownerUserList={ownerUserList} agentList={agentList} restrictedAgent={restrictedAgent} />
+          ) : (
+            // Everywhere else, ownership changes hands at Purchase — so the editable pickers
+            // live on the Purchase tab, and this is just a read-only summary of what's set.
+            <div style={{ display:'flex', flexDirection:'column', gap:2 }}>
+              <span style={{ fontSize:9, fontWeight:700, color:'#9ca3af', textTransform:'uppercase', letterSpacing:0.6 }}>Owner</span>
+              <span style={{ fontSize:12, fontWeight:600, color: form.owner ? '#2C2C2C' : '#9ca3af' }}>
+                {form.owner || 'Not Purchased'}
+              </span>
+            </div>
+          )}
 
           {/* Type dropdown — primary */}
           <div style={{ display:'flex', flexDirection:'column', gap:2 }}>
