@@ -1345,11 +1345,6 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
             }}
           />
 
-          <div className="drawer-section">Ownership</div>
-          <div style={{ display:'flex', gap:10, flexWrap:'wrap' }}>
-            <OwnerAgentPicker form={form} setForm={setForm} setVal={setVal} set={set} entityList={entityList} ownerUserList={ownerUserList} agentList={agentList} restrictedAgent={restrictedAgent} />
-          </div>
-
           <Toggle
             on={form.acquisition_type==='Pre-Owned'}
             onToggle={()=>setVal('acquisition_type', form.acquisition_type==='Pre-Owned' ? 'Purchased' : 'Pre-Owned')}
