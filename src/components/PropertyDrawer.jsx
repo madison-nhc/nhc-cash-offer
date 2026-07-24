@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import { supabase } from '../lib/supabase.js'
 import { Field, FieldRow, inp, monoInp, Btn, fmt, fmtK, DatePicker, PAID_BY_OPTIONS, PARTNERS, calcOwed, relTime } from './ui.jsx'
 import { calcOffers } from '../lib/valuation.js'
@@ -640,22 +641,38 @@ function SaleCommission({ form, setForm }) {
 const PILL_WIDTH = 152
 function HeaderPillSelect({ value, onSelect, sections, disabled, title, color, hasValue, placeholder='Select' }) {
   const [open, setOpen] = useState(false)
-  const ref = useRef(null)
+  const [pos, setPos] = useState(null)
+  const btnRef = useRef(null)
+  const panelRef = useRef(null)
 
   useEffect(() => {
     if (!open) return
-    function handler(e) { if (ref.current && !ref.current.contains(e.target)) setOpen(false) }
+    function handler(e) {
+      if (btnRef.current && btnRef.current.contains(e.target)) return
+      if (panelRef.current && panelRef.current.contains(e.target)) return
+      setOpen(false)
+    }
     document.addEventListener('mousedown', handler)
     return () => document.removeEventListener('mousedown', handler)
   }, [open])
 
+  function toggle() {
+    if (disabled) return
+    if (!open && btnRef.current) {
+      const r = btnRef.current.getBoundingClientRect()
+      setPos({ top: r.bottom + 4, left: r.left, width: r.width })
+    }
+    setOpen(o=>!o)
+  }
+
   const label = sections.flatMap(s=>s.options).find(o=>o.value===value)?.label
 
   return (
-    <div ref={ref} style={{ position:'relative', width:PILL_WIDTH }}>
+    <div style={{ position:'relative', width:PILL_WIDTH }}>
       <button
+        ref={btnRef}
         type="button" title={title} disabled={disabled}
-        onClick={e=>{ e.stopPropagation(); if (!disabled) setOpen(o=>!o) }}
+        onClick={e=>{ e.stopPropagation(); toggle() }}
         style={{
           display:'flex', alignItems:'center', justifyContent:'space-between', gap:6,
           width:'100%', boxSizing:'border-box',
@@ -670,10 +687,10 @@ function HeaderPillSelect({ value, onSelect, sections, disabled, title, color, h
         <span style={{ fontSize:8, opacity:0.8, flexShrink:0 }}>▼</span>
       </button>
 
-      {open && (
-        <div style={{
-          position:'absolute', top:'calc(100% + 4px)', left:0, zIndex:200,
-          minWidth:'100%', width:'max-content', maxWidth:260, maxHeight:280, overflowY:'auto',
+      {open && pos && createPortal(
+        <div ref={panelRef} style={{
+          position:'fixed', top:pos.top, left:pos.left, zIndex:9999,
+          minWidth:pos.width, width:'max-content', maxWidth:260, maxHeight:280, overflowY:'auto',
           background:'#fff', border:'0.5px solid #D6D2CA', borderRadius:8,
           boxShadow:'0 8px 24px rgba(0,0,0,0.18)',
         }}>
@@ -698,7 +715,8 @@ function HeaderPillSelect({ value, onSelect, sections, disabled, title, color, h
               ))}
             </div>
           ))}
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   )
