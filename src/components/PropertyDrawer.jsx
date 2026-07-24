@@ -802,12 +802,21 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
   const [agentList, setAgentList] = useState([])
   const [ownerUserList, setOwnerUserList] = useState([])
   const [entityList, setEntityList] = useState([])
+  const [linkedListingStatus, setLinkedListingStatus] = useState(null) // Ops Hub disposition-link status, for the footer link button
 
   function nameFor(email) {
     if (!email) return ''
     const a = agentList.find(a => a.email === email)
     return a?.full_name || email
   }
+
+  useEffect(() => {
+    if (!form.id) { setLinkedListingStatus(null); return }
+    supabase.from('pipeline_deals').select('status')
+      .eq('cashoffer_property_id', form.id).eq('cashoffer_link_role', 'disposition')
+      .maybeSingle()
+      .then(({ data }) => setLinkedListingStatus(data?.status || null))
+  }, [form.id, tab]) // re-check when switching tabs, so linking/unlinking on the Sold tab is reflected
 
   useEffect(() => {
     supabase.from('cashoffer_users').select('email,full_name,role').in('role',['agent','admin']).order('full_name')
@@ -1874,6 +1883,20 @@ export default function PropertyDrawer({ property, open, onClose, onSave, mailin
           </button>
         ) : <span />}
         <div style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
+          {linkedListingStatus && (
+            <button
+              onClick={()=>setTab('disposition')}
+              title="Linked Ops Hub listing status"
+              style={{
+                display:'flex', alignItems:'center', gap:6,
+                background: OPS_STATUS_COLOR[linkedListingStatus] || '#6b7280', color:'#fff',
+                border:'none', borderRadius:6, padding:'6px 12px',
+                fontSize:11, fontWeight:700, fontFamily:'inherit', cursor:'pointer',
+                textTransform:'uppercase', letterSpacing:0.4, whiteSpace:'nowrap',
+              }}>
+              🔗 {linkedListingStatus}
+            </button>
+          )}
           <Btn variant="outline" onClick={onClose}>Cancel</Btn>
           <Btn onClick={handleClose} disabled={!!lockedByOther}>Save</Btn>
         </div>
